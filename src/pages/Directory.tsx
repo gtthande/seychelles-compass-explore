@@ -6,7 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import LiveCounters from "@/components/LiveCounters";
+import GoogleMap from "@/components/GoogleMap";
 import { 
   Search, 
   MapPin, 
@@ -21,7 +24,9 @@ import {
   Linkedin,
   Youtube,
   Clock,
-  Verified
+  Verified,
+  Map,
+  List
 } from "lucide-react";
 
 interface Business {
@@ -40,6 +45,8 @@ interface Business {
   youtube_url: string;
   address: string;
   island: string;
+  latitude: number | null;
+  longitude: number | null;
   featured: boolean;
   verified: boolean;
   logo_url: string;
@@ -55,6 +62,8 @@ const Directory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedIsland, setSelectedIsland] = useState<string>("all");
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const { toast } = useToast();
 
   const categories = [
@@ -135,7 +144,7 @@ const Directory = () => {
     return category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const BusinessCard = ({ business }: { business: Business }) => (
+  const BusinessCard = ({ business, onViewOnMap }: { business: Business; onViewOnMap?: () => void }) => (
     <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
       <div className="relative">
         {business.cover_image_url && (
@@ -277,6 +286,13 @@ const Directory = () => {
               </a>
             </Button>
           )}
+
+          {business.latitude && business.longitude && onViewOnMap && (
+            <Button variant="outline" size="sm" onClick={onViewOnMap}>
+              <MapPin className="w-4 h-4 mr-1" />
+              View on Map
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -285,11 +301,14 @@ const Directory = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-4">Business Directory</h1>
+        <h1 className="text-4xl font-bold text-foreground mb-4">iCompass Business Directory</h1>
         <p className="text-lg text-muted-foreground">
           Discover local businesses across the beautiful islands of Seychelles
         </p>
       </div>
+
+      {/* Live Counters */}
+      <LiveCounters />
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div className="relative">
@@ -328,13 +347,49 @@ const Directory = () => {
           </SelectContent>
         </Select>
         
-        <Button variant="outline" onClick={fetchBusinesses} disabled={loading}>
-          <Search className="w-4 h-4 mr-2" />
-          Search
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchBusinesses} disabled={loading}>
+            <Search className="w-4 h-4 mr-2" />
+            Search
+          </Button>
+          
+          <div className="flex rounded-lg border">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="rounded-r-none"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'map' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('map')}
+              className="rounded-l-none"
+            >
+              <Map className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       </div>
       
-      {loading ? (
+      {viewMode === 'map' ? (
+        <div className="space-y-4">
+          <GoogleMap 
+            businesses={businesses}
+            selectedBusiness={selectedBusiness}
+            onBusinessSelect={setSelectedBusiness}
+          />
+          {selectedBusiness && (
+            <Card>
+              <CardContent className="pt-6">
+                <BusinessCard business={selectedBusiness} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -355,7 +410,14 @@ const Directory = () => {
       ) : businesses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {businesses.map((business) => (
-            <BusinessCard key={business.id} business={business} />
+            <BusinessCard 
+              key={business.id} 
+              business={business}
+              onViewOnMap={() => {
+                setSelectedBusiness(business);
+                setViewMode('map');
+              }}
+            />
           ))}
         </div>
       ) : (

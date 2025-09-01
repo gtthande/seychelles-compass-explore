@@ -6,11 +6,28 @@ import { MapPin } from 'lucide-react';
 interface Business {
   id: string;
   name: string;
-  address: string | null;
+  description: string;
+  category: string;
+  status: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  website: string;
+  facebook_url: string;
+  instagram_url: string;
+  linkedin_url: string;
+  youtube_url: string;
+  address: string;
+  island: string;
   latitude: number | null;
   longitude: number | null;
-  category: string;
-  description: string | null;
+  featured: boolean;
+  verified: boolean;
+  logo_url: string;
+  cover_image_url: string;
+  average_rating: number;
+  total_reviews: number;
+  created_at: string;
 }
 
 interface GoogleMapProps {

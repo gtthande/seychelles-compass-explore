@@ -100,6 +100,7 @@ export type Database = {
           opening_hours: Json | null
           owner_id: string
           phone: string | null
+          services: string[] | null
           status: Database["public"]["Enums"]["business_status"] | null
           total_reviews: number | null
           updated_at: string
@@ -130,6 +131,7 @@ export type Database = {
           opening_hours?: Json | null
           owner_id: string
           phone?: string | null
+          services?: string[] | null
           status?: Database["public"]["Enums"]["business_status"] | null
           total_reviews?: number | null
           updated_at?: string
@@ -160,6 +162,7 @@ export type Database = {
           opening_hours?: Json | null
           owner_id?: string
           phone?: string | null
+          services?: string[] | null
           status?: Database["public"]["Enums"]["business_status"] | null
           total_reviews?: number | null
           updated_at?: string
@@ -181,6 +184,7 @@ export type Database = {
       products: {
         Row: {
           business_id: string
+          catalogue_url: string | null
           category: string | null
           created_at: string
           currency: string | null
@@ -197,6 +201,7 @@ export type Database = {
         }
         Insert: {
           business_id: string
+          catalogue_url?: string | null
           category?: string | null
           created_at?: string
           currency?: string | null
@@ -213,6 +218,7 @@ export type Database = {
         }
         Update: {
           business_id?: string
+          catalogue_url?: string | null
           category?: string | null
           created_at?: string
           currency?: string | null

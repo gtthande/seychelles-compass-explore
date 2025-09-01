@@ -14,7 +14,316 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booking_details: Json | null
+          business_id: string
+          check_in_date: string | null
+          check_out_date: string | null
+          created_at: string
+          currency: string | null
+          guests: number | null
+          id: string
+          service_type: string
+          status: string | null
+          total_price: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_details?: Json | null
+          business_id: string
+          check_in_date?: string | null
+          check_out_date?: string | null
+          created_at?: string
+          currency?: string | null
+          guests?: number | null
+          id?: string
+          service_type: string
+          status?: string | null
+          total_price?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_details?: Json | null
+          business_id?: string
+          check_in_date?: string | null
+          check_out_date?: string | null
+          created_at?: string
+          currency?: string | null
+          guests?: number | null
+          id?: string
+          service_type?: string
+          status?: string | null
+          total_price?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          address: string | null
+          average_rating: number | null
+          category: Database["public"]["Enums"]["business_category"]
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          facebook_url: string | null
+          featured: boolean | null
+          gallery_images: string[] | null
+          id: string
+          instagram_url: string | null
+          island: string | null
+          latitude: number | null
+          linkedin_url: string | null
+          logo_url: string | null
+          longitude: number | null
+          name: string
+          opening_hours: Json | null
+          owner_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["business_status"] | null
+          total_reviews: number | null
+          updated_at: string
+          verified: boolean | null
+          website: string | null
+          whatsapp: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          address?: string | null
+          average_rating?: number | null
+          category: Database["public"]["Enums"]["business_category"]
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          facebook_url?: string | null
+          featured?: boolean | null
+          gallery_images?: string[] | null
+          id?: string
+          instagram_url?: string | null
+          island?: string | null
+          latitude?: number | null
+          linkedin_url?: string | null
+          logo_url?: string | null
+          longitude?: number | null
+          name: string
+          opening_hours?: Json | null
+          owner_id: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["business_status"] | null
+          total_reviews?: number | null
+          updated_at?: string
+          verified?: boolean | null
+          website?: string | null
+          whatsapp?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          address?: string | null
+          average_rating?: number | null
+          category?: Database["public"]["Enums"]["business_category"]
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          facebook_url?: string | null
+          featured?: boolean | null
+          gallery_images?: string[] | null
+          id?: string
+          instagram_url?: string | null
+          island?: string | null
+          latitude?: number | null
+          linkedin_url?: string | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string
+          opening_hours?: Json | null
+          owner_id?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["business_status"] | null
+          total_reviews?: number | null
+          updated_at?: string
+          verified?: boolean | null
+          website?: string | null
+          whatsapp?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "businesses_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          business_id: string
+          category: string | null
+          created_at: string
+          currency: string | null
+          description: string | null
+          featured: boolean | null
+          id: string
+          images: string[] | null
+          in_stock: boolean | null
+          name: string
+          price: number | null
+          status: Database["public"]["Enums"]["listing_status"] | null
+          stock_quantity: number | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          featured?: boolean | null
+          id?: string
+          images?: string[] | null
+          in_stock?: boolean | null
+          name: string
+          price?: number | null
+          status?: Database["public"]["Enums"]["listing_status"] | null
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          featured?: boolean | null
+          id?: string
+          images?: string[] | null
+          in_stock?: boolean | null
+          name?: string
+          price?: number | null
+          status?: Database["public"]["Enums"]["listing_status"] | null
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          business_name: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          is_admin: boolean | null
+          is_business_owner: boolean | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          business_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          is_admin?: boolean | null
+          is_business_owner?: boolean | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          business_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          is_admin?: boolean | null
+          is_business_owner?: boolean | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          business_id: string
+          comment: string | null
+          created_at: string
+          helpful_count: number | null
+          id: string
+          rating: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          comment?: string | null
+          created_at?: string
+          helpful_count?: number | null
+          id?: string
+          rating?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          comment?: string | null
+          created_at?: string
+          helpful_count?: number | null
+          id?: string
+          rating?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +332,21 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      business_category:
+        | "restaurants"
+        | "hotels"
+        | "tourism"
+        | "retail"
+        | "services"
+        | "entertainment"
+        | "health"
+        | "education"
+        | "finance"
+        | "transport"
+        | "real_estate"
+        | "technology"
+      business_status: "active" | "pending" | "suspended" | "closed"
+      listing_status: "active" | "draft" | "pending" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +473,23 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      business_category: [
+        "restaurants",
+        "hotels",
+        "tourism",
+        "retail",
+        "services",
+        "entertainment",
+        "health",
+        "education",
+        "finance",
+        "transport",
+        "real_estate",
+        "technology",
+      ],
+      business_status: ["active", "pending", "suspended", "closed"],
+      listing_status: ["active", "draft", "pending", "expired"],
+    },
   },
 } as const

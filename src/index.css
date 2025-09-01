@@ -8,33 +8,49 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+    /* iCompass Turquoise Theme */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 215 25% 27%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 27%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 27%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Turquoise Primary Colors */
+    --primary: 187 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 186 100% 94%;
+    --primary-dark: 188 94% 30%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Ocean Blue Secondary */
+    --secondary: 198 93% 96%;
+    --secondary-foreground: 187 100% 42%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 198 93% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 186 100% 94%;
+    --accent-foreground: 187 100% 42%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 198 93% 90%;
+    --input: 198 93% 95%;
+    --ring: 187 100% 42%;
+
+    /* Custom iCompass Design Tokens */
+    --ocean-gradient: linear-gradient(135deg, hsl(187 100% 42%), hsl(186 100% 94%));
+    --hero-gradient: linear-gradient(135deg, hsl(187 100% 42%) 0%, hsl(199 89% 48%) 50%, hsl(186 100% 94%) 100%);
+    --card-shadow: 0 4px 6px -1px hsl(187 100% 42% / 0.1), 0 2px 4px -1px hsl(187 100% 42% / 0.06);
+    --card-shadow-hover: 0 10px 15px -3px hsl(187 100% 42% / 0.15), 0 4px 6px -2px hsl(187 100% 42% / 0.1);
+    --glow-shadow: 0 0 30px hsl(187 100% 42% / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --radius: 0.5rem;
 
@@ -101,5 +117,37 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Custom keyframes */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
   }
 }

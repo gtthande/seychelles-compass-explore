@@ -24,6 +24,8 @@ interface BusinessEmailRequest {
   instagram_url?: string;
   linkedin_url?: string;
   youtube_url?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -35,7 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
     const businessData: BusinessEmailRequest = await req.json();
 
     const emailContent = `
-      <h2>New Business Registration - iCompass Platform</h2>
+      <h2>New Business Registration - iCompass Seychelles</h2>
       
       <h3>Business Details:</h3>
       <ul>
@@ -46,34 +48,41 @@ const handler = async (req: Request): Promise<Response> => {
         ${businessData.whatsapp ? `<li><strong>WhatsApp:</strong> ${businessData.whatsapp}</li>` : ''}
         ${businessData.address ? `<li><strong>Address:</strong> ${businessData.address}</li>` : ''}
         ${businessData.island ? `<li><strong>Island:</strong> ${businessData.island}</li>` : ''}
+        ${businessData.latitude && businessData.longitude ? `<li><strong>GPS Coordinates:</strong> ${businessData.latitude}, ${businessData.longitude}</li>` : ''}
       </ul>
 
       <h3>Description:</h3>
       <p>${businessData.description}</p>
 
-      ${businessData.services.length > 0 ? `
+      ${businessData.services && businessData.services.length > 0 ? `
       <h3>Services:</h3>
       <ul>
         ${businessData.services.map(service => `<li>${service}</li>`).join('')}
       </ul>
       ` : ''}
 
-      <h3>Social Media & Website:</h3>
+      <h3>Online Presence:</h3>
       <ul>
-        ${businessData.website ? `<li><strong>Website:</strong> ${businessData.website}</li>` : ''}
-        ${businessData.facebook_url ? `<li><strong>Facebook:</strong> ${businessData.facebook_url}</li>` : ''}
-        ${businessData.instagram_url ? `<li><strong>Instagram:</strong> ${businessData.instagram_url}</li>` : ''}
-        ${businessData.linkedin_url ? `<li><strong>LinkedIn:</strong> ${businessData.linkedin_url}</li>` : ''}
-        ${businessData.youtube_url ? `<li><strong>YouTube:</strong> ${businessData.youtube_url}</li>` : ''}
+        ${businessData.website ? `<li><strong>Website:</strong> <a href="${businessData.website}">${businessData.website}</a></li>` : ''}
+        ${businessData.facebook_url ? `<li><strong>Facebook:</strong> <a href="${businessData.facebook_url}">${businessData.facebook_url}</a></li>` : ''}
+        ${businessData.instagram_url ? `<li><strong>Instagram:</strong> <a href="${businessData.instagram_url}">${businessData.instagram_url}</a></li>` : ''}
+        ${businessData.linkedin_url ? `<li><strong>LinkedIn:</strong> <a href="${businessData.linkedin_url}">${businessData.linkedin_url}</a></li>` : ''}
+        ${businessData.youtube_url ? `<li><strong>YouTube:</strong> <a href="${businessData.youtube_url}">${businessData.youtube_url}</a></li>` : ''}
       </ul>
 
-      <p><strong>Contact iCompass:</strong> +2482588639</p>
+      <hr style="margin: 20px 0;">
+      
+      <p><strong>iCompass Support Team</strong><br>
+      Phone: +2482588639<br>
+      Email: support@icompass.sc</p>
+
+      <p><em>This business registration requires review and approval.</em></p>
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "iCompass Platform <onboarding@resend.dev>",
-      to: ["info@icompass.sc"],
-      subject: `New Business Registration: ${businessData.businessName}`,
+      from: "iCompass Seychelles <onboarding@resend.dev>",
+      to: ["support@icompass.sc"],
+      subject: `New Business Registration: ${businessData.businessName} - ${businessData.island}`,
       html: emailContent,
     });
 

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Upload, X } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 const productSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters"),
@@ -63,9 +64,11 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [catalogueFile, setCatalogueFile] = useState<File | null>(null);
   const [existingImages, setExistingImages] = useState<string[]>(product?.images || []);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -101,9 +104,41 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
     { value: "other", label: "Other" },
   ];
 
+  const validateFiles = (files: File[], type: 'image' | 'pdf'): string[] => {
+    const errors: string[] = [];
+    const maxImageSize = 5 * 1024 * 1024; // 5MB
+    const maxPdfSize = 10 * 1024 * 1024; // 10MB
+    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const allowedPdfTypes = ['application/pdf'];
+
+    files.forEach((file, index) => {
+      if (type === 'image') {
+        if (!allowedImageTypes.includes(file.type)) {
+          errors.push(`Image ${index + 1}: Only JPEG, PNG, and WebP formats are allowed`);
+        }
+        if (file.size > maxImageSize) {
+          errors.push(`Image ${index + 1}: File size must be less than 5MB`);
+        }
+      } else if (type === 'pdf') {
+        if (!allowedPdfTypes.includes(file.type)) {
+          errors.push(`Catalogue: Only PDF format is allowed`);
+        }
+        if (file.size > maxPdfSize) {
+          errors.push(`Catalogue: File size must be less than 10MB`);
+        }
+      }
+    });
+
+    return errors;
+  };
+
   const uploadFiles = async () => {
     const imageUrls: string[] = [...existingImages];
     let catalogueUrl = product?.catalogue_url;
+    let totalFiles = imageFiles.length + (catalogueFile ? 1 : 0);
+    let uploadedFiles = 0;
+
+    setUploadProgress(0);
 
     // Upload images
     for (const file of imageFiles) {
@@ -118,6 +153,9 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       
       const publicUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
       imageUrls.push(publicUrl);
+      
+      uploadedFiles++;
+      setUploadProgress((uploadedFiles / totalFiles) * 50); // 50% for image uploads
     }
 
     // Upload catalogue
@@ -132,15 +170,36 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       if (error) throw error;
       
       catalogueUrl = supabase.storage.from('product-catalogues').getPublicUrl(fileName).data.publicUrl;
+      uploadedFiles++;
+      setUploadProgress((uploadedFiles / totalFiles) * 50);
     }
 
+    setUploadProgress(100);
     return { imageUrls, catalogueUrl };
   };
 
   const onSubmit = async (data: ProductFormData) => {
     if (!user) return;
 
+    // Validate files before submission
+    const imageErrors = validateFiles(imageFiles, 'image');
+    const pdfErrors = catalogueFile ? validateFiles([catalogueFile], 'pdf') : [];
+    const allErrors = [...imageErrors, ...pdfErrors];
+
+    if (allErrors.length > 0) {
+      setValidationErrors(allErrors);
+      toast({
+        title: "File Validation Error",
+        description: "Please fix the file errors before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValidationErrors([]);
     setLoading(true);
+    setUploadProgress(0);
+    
     try {
       const { imageUrls, catalogueUrl } = await uploadFiles();
 
@@ -198,7 +257,45 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       });
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
+  };
+
+  const handleImageFiles = (files: FileList | null) => {
+    if (!files) return;
+    const fileArray = Array.from(files);
+    const errors = validateFiles(fileArray, 'image');
+    
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      toast({
+        title: "File Validation Error",
+        description: errors[0],
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setValidationErrors([]);
+    setImageFiles([...imageFiles, ...fileArray]);
+  };
+
+  const handleCatalogueFile = (file: File | null) => {
+    if (!file) return;
+    const errors = validateFiles([file], 'pdf');
+    
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      toast({
+        title: "File Validation Error",
+        description: errors[0],
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setValidationErrors([]);
+    setCatalogueFile(file);
   };
 
   const removeExistingImage = (indexToRemove: number) => {
@@ -223,6 +320,28 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Progress Bar */}
+            {loading && uploadProgress > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Uploading files...</span>
+                  <span>{uploadProgress.toFixed(0)}%</span>
+                </div>
+                <Progress value={uploadProgress} className="w-full" />
+              </div>
+            )}
+
+            {/* Validation Errors */}
+            {validationErrors.length > 0 && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                <h4 className="font-medium text-destructive mb-2">File Validation Errors:</h4>
+                <ul className="text-sm text-destructive space-y-1">
+                  {validationErrors.map((error, index) => (
+                    <li key={index}>• {error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <FormField
               control={form.control}
               name="name"
@@ -451,19 +570,19 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
 
             {/* New Images Upload */}
             <div className="space-y-2">
-              <FormLabel>Add Images</FormLabel>
+              <FormLabel>Add Images (Max 5MB each, JPEG/PNG/WebP)</FormLabel>
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
                 <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
                   multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    setImageFiles([...imageFiles, ...files]);
-                  }}
+                  onChange={(e) => handleImageFiles(e.target.files)}
                   className="w-full"
                 />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Supported formats: JPEG, PNG, WebP. Max size: 5MB per image.
+                </p>
               </div>
               {imageFiles.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
@@ -491,15 +610,18 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
 
             {/* Catalogue Upload */}
             <div className="space-y-2">
-              <FormLabel>Product Catalogue (PDF - Optional)</FormLabel>
+              <FormLabel>Product Catalogue (PDF Only, Max 10MB)</FormLabel>
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
                 <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                 <input
                   type="file"
-                  accept=".pdf"
-                  onChange={(e) => setCatalogueFile(e.target.files?.[0] || null)}
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => handleCatalogueFile(e.target.files?.[0] || null)}
                   className="w-full"
                 />
+                <p className="text-xs text-muted-foreground mt-2">
+                  PDF format only. Max size: 10MB.
+                </p>
                 {catalogueFile && (
                   <p className="text-sm text-green-600 mt-2">
                     Selected: {catalogueFile.name}

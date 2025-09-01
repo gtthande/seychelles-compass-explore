@@ -37,6 +37,9 @@ interface Product {
   stock_quantity: number | null;
   images: string[] | null;
   catalogue_url: string | null;
+  sku: string | null;
+  unit: string | null;
+  tags: string[] | null;
   created_at: string;
 }
 

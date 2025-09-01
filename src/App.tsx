@@ -10,6 +10,8 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Directory from "./pages/Directory";
 import NotFound from "./pages/NotFound";
+import BusinessPortal from "./pages/BusinessPortal";
+import Products from "./pages/Products";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/directory" element={<Directory />} />
+          <Route path="/business" element={<BusinessPortal />} />
+          <Route path="/products" element={<Products />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -195,8 +195,12 @@ export type Database = {
           in_stock: boolean | null
           name: string
           price: number | null
+          published_at: string | null
+          sku: string | null
           status: Database["public"]["Enums"]["listing_status"] | null
           stock_quantity: number | null
+          tags: string[] | null
+          unit: string | null
           updated_at: string
         }
         Insert: {
@@ -212,8 +216,12 @@ export type Database = {
           in_stock?: boolean | null
           name: string
           price?: number | null
+          published_at?: string | null
+          sku?: string | null
           status?: Database["public"]["Enums"]["listing_status"] | null
           stock_quantity?: number | null
+          tags?: string[] | null
+          unit?: string | null
           updated_at?: string
         }
         Update: {
@@ -229,8 +237,12 @@ export type Database = {
           in_stock?: boolean | null
           name?: string
           price?: number | null
+          published_at?: string | null
+          sku?: string | null
           status?: Database["public"]["Enums"]["listing_status"] | null
           stock_quantity?: number | null
+          tags?: string[] | null
+          unit?: string | null
           updated_at?: string
         }
         Relationships: [

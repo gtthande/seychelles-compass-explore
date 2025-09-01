@@ -23,6 +23,9 @@ const productSchema = z.object({
   status: z.string().default("draft"),
   in_stock: z.boolean().default(true),
   stock_quantity: z.string().optional(),
+  sku: z.string().optional(),
+  unit: z.string().optional(),
+  tags: z.string().optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -39,6 +42,9 @@ interface Product {
   stock_quantity: number | null;
   images: string[] | null;
   catalogue_url: string | null;
+  sku: string | null;
+  unit: string | null;
+  tags: string[] | null;
 }
 
 interface Business {
@@ -72,6 +78,9 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       status: product?.status || "draft",
       in_stock: product?.in_stock ?? true,
       stock_quantity: product?.stock_quantity?.toString() || "",
+      sku: product?.sku || "",
+      unit: product?.unit || "",
+      tags: product?.tags?.join(", ") || "",
     },
   });
 
@@ -147,6 +156,9 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
         images: imageUrls.length > 0 ? imageUrls : null,
         catalogue_url: catalogueUrl,
         business_id: business.id,
+        sku: data.sku || null,
+        unit: data.unit || null,
+        tags: data.tags ? data.tags.split(",").map(tag => tag.trim()).filter(Boolean) : null,
       };
 
       if (product) {
@@ -333,6 +345,50 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
                 )}
               />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="sku"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SKU (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Product SKU" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., piece, kg, liter" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="tags"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tags (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter tags separated by commas" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex items-center space-x-2">
               <FormField

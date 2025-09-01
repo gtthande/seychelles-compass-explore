@@ -89,8 +89,8 @@ const Navbar = () => {
                 
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild>
-                    <Link to="/marketplace" className="text-foreground hover:text-primary font-medium">
-                      Marketplace
+                    <Link to="/products" className="text-foreground hover:text-primary font-medium">
+                      Products
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
@@ -170,8 +170,8 @@ const Navbar = () => {
                     <Link to="/events" className="font-semibold text-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
                       Events
                     </Link>
-                    <Link to="/marketplace" className="font-semibold text-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
-                      Marketplace
+                    <Link to="/products" className="font-semibold text-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
+                      Products
                     </Link>
                   </div>
                   

@@ -100,9 +100,11 @@ const Navbar = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="text-foreground hover:text-primary">
-              <Search className="h-4 w-4 mr-2" />
-              Search
+            <Button variant="ghost" size="sm" className="text-foreground hover:text-primary" asChild>
+              <Link to="/directory">
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Link>
             </Button>
             <Button variant="ghost" size="sm" className="text-foreground hover:text-primary">
               <Heart className="h-4 w-4 mr-2" />
@@ -126,8 +128,8 @@ const Navbar = () => {
                 </Link>
               </Button>
             )}
-            <Button size="sm" className="bg-primary hover:bg-primary-dark">
-              List Business
+            <Button size="sm" className="bg-primary hover:bg-primary-dark" asChild>
+              <Link to="/business">List Business</Link>
             </Button>
           </div>
 
@@ -194,8 +196,8 @@ const Navbar = () => {
                         </Link>
                       </Button>
                     )}
-                    <Button className="bg-primary hover:bg-primary-dark justify-start">
-                      List Your Business
+                    <Button className="bg-primary hover:bg-primary-dark justify-start" asChild>
+                      <Link to="/business" onClick={() => setIsOpen(false)}>List Your Business</Link>
                     </Button>
                   </div>
                 </div>

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Loader2, X, Building2 } from "lucide-react";
+import { Loader2, MapPin, Upload, X, Building2 } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -52,6 +52,7 @@ const Onboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [services, setServices] = useState<string[]>([]);
   const [newService, setNewService] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
@@ -137,6 +138,52 @@ const Onboarding = () => {
 
   const removeService = (service: string) => {
     setServices(services.filter(s => s !== service));
+  };
+
+  const handleGeocodeAddress = async () => {
+    const address = form.getValues("address");
+    const island = form.getValues("island");
+    
+    if (!address || !island) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both address and island before geocoding.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('geocode-address', {
+        body: { address, island }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        form.setValue("latitude", data.latitude);
+        form.setValue("longitude", data.longitude);
+        
+        toast({
+          title: "Address Geocoded!",
+          description: data.fallback 
+            ? "Used island center coordinates as fallback" 
+            : "GPS coordinates found successfully",
+        });
+      } else {
+        throw new Error(data.error || 'Failed to geocode address');
+      }
+    } catch (error: any) {
+      console.error('Geocoding error:', error);
+      toast({
+        title: "Geocoding Failed",
+        description: "Could not find coordinates for this address. You can enter them manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeoLoading(false);
+    }
   };
 
   const onSubmit = async (data: BusinessFormData) => {
@@ -229,7 +276,8 @@ const Onboarding = () => {
         description: "Your business registration is pending approval. You'll receive an email confirmation shortly.",
       });
 
-      navigate('/dashboard');
+      
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Registration error:", error);
       toast({
@@ -507,6 +555,24 @@ const Onboarding = () => {
                           </FormItem>
                         )}
                       />
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleGeocodeAddress}
+                        disabled={geoLoading}
+                        className="flex-1"
+                      >
+                        {geoLoading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <MapPin className="w-4 h-4 mr-2" />
+                        )}
+                        Auto-Fill GPS from Address
+                      </Button>
+                    </div>
                     </div>
                   </div>
                 </div>

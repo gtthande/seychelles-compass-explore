@@ -572,10 +572,9 @@ const Onboarding = () => {
                         )}
                         Auto-Fill GPS from Address
                       </Button>
-                    </div>
-                    </div>
-                  </div>
-                </div>
+                     </div>
+                   </div>
+                 </div>
 
                 {/* Online Presence */}
                 <div className="space-y-4">
@@ -647,16 +646,16 @@ const Onboarding = () => {
                       Registering Business...
                     </>
                   ) : (
-                    "Register Business"
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-export default Onboarding;
+                     "Register Business"
+                   )}
+                 </Button>
+               </form>
+             </Form>
+           </CardContent>
+         </Card>
+       </div>
+     </div>
+   );
+ };
+ 
+ export default Onboarding;

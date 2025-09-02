@@ -444,7 +444,7 @@ const Directory = () => {
               <Checkbox 
                 id="whatsapp" 
                 checked={hasWhatsApp}
-                onCheckedChange={setHasWhatsApp}
+                onCheckedChange={(checked) => setHasWhatsApp(checked === true)}
               />
               <label htmlFor="whatsapp" className="text-sm font-medium cursor-pointer">
                 Has WhatsApp
@@ -455,7 +455,7 @@ const Directory = () => {
               <Checkbox 
                 id="featured" 
                 checked={showFeatured}
-                onCheckedChange={setShowFeatured}
+                onCheckedChange={(checked) => setShowFeatured(checked === true)}
               />
               <label htmlFor="featured" className="text-sm font-medium cursor-pointer">
                 Featured Only

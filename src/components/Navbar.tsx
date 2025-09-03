@@ -106,9 +106,11 @@ const Navbar = () => {
                 Search
               </Link>
             </Button>
-            <Button variant="ghost" size="sm" className="text-foreground hover:text-primary">
-              <Heart className="h-4 w-4 mr-2" />
-              Favorites
+            <Button variant="ghost" size="sm" className="text-foreground hover:text-primary" asChild>
+              <Link to="/docs">
+                <Heart className="h-4 w-4 mr-2" />
+                Documentation
+              </Link>
             </Button>
             {user ? (
               <>

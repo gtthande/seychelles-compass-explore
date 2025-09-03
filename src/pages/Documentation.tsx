@@ -504,7 +504,23 @@ const Documentation = () => {
             <ScrollArea className="h-[calc(100vh-200px)]">
               <VersionControl />
             </ScrollArea>
-          </TabsContent>
+        </TabsContent>
+
+        {/* Database Diagram */}
+        <TabsContent value="database">
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold">Database Schema</h2>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8 text-muted-foreground">
+                  <Database className="w-16 h-16 mx-auto mb-4" />
+                  <p>Entity Relationship Diagram (ERD) coming soon...</p>
+                  <p className="text-sm mt-2">This will show the relationships between businesses, products, users, and reviews.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
         </Tabs>
       </div>
     </div>

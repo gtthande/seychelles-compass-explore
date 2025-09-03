@@ -24,6 +24,7 @@ import {
   Youtube
 } from "lucide-react";
 import ProductManager from "./ProductManager";
+import ProductList from "./ProductList";
 
 interface Product {
   id: string;
@@ -228,87 +229,7 @@ const BusinessDashboard = () => {
         </TabsContent>
 
         <TabsContent value="products" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Products & Services</h2>
-            <Button onClick={() => setShowProductManager(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </div>
-
-          {productsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <div className="h-48 bg-muted rounded-t-lg"></div>
-                  <CardHeader>
-                    <div className="h-4 bg-muted rounded w-3/4"></div>
-                    <div className="h-3 bg-muted rounded w-1/2"></div>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : products.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((product) => (
-                <Card key={product.id} className="hover:shadow-md transition-shadow">
-                  {product.images && product.images.length > 0 && (
-                    <div className="h-48 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-lg relative overflow-hidden">
-                      <img 
-                        src={product.images[0]} 
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{product.name}</CardTitle>
-                      <Badge variant={product.status === 'active' ? 'default' : 'secondary'}>
-                        {product.status}
-                      </Badge>
-                    </div>
-                    {product.description && (
-                      <CardDescription className="line-clamp-2">
-                        {product.description}
-                      </CardDescription>
-                    )}
-                    {product.price && (
-                      <div className="text-lg font-semibold">
-                        {product.currency || 'SCR'} {product.price}
-                      </div>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setEditingProduct(product);
-                        setShowProductManager(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Products Yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start by adding your first product or service.
-                </p>
-                <Button onClick={() => setShowProductManager(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Product
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <ProductList />
         </TabsContent>
 
         <TabsContent value="settings">

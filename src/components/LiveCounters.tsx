@@ -22,36 +22,29 @@ const LiveCounters = () => {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        // Get business count
-        const { count: businessCount } = await supabase
-          .from('businesses')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active');
+        // Use the new database function for accurate counts
+        const { data, error } = await supabase.rpc('get_live_counters');
 
-        // Get product count
-        const { count: productCount } = await supabase
-          .from('products')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active');
+        if (error) throw error;
 
-        // Get user count
-        const { count: userCount } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-
-        // Get review count
-        const { count: reviewCount } = await supabase
-          .from('reviews')
-          .select('*', { count: 'exact', head: true });
-
-        setCounters({
-          businesses: businessCount || 0,
-          products: productCount || 0,
-          users: userCount || 0,
-          reviews: reviewCount || 0,
-        });
+        if (data && data.length > 0) {
+          const counters = data[0];
+          setCounters({
+            businesses: Number(counters.verified_businesses) || 0,
+            products: Number(counters.active_products) || 0,
+            users: Number(counters.total_users) || 0,
+            reviews: Number(counters.total_reviews) || 0,
+          });
+        }
       } catch (error) {
         console.error('Error fetching counts:', error);
+        // Set to zero on error to handle empty states gracefully
+        setCounters({
+          businesses: 0,
+          products: 0,
+          users: 0,
+          reviews: 0,
+        });
       } finally {
         setLoading(false);
       }
@@ -112,20 +105,22 @@ const LiveCounters = () => {
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <Icon className={`h-5 w-5 ${color}`} />
+        <Icon className={`h-5 w-5 text-primary`} />
       </CardHeader>
       <CardContent>
-        <div className={`text-3xl font-bold ${color}`}>
+        <div className="text-3xl font-bold text-foreground">
           {loading ? (
             <div className="animate-pulse">
               <div className="h-8 bg-muted rounded w-16"></div>
             </div>
+          ) : value === 0 ? (
+            <span className="counter-number text-muted-foreground">0</span>
           ) : (
             <span className="counter-number">{value.toLocaleString()}</span>
           )}
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Live count
+          {value === 0 ? "No data yet" : "Live count"}
         </p>
       </CardContent>
     </Card>
@@ -134,28 +129,24 @@ const LiveCounters = () => {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       <CounterCard
-        title="Active Businesses"
+        title="Verified Businesses"
         value={counters.businesses}
         icon={Building2}
-        color="text-blue-600"
       />
       <CounterCard
         title="Products Available"
         value={counters.products}
         icon={Package}
-        color="text-green-600"
       />
       <CounterCard
         title="Registered Users"
         value={counters.users}
         icon={Users}
-        color="text-purple-600"
       />
       <CounterCard
-        title="Total Reviews"
+        title="Customer Reviews"
         value={counters.reviews}
         icon={Star}
-        color="text-yellow-600"
       />
     </div>
   );

@@ -69,6 +69,7 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
   const [catalogueFile, setCatalogueFile] = useState<File | null>(null);
   const [existingImages, setExistingImages] = useState<string[]>(product?.images || []);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [businessVerified, setBusinessVerified] = useState(true);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),

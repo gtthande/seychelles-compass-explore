@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, Building2, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -155,8 +156,8 @@ const SearchWithTypeahead = ({
 
   return (
     <div className="relative w-full">
-      <div className="relative">
-        <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+      <div className="relative flex items-center gap-2">
+        <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
         <Input
           ref={inputRef}
           type="text"
@@ -165,11 +166,14 @@ const SearchWithTypeahead = ({
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          className="pl-10 pr-4"
+          className="flex-1 bg-transparent border-none text-white placeholder:text-gray-200 focus:ring-0 text-lg pl-14 pr-4 h-14"
         />
+        <Button size="lg" className="rounded-full bg-primary hover:bg-primary-dark shadow-glow">
+          <Search className="h-5 w-5" />
+        </Button>
         {isLoading && (
-          <div className="absolute right-3 top-3">
-            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute right-20 top-1/2 transform -translate-y-1/2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
       </div>

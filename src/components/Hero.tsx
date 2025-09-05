@@ -1,9 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Search, MapPin, Users, Star } from "lucide-react";
+import { useLiveCounters } from "@/hooks/useLiveCounters";
+import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import heroImage from "@/assets/hero-seychelles.jpg";
+import { useState } from "react";
 
 const Hero = () => {
+  const { counters, loading } = useLiveCounters();
+  const [searchValue, setSearchValue] = useState("");
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -31,15 +36,11 @@ const Hero = () => {
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-12">
             <div className="relative bg-white/10 backdrop-blur-md rounded-full p-2 border border-white/20">
-              <div className="flex items-center gap-2">
-                <Input 
-                  placeholder="Search businesses, services, or locations..."
-                  className="flex-1 bg-transparent border-none text-white placeholder:text-gray-200 focus:ring-0 text-lg px-6"
-                />
-                <Button size="lg" className="rounded-full bg-primary hover:bg-primary-dark shadow-glow">
-                  <Search className="h-5 w-5" />
-                </Button>
-              </div>
+              <SearchWithTypeahead
+                value={searchValue}
+                onChange={setSearchValue}
+                placeholder="Search businesses, services, or locations..."
+              />
             </div>
           </div>
           
@@ -48,7 +49,13 @@ const Hero = () => {
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <Users className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold">500+</span>
+                <span className="text-3xl font-bold">
+                  {loading ? (
+                    <div className="animate-pulse bg-white/20 rounded w-12 h-8 mx-auto" />
+                  ) : (
+                    `${counters.businesses}+`
+                  )}
+                </span>
               </div>
               <p className="text-gray-200">Local Businesses</p>
             </div>
@@ -56,7 +63,7 @@ const Hero = () => {
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <MapPin className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold">25+</span>
+                <span className="text-3xl font-bold">1+</span>
               </div>
               <p className="text-gray-200">Island Locations</p>
             </div>
@@ -64,7 +71,15 @@ const Hero = () => {
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <Star className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold">4.9</span>
+                <span className="text-3xl font-bold">
+                  {loading ? (
+                    <div className="animate-pulse bg-white/20 rounded w-12 h-8 mx-auto" />
+                  ) : counters.reviews > 0 ? (
+                    "4.5"
+                  ) : (
+                    "New"
+                  )}
+                </span>
               </div>
               <p className="text-gray-200">Average Rating</p>
             </div>

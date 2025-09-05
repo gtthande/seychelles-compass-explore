@@ -82,7 +82,7 @@ const ProductList = () => {
       }
       
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        query = query.eq('status', statusFilter as 'active' | 'draft' | 'pending' | 'expired');
       }
 
       // Apply pagination

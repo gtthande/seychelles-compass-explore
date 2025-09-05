@@ -405,6 +405,16 @@ const Directory = () => {
               <SearchWithTypeahead
                 value={searchTerm}
                 onChange={setSearchTerm}
+                onSelect={(result) => {
+                  // Navigate to specific business or enhance search
+                  if (result.type === 'business') {
+                    const business = businesses.find(b => b.id === result.id);
+                    if (business) {
+                      setSelectedBusiness(business);
+                      setViewMode('map');
+                    }
+                  }
+                }}
                 placeholder="Search businesses, products, services..."
               />
             </div>

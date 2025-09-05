@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import '@testing-library/jest-dom';
 import LiveCounters from '@/components/LiveCounters';
 import { supabase } from '@/integrations/supabase/client';
 

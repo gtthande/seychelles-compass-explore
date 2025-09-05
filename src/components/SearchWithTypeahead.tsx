@@ -46,6 +46,7 @@ const SearchWithTypeahead = ({
   }, [value]);
 
   const fetchSuggestions = async (searchTerm: string) => {
+    console.log('Fetching suggestions for:', searchTerm);
     setIsLoading(true);
     try {
       // Search businesses

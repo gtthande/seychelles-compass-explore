@@ -6,6 +6,8 @@ import { useLiveCounters } from "@/hooks/useLiveCounters";
 const LiveCounters = () => {
   const { counters, loading, error } = useLiveCounters();
 
+  console.log('LiveCounters:', { counters, loading, error });
+
   const CounterCard = ({ 
     title, 
     value, 

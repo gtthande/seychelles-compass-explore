@@ -64,9 +64,8 @@ const Navbar = () => {
                     <NavigationMenuContent>
                       <div className="grid w-48 gap-1 p-2">
                         {item.items.map((subItem) => (
-                         <NavigationMenuLink asChild>
+                         <NavigationMenuLink key={subItem.title} asChild>
                             <Link
-                              key={subItem.title}
                               to={subItem.href}
                               className="block px-3 py-2 text-sm text-foreground hover:bg-accent rounded-md hover:text-primary transition-colors"
                             >
@@ -131,7 +130,7 @@ const Navbar = () => {
               </Button>
             )}
             <Button size="sm" className="bg-primary hover:bg-primary-dark" asChild>
-              <Link to="/business">List Business</Link>
+              <Link to="/business">Register Business</Link>
             </Button>
           </div>
 

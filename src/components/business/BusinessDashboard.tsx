@@ -23,7 +23,7 @@ import {
   Linkedin,
   Youtube
 } from "lucide-react";
-import ProductManager from "./ProductManager";
+
 import ProductList from "./ProductList";
 
 interface Product {
@@ -49,8 +49,6 @@ const BusinessDashboard = () => {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
-  const [showProductManager, setShowProductManager] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -245,22 +243,6 @@ const BusinessDashboard = () => {
         </TabsContent>
       </Tabs>
 
-      {showProductManager && (
-        <ProductManager
-          business={business}
-          product={editingProduct}
-          onClose={() => {
-            setShowProductManager(false);
-            setEditingProduct(null);
-          }}
-          onSave={() => {
-            setShowProductManager(false);
-            setEditingProduct(null);
-            // Refresh products
-            window.location.reload();
-          }}
-        />
-      )}
     </div>
   );
 };

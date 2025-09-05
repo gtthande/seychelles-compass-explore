@@ -1,93 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { Building2, Package, Users, Star } from "lucide-react";
-
-interface CounterData {
-  businesses: number;
-  products: number;
-  users: number;
-  reviews: number;
-}
+import { useLiveCounters } from "@/hooks/useLiveCounters";
 
 const LiveCounters = () => {
-  const [counters, setCounters] = useState<CounterData>({
-    businesses: 0,
-    products: 0,
-    users: 0,
-    reviews: 0,
-  });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        // Use the new database function for accurate counts
-        const { data, error } = await supabase.rpc('get_live_counters');
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          const counters = data[0];
-          setCounters({
-            businesses: Number(counters.verified_businesses) || 0,
-            products: Number(counters.active_products) || 0,
-            users: Number(counters.total_users) || 0,
-            reviews: Number(counters.total_reviews) || 0,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching counts:', error);
-        // Set to zero on error to handle empty states gracefully
-        setCounters({
-          businesses: 0,
-          products: 0,
-          users: 0,
-          reviews: 0,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCounts();
-
-    // Set up real-time subscriptions for live updates
-    const businessChannel = supabase
-      .channel('business-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'businesses' }, () => {
-        fetchCounts();
-      })
-      .subscribe();
-
-    const productChannel = supabase
-      .channel('product-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        fetchCounts();
-      })
-      .subscribe();
-
-    const profileChannel = supabase
-      .channel('profile-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        fetchCounts();
-      })
-      .subscribe();
-
-    const reviewChannel = supabase
-      .channel('review-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => {
-        fetchCounts();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(businessChannel);
-      supabase.removeChannel(productChannel);
-      supabase.removeChannel(profileChannel);
-      supabase.removeChannel(reviewChannel);
-    };
-  }, []);
+  const { counters, loading, error } = useLiveCounters();
 
   const CounterCard = ({ 
     title, 

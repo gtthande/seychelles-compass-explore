@@ -49,15 +49,19 @@ const SearchWithTypeahead = ({
     setIsLoading(true);
     try {
       // Search businesses
-      const { data: businesses } = await supabase
+      const { data: businesses, error: businessError } = await supabase
         .from('businesses')
         .select('id, name, category, description')
         .eq('status', 'active')
         .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
         .limit(5);
 
+      if (businessError) {
+        console.error('Business search error:', businessError);
+      }
+
       // Search products
-      const { data: products } = await supabase
+      const { data: products, error: productError } = await supabase
         .from('products')
         .select(`
           id, 
@@ -69,6 +73,10 @@ const SearchWithTypeahead = ({
         .eq('status', 'active')
         .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
         .limit(5);
+
+      if (productError) {
+        console.error('Product search error:', productError);
+      }
 
       const businessResults: SearchResult[] = (businesses || []).map(b => ({
         id: b.id,

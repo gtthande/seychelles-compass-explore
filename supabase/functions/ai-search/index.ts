@@ -68,6 +68,11 @@ serve(async (req) => {
     });
 
     const aiData = await aiResponse.json();
+    
+    if (!aiData.choices || !aiData.choices[0] || !aiData.choices[0].message) {
+      throw new Error('Invalid AI response format');
+    }
+    
     const analysis = JSON.parse(aiData.choices[0].message.content);
 
     // Build dynamic search conditions based on AI analysis

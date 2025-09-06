@@ -12,6 +12,7 @@ interface SearchResult {
   category?: string;
   description?: string;
   business_name?: string;
+  aiEnhanced?: boolean;
 }
 
 interface SearchWithTypeaheadProps {
@@ -47,10 +48,35 @@ const SearchWithTypeahead = ({
   }, [value]);
 
   const fetchSuggestions = async (searchTerm: string) => {
-    console.log('Fetching suggestions for:', searchTerm);
+    if (!searchTerm.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Search businesses
+      // First try AI-enhanced search
+      const { data: aiResults, error: aiError } = await supabase.functions.invoke('ai-search', {
+        body: { query: searchTerm }
+      });
+
+      if (!aiError && aiResults?.success && aiResults.results?.length > 0) {
+        const formattedResults: SearchResult[] = aiResults.results.map((result: any) => ({
+          id: result.id,
+          name: result.name,
+          type: result.type,
+          category: result.category,
+          description: result.description,
+          business_name: result.business_name,
+          aiEnhanced: true
+        }));
+        setSuggestions(formattedResults);
+        setIsOpen(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fallback to basic search if AI search fails or returns no results
       const { data: businesses, error: businessError } = await supabase
         .from('businesses')
         .select('id, name, category, description')
@@ -58,11 +84,6 @@ const SearchWithTypeahead = ({
         .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
         .limit(5);
 
-      if (businessError) {
-        console.error('Business search error:', businessError);
-      }
-
-      // Search products
       const { data: products, error: productError } = await supabase
         .from('products')
         .select(`
@@ -76,9 +97,8 @@ const SearchWithTypeahead = ({
         .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
         .limit(5);
 
-      if (productError) {
-        console.error('Product search error:', productError);
-      }
+      if (businessError) console.error('Business search error:', businessError);
+      if (productError) console.error('Product search error:', productError);
 
       const businessResults: SearchResult[] = (businesses || []).map(b => ({
         id: b.id,
@@ -207,6 +227,11 @@ const SearchWithTypeahead = ({
                       }`}>
                         {suggestion.type}
                       </span>
+                      {suggestion.aiEnhanced && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 border border-purple-200">
+                          AI Enhanced
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       {suggestion.category && (

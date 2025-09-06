@@ -192,8 +192,9 @@ const SearchWithTypeahead = ({
           <Search className="h-5 w-5" />
         </Button>
         {isLoading && (
-          <div className="absolute right-20 top-1/2 transform -translate-y-1/2">
+          <div className="absolute right-20 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs text-white/80">AI searching...</span>
           </div>
         )}
       </div>
@@ -252,6 +253,42 @@ const SearchWithTypeahead = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No Results State */}
+      {isOpen && !isLoading && suggestions.length === 0 && value.trim() && (
+        <Card className="absolute top-full left-0 right-0 z-50 mt-1 shadow-lg border">
+          <CardContent className="p-6 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-full bg-muted/50 p-3">
+                <Search className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium text-sm">No local results found</p>
+                <p className="text-xs text-muted-foreground">
+                  Try different keywords or check spelling
+                </p>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button 
+                  onClick={() => {
+                    onChange('');
+                    setIsOpen(false);
+                  }}
+                  className="text-xs px-3 py-1.5 bg-muted text-muted-foreground rounded-full hover:bg-muted/80 transition-colors"
+                >
+                  Clear search
+                </button>
+                <button 
+                  onClick={() => fetchSuggestions(value)}
+                  className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
             </div>
           </CardContent>
         </Card>

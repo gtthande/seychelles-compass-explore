@@ -64,39 +64,69 @@ const BusinessRegistration = () => {
     },
   });
 
-const handleDownloadForm = async () => {
+  const handleDownloadForm = async () => {
     try {
-      // Get the public URL for the business registration form from Supabase Storage
-      const { data } = supabase.storage
+      // First check if the PDF exists in Supabase Storage
+      const { data: fileData, error: fileError } = await supabase.storage
         .from('business-documents')
-        .getPublicUrl('Business_Registration_Form.pdf');
+        .list('', { search: 'Business_Registration_Form.pdf' });
       
-      if (data?.publicUrl) {
-        // Open the PDF in a new tab for viewing/downloading
-        window.open(data.publicUrl, '_blank');
+      if (!fileError && fileData && fileData.length > 0) {
+        // Get the public URL for the business registration form from Supabase Storage
+        const { data } = supabase.storage
+          .from('business-documents')
+          .getPublicUrl('Business_Registration_Form.pdf');
+        
+        if (data?.publicUrl) {
+          // Open the PDF in a new tab for viewing/downloading
+          window.open(data.publicUrl, '_blank');
+          
+          toast({
+            title: "Form Opened",
+            description: "Business registration form opened in new tab.",
+          });
+          return;
+        }
+      }
+      
+      throw new Error('Form not available in storage');
+    } catch (error) {
+      console.error('Error accessing storage form:', error);
+      
+      try {
+        // Fallback to local PDF file
+        const response = await fetch('/Business_Registration_Form.pdf');
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          window.URL.revokeObjectURL(url);
+          
+          toast({
+            title: "Form Opened",
+            description: "Business registration form opened in new tab.",
+          });
+          return;
+        }
+        
+        throw new Error('Local PDF not available');
+      } catch (fallbackError) {
+        console.error('Error accessing local form:', fallbackError);
+        
+        // Final fallback to markdown file
+        const link = document.createElement('a');
+        link.href = '/business-registration-form.md';
+        link.download = 'iCompass-Business-Registration-Form.md';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         
         toast({
-          title: "Form Opened",
-          description: "Business registration form opened in new tab.",
+          title: "Fallback Download",
+          description: "Downloaded markdown version of the form.",
+          variant: "default",
         });
-      } else {
-        throw new Error('Form not available');
       }
-    } catch (error) {
-      console.error('Error downloading form:', error);
-      toast({
-        title: "Download Failed",
-        description: "Unable to download the form. Please try again later.",
-        variant: "destructive",
-      });
-      
-      // Fallback to local file
-      const link = document.createElement('a');
-      link.href = '/business-registration-form.md';
-      link.download = 'iCompass-Business-Registration-Form.md';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     }
   };
 

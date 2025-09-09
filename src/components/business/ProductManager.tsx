@@ -173,17 +173,39 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       const fileExt = file.name.split('.').pop();
       const fileName = `${business.id}/${Date.now()}-${Math.random()}.${fileExt}`;
       
-      const { data, error } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file);
+      try {
+        // Verify bucket exists and is accessible
+        const { data: bucketData, error: bucketError } = await supabase.storage
+          .getBucket('product-images');
+        
+        if (bucketError) {
+          console.error('Product images bucket not accessible:', bucketError);
+          throw new Error('Product images storage is not available');
+        }
+        
+        const { data, error } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, file);
 
-      if (error) throw error;
-      
-      const publicUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
-      imageUrls.push(publicUrl);
-      
-      uploadedFiles++;
-      setUploadProgress((uploadedFiles / totalFiles) * 50); // 50% for image uploads
+        if (error) {
+          console.error('Product image upload error:', error);
+          throw error;
+        }
+        
+        const { data: publicUrlData } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        
+        if (!publicUrlData?.publicUrl) {
+          throw new Error('Failed to get public URL for uploaded product image');
+        }
+        
+        imageUrls.push(publicUrlData.publicUrl);
+        
+        uploadedFiles++;
+        setUploadProgress((uploadedFiles / totalFiles) * 50); // 50% for image uploads
+      } catch (error) {
+        console.error('Product image upload failed:', error);
+        throw error;
+      }
     }
 
     // Upload catalogue
@@ -191,15 +213,38 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       const fileExt = catalogueFile.name.split('.').pop();
       const fileName = `${business.id}/catalogue-${Date.now()}.${fileExt}`;
       
-      const { data, error } = await supabase.storage
-        .from('product-catalogues')
-        .upload(fileName, catalogueFile);
+      try {
+        // Verify bucket exists and is accessible
+        const { data: bucketData, error: bucketError } = await supabase.storage
+          .getBucket('product-catalogues');
+        
+        if (bucketError) {
+          console.error('Product catalogues bucket not accessible:', bucketError);
+          throw new Error('Product catalogues storage is not available');
+        }
+        
+        const { data, error } = await supabase.storage
+          .from('product-catalogues')
+          .upload(fileName, catalogueFile);
 
-      if (error) throw error;
-      
-      catalogueUrl = supabase.storage.from('product-catalogues').getPublicUrl(fileName).data.publicUrl;
-      uploadedFiles++;
-      setUploadProgress((uploadedFiles / totalFiles) * 50);
+        if (error) {
+          console.error('Catalogue upload error:', error);
+          throw error;
+        }
+        
+        const { data: publicUrlData } = supabase.storage.from('product-catalogues').getPublicUrl(fileName);
+        
+        if (!publicUrlData?.publicUrl) {
+          throw new Error('Failed to get public URL for uploaded catalogue');
+        }
+        
+        catalogueUrl = publicUrlData.publicUrl;
+        uploadedFiles++;
+        setUploadProgress((uploadedFiles / totalFiles) * 50);
+      } catch (error) {
+        console.error('Catalogue upload failed:', error);
+        throw error;
+      }
     }
 
     setUploadProgress(100);

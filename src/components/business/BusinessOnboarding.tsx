@@ -101,13 +101,36 @@ const BusinessOnboarding = ({ onComplete }: BusinessOnboardingProps) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${folder}/${Date.now()}.${fileExt}`;
     
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
+    try {
+      // Verify bucket exists and is accessible
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .getBucket(bucket);
+      
+      if (bucketError) {
+        console.error(`Bucket ${bucket} not accessible:`, bucketError);
+        throw new Error(`Storage bucket ${bucket} is not available`);
+      }
+      
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file);
 
-    if (error) throw error;
-    
-    return supabase.storage.from(bucket).getPublicUrl(fileName).data.publicUrl;
+      if (error) {
+        console.error(`Upload error to bucket ${bucket}:`, error);
+        throw error;
+      }
+      
+      const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      
+      if (!publicUrlData?.publicUrl) {
+        throw new Error(`Failed to get public URL for uploaded file in ${bucket}`);
+      }
+      
+      return publicUrlData.publicUrl;
+    } catch (error) {
+      console.error(`File upload failed for bucket ${bucket}:`, error);
+      throw error;
+    }
   };
 
   const onSubmit = async (data: BusinessFormData) => {

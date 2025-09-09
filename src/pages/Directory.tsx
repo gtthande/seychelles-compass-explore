@@ -72,16 +72,43 @@ const Directory = () => {
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
 
-  const categories = [
-    { value: "food", label: "Food & Beverages" },
-    { value: "accommodation", label: "Accommodation" },
-    { value: "tours", label: "Tours & Activities" },
-    { value: "transport", label: "Transportation" },
-    { value: "retail", label: "Retail Products" },
-    { value: "services", label: "Services" },
-    { value: "entertainment", label: "Entertainment" },
-    { value: "other", label: "Other" }
-  ];
+  const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
+
+  // Fetch categories from database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('slug, name')
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        
+        const categoryOptions = data?.map(cat => ({
+          value: cat.slug,
+          label: cat.name
+        })) || [];
+        
+        setCategories(categoryOptions);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fallback to default categories
+        setCategories([
+          { value: "food", label: "Food & Beverages" },
+          { value: "accommodation", label: "Accommodation" },
+          { value: "tours", label: "Tours & Activities" },
+          { value: "transport", label: "Transportation" },
+          { value: "retail", label: "Retail Products" },
+          { value: "services", label: "Services" },
+          { value: "entertainment", label: "Entertainment" },
+        ]);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const islands = ["Mahé", "Praslin", "La Digue", "Silhouette", "Curieuse", "Bird", "Denis"];
   
@@ -105,6 +132,13 @@ const Directory = () => {
 
   useEffect(() => {
     fetchBusinesses();
+    
+    // Check for URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryParam = urlParams.get('category');
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
   }, []);
 
   useEffect(() => {

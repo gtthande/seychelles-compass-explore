@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Store, 
   UtensilsCrossed, 
@@ -11,25 +13,166 @@ import {
   Camera,
   Waves,
   Calendar,
-  Gift
+  Gift,
+  Package,
+  Briefcase
 } from "lucide-react";
 
-const categories = [
-  { icon: Store, name: "Retail & Shopping", count: 85, color: "from-primary to-primary-dark" },
-  { icon: UtensilsCrossed, name: "Restaurants & Dining", count: 120, color: "from-orange-400 to-orange-600" },
-  { icon: Plane, name: "Tourism & Travel", count: 65, color: "from-blue-400 to-blue-600" },
-  { icon: Building, name: "Accommodation", count: 45, color: "from-purple-400 to-purple-600" },
-  { icon: Car, name: "Transport & Rental", count: 32, color: "from-green-400 to-green-600" },
-  { icon: Heart, name: "Health & Wellness", count: 28, color: "from-pink-400 to-pink-600" },
-  { icon: GraduationCap, name: "Education", count: 22, color: "from-indigo-400 to-indigo-600" },
-  { icon: Wrench, name: "Professional Services", count: 78, color: "from-gray-400 to-gray-600" },
-  { icon: Camera, name: "Entertainment", count: 34, color: "from-red-400 to-red-600" },
-  { icon: Waves, name: "Water Sports", count: 56, color: "from-teal-400 to-teal-600" },
-  { icon: Calendar, name: "Events", count: 18, color: "from-yellow-400 to-yellow-600" },
-  { icon: Gift, name: "Local Products", count: 67, color: "from-rose-400 to-rose-600" }
-];
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+interface CategoryWithCount extends Category {
+  count: number;
+  businessCount: number;
+  productCount: number;
+}
+
+const getIconForCategory = (slug: string) => {
+  const iconMap: Record<string, any> = {
+    food: UtensilsCrossed,
+    accommodation: Building,
+    tours: Plane,
+    transport: Car,
+    retail: Store,
+    services: Wrench,
+    entertainment: Camera,
+    wellness: Heart,
+    education: GraduationCap,
+    events: Calendar,
+    products: Package,
+    professional: Briefcase,
+    'water-sports': Waves,
+    gifts: Gift,
+  };
+  
+  return iconMap[slug] || Store;
+};
+
+const getColorForCategory = (index: number) => {
+  const colors = [
+    "from-primary to-primary-dark",
+    "from-orange-400 to-orange-600",
+    "from-blue-400 to-blue-600",
+    "from-purple-400 to-purple-600",
+    "from-green-400 to-green-600",
+    "from-pink-400 to-pink-600",
+    "from-indigo-400 to-indigo-600",
+    "from-gray-400 to-gray-600",
+    "from-red-400 to-red-600",
+    "from-teal-400 to-teal-600",
+    "from-yellow-400 to-yellow-600",
+    "from-rose-400 to-rose-600"
+  ];
+  
+  return colors[index % colors.length];
+};
 
 const CategoryGrid = () => {
+  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCategoriesWithCounts();
+  }, []);
+
+  const fetchCategoriesWithCounts = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (categoriesError) throw categoriesError;
+
+      // Fetch business counts by category
+      const { data: businessCounts, error: businessError } = await supabase
+        .from('businesses')
+        .select('category')
+        .eq('status', 'active');
+
+      if (businessError) throw businessError;
+
+      // Fetch product counts by category
+      const { data: productCounts, error: productError } = await supabase
+        .from('products')
+        .select('category, business_id')
+        .eq('status', 'active');
+
+      if (productError) throw productError;
+
+      // Count by category
+      const businessCountMap = businessCounts?.reduce((acc, business) => {
+        acc[business.category] = (acc[business.category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const productCountMap = productCounts?.reduce((acc, product) => {
+        acc[product.category] = (acc[product.category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      // Combine data
+      const categoriesWithCounts = categoriesData?.map(category => ({
+        ...category,
+        businessCount: businessCountMap[category.slug] || 0,
+        productCount: productCountMap[category.slug] || 0,
+        count: (businessCountMap[category.slug] || 0) + (productCountMap[category.slug] || 0)
+      })) || [];
+
+      // Filter out categories with no items
+      const activeCategories = categoriesWithCounts.filter(category => category.count > 0);
+
+      setCategories(activeCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCategoryClick = (category: CategoryWithCount) => {
+    // Navigate to directory with category filter
+    window.location.href = `/directory?category=${category.slug}`;
+  };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-gradient-to-b from-background to-accent">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
+              Explore by Category
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Discover the best businesses and services across Seychelles, organized by category
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted"></div>
+                  <div className="h-4 bg-muted rounded w-3/4 mx-auto mb-2"></div>
+                  <div className="h-3 bg-muted rounded w-1/2 mx-auto"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 bg-gradient-to-b from-background to-accent">
       <div className="container mx-auto px-4">
@@ -43,28 +186,48 @@ const CategoryGrid = () => {
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {categories.map((category, index) => (
-            <Card 
-              key={category.name}
-              className="group cursor-pointer hover:shadow-card-hover transition-all duration-300 border-border/50 hover:border-primary/30 animate-fade-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${category.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                  <category.icon className="h-8 w-8 text-white" />
-                </div>
-                
-                <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
-                  {category.name}
-                </h3>
-                
-                <p className="text-sm text-muted-foreground">
-                  {category.count} listings
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+          {categories.map((category, index) => {
+            const IconComponent = getIconForCategory(category.slug);
+            const colorGradient = getColorForCategory(index);
+            
+            return (
+              <Card 
+                key={category.id}
+                className="group cursor-pointer hover:shadow-card-hover transition-all duration-300 border-border/50 hover:border-primary/30 animate-fade-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
+                onClick={() => handleCategoryClick(category)}
+              >
+                <CardContent className="p-6 text-center">
+                  <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${colorGradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                    <IconComponent className="h-8 w-8 text-white" />
+                  </div>
+                  
+                  <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                    {category.name}
+                  </h3>
+                  
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>{category.count} total listings</p>
+                    <div className="flex justify-center gap-2 text-xs">
+                      {category.businessCount > 0 && (
+                        <span>{category.businessCount} businesses</span>
+                      )}
+                      {category.productCount > 0 && (
+                        <span>{category.productCount} products</span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+        
+        {categories.length === 0 && !loading && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No active categories found.</p>
+          </div>
+        )}
       </div>
     </section>
   );

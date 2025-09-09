@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -94,16 +94,43 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
     { value: "EUR", label: "EUR - Euro" },
   ];
 
-  const categories = [
-    { value: "food", label: "Food & Beverages" },
-    { value: "accommodation", label: "Accommodation" },
-    { value: "tours", label: "Tours & Activities" },
-    { value: "transport", label: "Transportation" },
-    { value: "retail", label: "Retail Products" },
-    { value: "services", label: "Services" },
-    { value: "entertainment", label: "Entertainment" },
-    { value: "other", label: "Other" },
-  ];
+  const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
+
+  // Fetch categories from database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('slug, name')
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        
+        const categoryOptions = data?.map(cat => ({
+          value: cat.slug,
+          label: cat.name
+        })) || [];
+        
+        setCategories(categoryOptions);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fallback to default categories if fetch fails
+        setCategories([
+          { value: "food", label: "Food & Beverages" },
+          { value: "accommodation", label: "Accommodation" },
+          { value: "tours", label: "Tours & Activities" },
+          { value: "transport", label: "Transportation" },
+          { value: "retail", label: "Retail Products" },
+          { value: "services", label: "Services" },
+          { value: "entertainment", label: "Entertainment" },
+        ]);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const validateFiles = (files: File[], type: 'image' | 'pdf'): string[] => {
     const errors: string[] = [];

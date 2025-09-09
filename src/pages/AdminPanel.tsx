@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Settings, Users, Package, FolderOpen } from "lucide-react";
+import { Shield, Settings, Users, Package, FolderOpen, Calendar } from "lucide-react";
 import CategoryManager from "@/components/admin/CategoryManager";
+import AppointmentManager from "@/components/admin/AppointmentManager";
 
 const AdminPanel = () => {
   const { user, loading: authLoading } = useAuth();
@@ -104,8 +105,12 @@ const AdminPanel = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="categories" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="appointments" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="appointments" className="flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Appointments
+          </TabsTrigger>
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <FolderOpen className="w-4 h-4" />
             Categories
@@ -123,6 +128,10 @@ const AdminPanel = () => {
             Settings
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="appointments">
+          <AppointmentManager />
+        </TabsContent>
 
         <TabsContent value="categories">
           <CategoryManager />

@@ -1,7 +1,7 @@
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessAuth } from "@/hooks/useBusinessAuth";
-import BusinessOnboarding from "@/components/business/BusinessOnboarding";
+import BusinessRegistration from "@/components/business/BusinessRegistration";
 import BusinessDashboard from "@/components/business/BusinessDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ const BusinessPortal = () => {
   }
 
   if (!hasBusiness) {
-    return <BusinessOnboarding onComplete={() => window.location.reload()} />;
+    return <BusinessRegistration />;
   }
 
   return <BusinessDashboard />;

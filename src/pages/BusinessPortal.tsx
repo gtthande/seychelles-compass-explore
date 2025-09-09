@@ -47,10 +47,22 @@ const BusinessPortal = () => {
   }
 
   if (!hasBusiness) {
-    return <BusinessRegistration />;
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <BusinessRegistration />
+        </div>
+      </div>
+    );
   }
 
-  return <BusinessDashboard />;
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <BusinessDashboard />
+      </div>
+    </div>
+  );
 };
 
 export default BusinessPortal;

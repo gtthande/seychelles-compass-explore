@@ -64,21 +64,40 @@ const BusinessRegistration = () => {
     },
   });
 
-  const handleDownloadForm = () => {
-    // For now, we'll create a simple PDF download link
-    // In a real implementation, you'd have this hosted on Supabase Storage
-    toast({
-      title: "Download Starting",
-      description: "Business registration form will be downloaded shortly.",
-    });
-    
-    // Simulate download - replace with actual file URL from Supabase Storage
-    const link = document.createElement('a');
-    link.href = '/business-registration-form.pdf'; // This would be the actual file URL
-    link.download = 'iCompass-Business-Registration-Form.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+const handleDownloadForm = async () => {
+    try {
+      // Get the public URL for the business registration form from Supabase Storage
+      const { data } = supabase.storage
+        .from('business-documents')
+        .getPublicUrl('Business_Registration_Form.pdf');
+      
+      if (data?.publicUrl) {
+        // Open the PDF in a new tab for viewing/downloading
+        window.open(data.publicUrl, '_blank');
+        
+        toast({
+          title: "Form Opened",
+          description: "Business registration form opened in new tab.",
+        });
+      } else {
+        throw new Error('Form not available');
+      }
+    } catch (error) {
+      console.error('Error downloading form:', error);
+      toast({
+        title: "Download Failed",
+        description: "Unable to download the form. Please try again later.",
+        variant: "destructive",
+      });
+      
+      // Fallback to local file
+      const link = document.createElement('a');
+      link.href = '/business-registration-form.md';
+      link.download = 'iCompass-Business-Registration-Form.md';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const onSubmit = async (data: AppointmentFormData) => {

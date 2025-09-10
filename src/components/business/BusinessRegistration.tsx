@@ -512,7 +512,7 @@ const BusinessRegistration = () => {
                           <Clock className="w-4 h-4" />
                           Preferred Time *
                         </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a time slot" />

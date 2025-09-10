@@ -84,56 +84,72 @@ const CategoryGrid = () => {
     try {
       setLoading(true);
       
-      // Fetch categories
+      // Fetch categories with error handling
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
         .eq('is_active', true)
         .order('name');
 
-      if (categoriesError) throw categoriesError;
+      if (categoriesError) {
+        console.error('Categories error:', categoriesError);
+        throw categoriesError;
+      }
 
-      // Fetch business counts by category
+      // Use fallback empty arrays if no data
+      const categories = categoriesData || [];
+
+      // Fetch business counts by category with error handling
       const { data: businessCounts, error: businessError } = await supabase
         .from('businesses')
         .select('category')
         .eq('status', 'active');
 
-      if (businessError) throw businessError;
+      if (businessError) {
+        console.error('Business counts error:', businessError);
+        // Continue with empty array instead of throwing
+      }
 
-      // Fetch product counts by category
+      // Fetch product counts by category with error handling
       const { data: productCounts, error: productError } = await supabase
         .from('products')
         .select('category, business_id')
         .eq('status', 'active');
 
-      if (productError) throw productError;
+      if (productError) {
+        console.error('Product counts error:', productError);
+        // Continue with empty array instead of throwing
+      }
 
-      // Count by category
-      const businessCountMap = businessCounts?.reduce((acc, business) => {
-        acc[business.category] = (acc[business.category] || 0) + 1;
+      // Count by category with safe fallbacks
+      const businessCountMap = (businessCounts || []).reduce((acc, business) => {
+        if (business.category) {
+          acc[business.category] = (acc[business.category] || 0) + 1;
+        }
         return acc;
-      }, {} as Record<string, number>) || {};
+      }, {} as Record<string, number>);
 
-      const productCountMap = productCounts?.reduce((acc, product) => {
-        acc[product.category] = (acc[product.category] || 0) + 1;
+      const productCountMap = (productCounts || []).reduce((acc, product) => {
+        if (product.category) {
+          acc[product.category] = (acc[product.category] || 0) + 1;
+        }
         return acc;
-      }, {} as Record<string, number>) || {};
+      }, {} as Record<string, number>);
 
-      // Combine data
-      const categoriesWithCounts = categoriesData?.map(category => ({
+      // Combine data with safe fallbacks
+      const categoriesWithCounts = categories.map(category => ({
         ...category,
         businessCount: businessCountMap[category.slug] || 0,
         productCount: productCountMap[category.slug] || 0,
         count: (businessCountMap[category.slug] || 0) + (productCountMap[category.slug] || 0)
-      })) || [];
+      }));
 
-      // Filter out categories with no items
-      const activeCategories = categoriesWithCounts.filter(category => category.count > 0);
-
-      setCategories(activeCategories);
+      // Show all categories, even with zero counts for better UX
+      setCategories(categoriesWithCounts);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      // Set empty array as fallback
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -225,7 +241,10 @@ const CategoryGrid = () => {
         
         {categories.length === 0 && !loading && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No active categories found.</p>
+            <div className="bg-muted/30 rounded-lg p-8">
+              <p className="text-muted-foreground mb-2">No categories available yet</p>
+              <p className="text-sm text-muted-foreground">Categories will appear here as businesses are added to the directory.</p>
+            </div>
           </div>
         )}
       </div>

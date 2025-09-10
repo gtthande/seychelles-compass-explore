@@ -21,10 +21,15 @@ export const useLiveCounters = () => {
   const fetchCounts = async () => {
     try {
       setError(null);
+      setLoading(true);
+      
       // Use the new database function for accurate counts
       const { data, error } = await supabase.rpc('get_live_counters');
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
 
       if (data && data.length > 0) {
         const counters = data[0];
@@ -34,11 +39,19 @@ export const useLiveCounters = () => {
           users: Number(counters.total_users) || 0,
           reviews: Number(counters.total_reviews) || 0,
         });
+      } else {
+        // No data returned, use fallback values
+        setCounters({
+          businesses: 0,
+          products: 0,
+          users: 0,
+          reviews: 0,
+        });
       }
     } catch (error) {
       console.error('Error fetching counts:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch counters');
-      // Set to zero on error to handle empty states gracefully
+      // Set to fallback values on error to handle gracefully
       setCounters({
         businesses: 0,
         products: 0,

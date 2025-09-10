@@ -477,6 +477,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_review_profile: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       get_live_counters: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -485,6 +489,10 @@ export type Database = {
           total_users: number
           verified_businesses: number
         }[]
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
     }
     Enums: {

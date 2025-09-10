@@ -66,19 +66,27 @@ const BusinessRegistration = () => {
 
   const handleDownloadForm = async () => {
     try {
-      // First check if the PDF exists in Supabase Storage
-      const { data: fileData, error: fileError } = await supabase.storage
+      // Upload the PDF to storage if it doesn't exist
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('business-documents')
-        .list('', { search: 'Business_Registration_Form.pdf' });
+        .upload('Business_Registration_Form.pdf', await fetch('/Business_Registration_Form.pdf').then(r => r.blob()), {
+          upsert: true,
+          contentType: 'application/pdf'
+        });
+
+      if (uploadError) {
+        console.log('Upload note:', uploadError.message);
+      }
+
+      // Get the public URL for the business registration form
+      const { data } = supabase.storage
+        .from('business-documents')
+        .getPublicUrl('Business_Registration_Form.pdf');
       
-      if (!fileError && fileData && fileData.length > 0) {
-        // Get the public URL for the business registration form from Supabase Storage
-        const { data } = supabase.storage
-          .from('business-documents')
-          .getPublicUrl('Business_Registration_Form.pdf');
-        
-        if (data?.publicUrl) {
-          // Open the PDF in a new tab for viewing/downloading
+      if (data?.publicUrl) {
+        // Verify the file is accessible
+        const response = await fetch(data.publicUrl);
+        if (response.ok) {
           window.open(data.publicUrl, '_blank');
           
           toast({
@@ -89,7 +97,7 @@ const BusinessRegistration = () => {
         }
       }
       
-      throw new Error('Form not available in storage');
+      throw new Error('Storage form not accessible');
     } catch (error) {
       console.error('Error accessing storage form:', error);
       
@@ -113,18 +121,10 @@ const BusinessRegistration = () => {
       } catch (fallbackError) {
         console.error('Error accessing local form:', fallbackError);
         
-        // Final fallback to markdown file
-        const link = document.createElement('a');
-        link.href = '/business-registration-form.md';
-        link.download = 'iCompass-Business-Registration-Form.md';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
         toast({
-          title: "Fallback Download",
-          description: "Downloaded markdown version of the form.",
-          variant: "default",
+          title: "Form Temporarily Unavailable",
+          description: "Unable to access the registration form. Please contact us directly for assistance.",
+          variant: "destructive",
         });
       }
     }

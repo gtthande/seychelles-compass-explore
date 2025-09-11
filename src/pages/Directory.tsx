@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import LiveCounters from "@/components/LiveCounters";
 import GoogleMap from "@/components/GoogleMap";
@@ -28,7 +29,8 @@ import {
   Map,
   List,
   Filter,
-  ExternalLink
+  ExternalLink,
+  ChevronDown
 } from "lucide-react";
 
 interface Business {
@@ -57,6 +59,14 @@ interface Business {
   total_reviews: number;
   created_at: string;
   services?: string[];
+  subcategory?: string;
+}
+
+interface CategoryGroup {
+  category: string;
+  subcategories: {
+    [key: string]: Business[];
+  };
 }
 
 const Directory = () => {
@@ -240,177 +250,180 @@ const Directory = () => {
     return found ? found.label : category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const BusinessCard = ({ business, onViewOnMap }: { business: Business; onViewOnMap?: () => void }) => (
-    <Card className="hover:shadow-card-hover transition-all duration-300 border-border/50">
-      <div className="relative">
-        {business.cover_image_url ? (
-          <div className="h-48 relative overflow-hidden rounded-t-lg">
-            <img 
-              src={business.cover_image_url} 
-              alt={business.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <div className="h-48 bg-gradient-to-br from-primary/10 to-primary/5 rounded-t-lg flex items-center justify-center">
-            <span className="text-primary/60 text-sm">No image</span>
-          </div>
-        )}
-        {business.featured && (
-          <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground border-0">
-            Featured
-          </Badge>
-        )}
-        {business.verified && (
-          <Badge variant="secondary" className="absolute top-2 right-2">
-            <Verified className="w-3 h-3 mr-1" />
-            Verified
-          </Badge>
-        )}
-      </div>
-      
-      <CardHeader className="pb-3">
+  // Group businesses by category and subcategory
+  const groupBusinessesByCategory = (businesses: Business[]): CategoryGroup[] => {
+    const grouped: { [category: string]: { [subcategory: string]: Business[] } } = {};
+
+    businesses.forEach(business => {
+      const category = formatCategory(business.category);
+      const subcategory = business.subcategory || (business.verified ? 'Verified' : 'General');
+
+      if (!grouped[category]) {
+        grouped[category] = {};
+      }
+      if (!grouped[category][subcategory]) {
+        grouped[category][subcategory] = [];
+      }
+      grouped[category][subcategory].push(business);
+    });
+
+    // Sort businesses alphabetically within each subcategory
+    Object.keys(grouped).forEach(category => {
+      Object.keys(grouped[category]).forEach(subcategory => {
+        grouped[category][subcategory].sort((a, b) => a.name.localeCompare(b.name));
+      });
+    });
+
+    // Convert to array and sort categories
+    return Object.keys(grouped)
+      .sort()
+      .map(category => ({
+        category,
+        subcategories: grouped[category]
+      }));
+  };
+
+  const groupedBusinesses = groupBusinessesByCategory(filteredBusinesses);
+
+  const BusinessListingCard = ({ business }: { business: Business }) => (
+    <Card className="hover:shadow-sm transition-all duration-200 border-border/50">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold text-foreground">{business.name}</CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
-              {formatCategory(business.category)}
-            </CardDescription>
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
+                {business.name}
+              </h3>
+              {business.verified && (
+                <Badge variant="secondary" className="text-xs">
+                  <Verified className="w-3 h-3 mr-1" />
+                  Verified
+                </Badge>
+              )}
+              {business.featured && (
+                <Badge className="text-xs bg-primary text-primary-foreground">
+                  Featured
+                </Badge>
+              )}
+            </div>
+            
+            {/* Contact Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              {business.phone && (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-auto p-1 hover:bg-accent"
+                    asChild
+                  >
+                    <a href={`tel:${business.phone}`} className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-primary" />
+                      <span className="text-foreground hover:text-primary">{business.phone}</span>
+                    </a>
+                  </Button>
+                </div>
+              )}
+              
+              {business.email && (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-auto p-1 hover:bg-accent"
+                    asChild
+                  >
+                    <a href={`mailto:${business.email}`} className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-primary" />
+                      <span className="text-foreground hover:text-primary">{business.email}</span>
+                    </a>
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {business.address && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="w-4 h-4" />
+                <span>{business.address}</span>
+                {business.island && (
+                  <Badge variant="outline" className="ml-2">{business.island}</Badge>
+                )}
+              </div>
+            )}
+
+            {/* Social Links */}
+            <div className="flex items-center gap-1">
+              {business.facebook_url && (
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                  <a href={business.facebook_url} target="_blank" rel="noopener noreferrer">
+                    <Facebook className="w-4 h-4 text-blue-600" />
+                  </a>
+                </Button>
+              )}
+              
+              {business.instagram_url && (
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                  <a href={business.instagram_url} target="_blank" rel="noopener noreferrer">
+                    <Instagram className="w-4 h-4 text-pink-600" />
+                  </a>
+                </Button>
+              )}
+
+              {business.website && (
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                  <a href={business.website} target="_blank" rel="noopener noreferrer">
+                    <Globe className="w-4 h-4 text-primary" />
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
+
           {business.logo_url && (
             <img 
               src={business.logo_url} 
               alt={`${business.name} logo`}
-              className="w-12 h-12 rounded-lg object-cover ml-3"
+              className="w-12 h-12 rounded-lg object-cover ml-4"
             />
           )}
         </div>
-        
-        {business.average_rating > 0 && (
-          <div className="flex items-center gap-2 mt-2">
-            <div className="flex items-center">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-medium ml-1">{business.average_rating.toFixed(1)}</span>
-            </div>
-            <span className="text-sm text-muted-foreground">
-              ({business.total_reviews} review{business.total_reviews !== 1 ? 's' : ''})
-            </span>
-          </div>
-        )}
-      </CardHeader>
-      
-      <CardContent className="space-y-3">
-        {business.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {business.description}
-          </p>
-        )}
-        
-        {business.address && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4" />
-            <span>{business.address}</span>
-            {business.island && <Badge variant="outline" className="ml-auto">{business.island}</Badge>}
-          </div>
-        )}
-        
-        <Separator />
-        
-        <div className="flex flex-wrap gap-2">
-          {business.phone && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={`tel:${business.phone}`}>
-                <Phone className="w-4 h-4 mr-1" />
-                Call
-              </a>
-            </Button>
-          )}
-          
-          {business.whatsapp && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="w-4 h-4 mr-1 text-green-600" />
-                WhatsApp
-              </a>
-            </Button>
-          )}
-          
-          {business.email && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={`mailto:${business.email}`}>
-                <Mail className="w-4 h-4 mr-1" />
-                Email
-              </a>
-            </Button>
-          )}
-          
-          {business.website && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={business.website} target="_blank" rel="noopener noreferrer">
-                <Globe className="w-4 h-4 mr-1" />
-                Website
-              </a>
-            </Button>
-          )}
-        </div>
-        
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex gap-2">
-            {business.facebook_url && (
-              <Button variant="ghost" size="sm" asChild>
-                <a href={business.facebook_url} target="_blank" rel="noopener noreferrer">
-                  <Facebook className="w-4 h-4 text-blue-600" />
-                </a>
-              </Button>
-            )}
-            
-            {business.instagram_url && (
-              <Button variant="ghost" size="sm" asChild>
-                <a href={business.instagram_url} target="_blank" rel="noopener noreferrer">
-                  <Instagram className="w-4 h-4 text-pink-600" />
-                </a>
-              </Button>
-            )}
-            
-            {business.linkedin_url && (
-              <Button variant="ghost" size="sm" asChild>
-                <a href={business.linkedin_url} target="_blank" rel="noopener noreferrer">
-                  <Linkedin className="w-4 h-4 text-blue-700" />
-                </a>
-              </Button>
-            )}
-            
-            {business.youtube_url && (
-              <Button variant="ghost" size="sm" asChild>
-                <a href={business.youtube_url} target="_blank" rel="noopener noreferrer">
-                  <Youtube className="w-4 h-4 text-red-600" />
-                </a>
-              </Button>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            {(business.latitude && business.longitude) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openInMaps(business)}
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open in Maps
-              </Button>
-            )}
-            
-            {onViewOnMap && (
-              <Button variant="outline" size="sm" onClick={onViewOnMap}>
-                <Map className="w-4 h-4 mr-2" />
-                View on Map
-              </Button>
-            )}
-          </div>
-        </div>
       </CardContent>
     </Card>
+  );
+
+  const CategoryAccordion = ({ categoryGroup }: { categoryGroup: CategoryGroup }) => (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value={categoryGroup.category} className="border-border/50">
+        <AccordionTrigger className="text-lg font-semibold text-foreground hover:text-primary">
+          <div className="flex items-center justify-between w-full pr-4">
+            <span>{categoryGroup.category}</span>
+            <Badge variant="outline" className="ml-2">
+              {Object.values(categoryGroup.subcategories).reduce((total, businesses) => total + businesses.length, 0)}
+            </Badge>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="space-y-6">
+          {Object.entries(categoryGroup.subcategories)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([subcategory, businesses]) => (
+              <div key={subcategory} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-foreground">{subcategory}</h4>
+                  <Badge variant="secondary" className="text-xs">
+                    {businesses.length}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  {businesses.map((business) => (
+                    <BusinessListingCard key={business.id} business={business} />
+                  ))}
+                </div>
+              </div>
+            ))}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 
   return (
@@ -550,7 +563,7 @@ const Directory = () => {
             {selectedBusiness && (
               <Card>
                 <CardContent className="pt-6">
-                  <BusinessCard business={selectedBusiness} />
+                  <BusinessListingCard business={selectedBusiness} />
                 </CardContent>
               </Card>
             )}
@@ -574,16 +587,9 @@ const Directory = () => {
             ))}
           </div>
         ) : filteredBusinesses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredBusinesses.map((business) => (
-              <BusinessCard 
-                key={business.id} 
-                business={business}
-                onViewOnMap={() => {
-                  setSelectedBusiness(business);
-                  setViewMode('map');
-                }}
-              />
+          <div className="space-y-6">
+            {groupedBusinesses.map((categoryGroup) => (
+              <CategoryAccordion key={categoryGroup.category} categoryGroup={categoryGroup} />
             ))}
           </div>
         ) : (

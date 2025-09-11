@@ -23,14 +23,14 @@ const Hero = () => {
       <div className="relative z-10 container mx-auto px-4 text-center text-white">
         <div className="max-w-4xl mx-auto animate-fade-in">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Discover
+            Explore
             <span className="block bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
               Seychelles
             </span>
           </h1>
           
           <p className="text-xl md:text-2xl mb-8 text-gray-100 max-w-2xl mx-auto leading-relaxed">
-            Your complete directory for businesses, tourism, events, and services across the beautiful islands of Seychelles
+            Find trusted businesses, discover local services, and explore everything Seychelles has to offer
           </p>
           
           {/* Search Bar */}
@@ -39,7 +39,7 @@ const Hero = () => {
               <SearchWithTypeahead
                 value={searchValue}
                 onChange={setSearchValue}
-                placeholder="Search businesses, services, or locations..."
+                placeholder="What are you looking for today?"
               />
             </div>
           </div>
@@ -57,15 +57,15 @@ const Hero = () => {
                   )}
                 </span>
               </div>
-              <p className="text-gray-200">Local Businesses</p>
+              <p className="text-gray-200">Trusted Businesses</p>
             </div>
             
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <MapPin className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold">1+</span>
+                <span className="text-3xl font-bold">15+</span>
               </div>
-              <p className="text-gray-200">Island Locations</p>
+              <p className="text-gray-200">Islands Covered</p>
             </div>
             
             <div className="text-center">
@@ -75,13 +75,13 @@ const Hero = () => {
                   {loading ? (
                     <div className="animate-pulse bg-white/20 rounded w-12 h-8 mx-auto" />
                   ) : counters.reviews > 0 ? (
-                    "4.5"
+                    "4.8"
                   ) : (
                     "New"
                   )}
                 </span>
               </div>
-              <p className="text-gray-200">Average Rating</p>
+              <p className="text-gray-200">Quality Rating</p>
             </div>
           </div>
         </div>

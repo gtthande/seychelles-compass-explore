@@ -111,7 +111,7 @@ const BusinessLocationMap = ({
                 className="mt-2"
                 onClick={openInMaps}
               >
-                View in Maps
+                View Location
               </Button>
             </div>
           </div>

@@ -96,13 +96,23 @@ export default {
 				'float': 'float 3s ease-in-out infinite'
 			},
 			backgroundImage: {
-				'ocean-gradient': 'var(--ocean-gradient)',
+				'neutral-gradient': 'var(--neutral-gradient)',
 				'hero-gradient': 'var(--hero-gradient)'
 			},
 			boxShadow: {
 				'card': 'var(--card-shadow)',
 				'card-hover': 'var(--card-shadow-hover)',
 				'glow': 'var(--glow-shadow)'
+			},
+			fontSize: {
+				'xs': ['0.75rem', { lineHeight: '1.5' }],
+				'sm': ['0.875rem', { lineHeight: '1.5' }],
+				'base': ['1rem', { lineHeight: '1.6' }],
+				'lg': ['1.125rem', { lineHeight: '1.6' }],
+				'xl': ['1.25rem', { lineHeight: '1.5' }],
+				'2xl': ['1.5rem', { lineHeight: '1.4' }],
+				'3xl': ['1.875rem', { lineHeight: '1.3' }],
+				'4xl': ['2.25rem', { lineHeight: '1.2' }],
 			}
 		}
 	},

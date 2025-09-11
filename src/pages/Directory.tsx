@@ -453,11 +453,11 @@ const Directory = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary-light via-background to-secondary">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent mb-4">
-            iCompass Business Directory
+          <h1 className="text-4xl font-bold text-foreground mb-4">
+            Seychelles Business Directory
           </h1>
           <p className="text-lg text-muted-foreground">
-            Discover local businesses across the beautiful islands of Seychelles
+            Find trusted local businesses across the beautiful islands of Seychelles
           </p>
         </div>
 
@@ -472,29 +472,29 @@ const Directory = () => {
           {/* Main Search */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
             <div className="lg:col-span-2">
-              <SearchWithTypeahead
-                value={searchTerm}
-                onChange={setSearchTerm}
-                onSelect={(result) => {
-                  // Navigate to specific business or enhance search
-                  if (result.type === 'business') {
-                    const business = businesses.find(b => b.id === result.id);
-                    if (business) {
-                      setSelectedBusiness(business);
-                      setViewMode('map');
+                <SearchWithTypeahead
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  onSelect={(result) => {
+                    // Navigate to specific business or enhance search
+                    if (result.type === 'business') {
+                      const business = businesses.find(b => b.id === result.id);
+                      if (business) {
+                        setSelectedBusiness(business);
+                        setViewMode('map');
+                      }
                     }
-                  }
-                }}
-                placeholder="Search businesses, products, services..."
-              />
+                  }}
+                  placeholder="Find businesses, services, or products..."
+                />
             </div>
             
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
-                <SelectValue placeholder="All Categories" />
+                <SelectValue placeholder="Browse by Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="">Browse All Types</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.value} value={category.value}>
                     {category.label}
@@ -505,10 +505,10 @@ const Directory = () => {
 
             <Select value={selectedIsland} onValueChange={setSelectedIsland}>
               <SelectTrigger>
-                <SelectValue placeholder="All Islands" />
+                <SelectValue placeholder="Choose Location" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Islands</SelectItem>
+                <SelectItem value="">All Locations</SelectItem>
                 {islands.map((island) => (
                   <SelectItem key={island} value={island}>
                     {island}
@@ -527,7 +527,7 @@ const Directory = () => {
                 onCheckedChange={(checked) => setHasWhatsApp(checked === true)}
               />
               <label htmlFor="whatsapp" className="text-sm font-medium cursor-pointer">
-                Has WhatsApp
+                Can message instantly
               </label>
             </div>
             
@@ -538,7 +538,7 @@ const Directory = () => {
                 onCheckedChange={(checked) => setShowFeatured(checked === true)}
               />
               <label htmlFor="featured" className="text-sm font-medium cursor-pointer">
-                Featured Only
+                Top picks only
               </label>
             </div>
 
@@ -554,7 +554,7 @@ const Directory = () => {
               }}
             >
               <Filter className="w-4 h-4 mr-2" />
-              Clear Filters
+              Reset
             </Button>
 
             <div className="ml-auto flex gap-2">
@@ -621,9 +621,9 @@ const Directory = () => {
               <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">
                 <MapPin className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No businesses found</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No results found</h3>
               <p className="text-muted-foreground">
-                Try adjusting your search criteria or browse all categories.
+                Try different search terms or browse all available options.
               </p>
             </div>
             <Button onClick={() => {
@@ -633,7 +633,7 @@ const Directory = () => {
               setHasWhatsApp(false);
               setShowFeatured(false);
             }}>
-              Clear All Filters
+              Show All Results
             </Button>
           </div>
         )}

@@ -187,19 +187,36 @@ const BusinessDashboard = () => {
                     {business.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4" />
-                        {business.phone}
+                        <a 
+                          href={`tel:${business.phone}`} 
+                          className="text-primary hover:text-primary-dark transition-colors"
+                        >
+                          {business.phone}
+                        </a>
                       </div>
                     )}
                     {business.email && (
                       <div className="flex items-center gap-2">
                         <Mail className="w-4 h-4" />
-                        {business.email}
+                        <a 
+                          href={`mailto:${business.email}`} 
+                          className="text-primary hover:text-primary-dark transition-colors"
+                        >
+                          {business.email}
+                        </a>
                       </div>
                     )}
                     {business.website && (
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4" />
-                        {business.website}
+                        <a 
+                          href={business.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary-dark transition-colors"
+                        >
+                          {business.website}
+                        </a>
                       </div>
                     )}
                     {business.address && (

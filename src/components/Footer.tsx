@@ -29,17 +29,25 @@ const Footer = () => {
               Your comprehensive directory for discovering the best businesses, services, and experiences across the beautiful islands of Seychelles.
             </p>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0">
-                <Facebook className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0" asChild>
+                <a href="https://facebook.com/seychellescompass" target="_blank" rel="noopener noreferrer">
+                  <Facebook className="h-4 w-4" />
+                </a>
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0">
-                <Instagram className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0" asChild>
+                <a href="https://instagram.com/seychellescompass" target="_blank" rel="noopener noreferrer">
+                  <Instagram className="h-4 w-4" />
+                </a>
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0">
-                <Twitter className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0" asChild>
+                <a href="https://twitter.com/seychellescompass" target="_blank" rel="noopener noreferrer">
+                  <Twitter className="h-4 w-4" />
+                </a>
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0">
-                <Youtube className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0" asChild>
+                <a href="https://youtube.com/seychellescompass" target="_blank" rel="noopener noreferrer">
+                  <Youtube className="h-4 w-4" />
+                </a>
               </Button>
             </div>
           </div>
@@ -142,11 +150,15 @@ const Footer = () => {
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Phone className="h-4 w-4 text-primary" />
-              <span>+248 4 123 456</span>
+              <a href="tel:+2484123456" className="hover:text-primary transition-colors">
+                +248 4 123 456
+              </a>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Mail className="h-4 w-4 text-primary" />
-              <span>info@icompass.sc</span>
+              <a href="mailto:info@icompass.sc" className="hover:text-primary transition-colors">
+                info@icompass.sc
+              </a>
             </div>
           </div>
         </div>

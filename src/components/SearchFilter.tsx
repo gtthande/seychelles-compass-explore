@@ -499,18 +499,24 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
       
       <div className="flex gap-2 pt-2">
         {business.phone && (
-          <Button variant="outline" size="sm">
-            <Phone className="w-4 h-4" />
+          <Button variant="outline" size="sm" asChild>
+            <a href={`tel:${business.phone}`}>
+              <Phone className="w-4 h-4" />
+            </a>
           </Button>
         )}
         {business.whatsapp && (
-          <Button variant="outline" size="sm">
-            <MessageCircle className="w-4 h-4" />
+          <Button variant="outline" size="sm" asChild>
+            <a href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="w-4 h-4" />
+            </a>
           </Button>
         )}
         {business.website && (
-          <Button variant="outline" size="sm">
-            <Globe className="w-4 h-4" />
+          <Button variant="outline" size="sm" asChild>
+            <a href={business.website} target="_blank" rel="noopener noreferrer">
+              <Globe className="w-4 h-4" />
+            </a>
           </Button>
         )}
       </div>

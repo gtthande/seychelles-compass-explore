@@ -284,10 +284,34 @@ const AppointmentManager = () => {
                 <div>
                   <h4 className="font-medium mb-2">Contact Information</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    {appointment.phone && <p><strong>Phone:</strong> {appointment.phone}</p>}
-                    {appointment.whatsapp && <p><strong>WhatsApp:</strong> {appointment.whatsapp}</p>}
-                    {appointment.email && <p><strong>Email:</strong> {appointment.email}</p>}
-                    {appointment.website && <p><strong>Website:</strong> {appointment.website}</p>}
+                     {appointment.phone && (
+                       <p><strong>Phone:</strong> 
+                         <a href={`tel:${appointment.phone}`} className="text-primary hover:text-primary-dark ml-1">
+                           {appointment.phone}
+                         </a>
+                       </p>
+                     )}
+                     {appointment.whatsapp && (
+                       <p><strong>WhatsApp:</strong> 
+                         <a href={`https://wa.me/${appointment.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-dark ml-1">
+                           {appointment.whatsapp}
+                         </a>
+                       </p>
+                     )}
+                     {appointment.email && (
+                       <p><strong>Email:</strong> 
+                         <a href={`mailto:${appointment.email}`} className="text-primary hover:text-primary-dark ml-1">
+                           {appointment.email}
+                         </a>
+                       </p>
+                     )}
+                     {appointment.website && (
+                       <p><strong>Website:</strong> 
+                         <a href={appointment.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-dark ml-1">
+                           {appointment.website}
+                         </a>
+                       </p>
+                     )}
                   </div>
                 </div>
                 

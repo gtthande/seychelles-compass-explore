@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Star, 
   MapPin, 
@@ -8,174 +10,281 @@ import {
   Globe, 
   Facebook, 
   MessageCircle,
-  Clock,
-  Heart
+  Verified
 } from "lucide-react";
 
-const featuredBusinesses = [
-  {
-    id: 1,
-    name: "Paradise Cove Resort",
-    category: "Accommodation",
-    rating: 4.9,
-    reviews: 234,
-    location: "Praslin Island",
-    phone: "+248 4 232 000",
-    website: "paradise-cove.sc",
-    facebook: "paradisecoveseychelles",
-    whatsapp: "+248 4 232 000",
-    description: "Luxury beachfront resort with world-class amenities and stunning ocean views. Perfect for romantic getaways and family vacations.",
-    image: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&h=300&fit=crop&crop=center",
-    featured: true,
-    verified: true,
-    openNow: true
-  },
-  {
-    id: 2,
-    name: "Creole Flavors Restaurant",
-    category: "Dining",
-    rating: 4.7,
-    reviews: 156,
-    location: "Victoria, Mahé",
-    phone: "+248 4 225 678",
-    website: "creoleflavors.sc",
-    facebook: "creoleflavorsSC",
-    whatsapp: "+248 4 225 678",
-    description: "Authentic Seychellois cuisine with fresh local ingredients. Known for our famous fish curry and tropical fruit desserts.",
-    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop&crop=center",
-    featured: true,
-    verified: true,
-    openNow: true
-  },
-  {
-    id: 3,
-    name: "Island Adventure Tours",
-    category: "Tourism",
-    rating: 4.8,
-    reviews: 89,
-    location: "La Digue",
-    phone: "+248 4 234 567",
-    website: "islandadventures.sc",
-    facebook: "islandadventuresSC",
-    whatsapp: "+248 4 234 567",
-    description: "Discover the hidden gems of Seychelles with our expert guides. Snorkeling, hiking, and island hopping tours available.",
-    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&crop=center",
-    featured: true,
-    verified: true,
-    openNow: false
-  }
-];
+interface Business {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  address: string;
+  island: string;
+  phone: string;
+  email: string;
+  website: string;
+  facebook_url: string;
+  whatsapp: string;
+  logo_url: string;
+  cover_image_url: string;
+  average_rating: number;
+  total_reviews: number;
+  featured: boolean;
+  verified: boolean;
+}
 
 const FeaturedListings = () => {
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedBusinesses();
+  }, []);
+
+  const fetchFeaturedBusinesses = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('status', 'active')
+        .eq('featured', true)
+        .order('average_rating', { ascending: false })
+        .limit(6);
+
+      if (error) {
+        console.error('Error fetching featured businesses:', error);
+        setBusinesses([]);
+      } else {
+        setBusinesses(data || []);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setBusinesses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCategory = (category: string) => {
+    return category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
+              Featured Businesses
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Discover trusted and verified businesses in Seychelles
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-4 bg-muted rounded w-3/4 mb-4"></div>
+                  <div className="h-3 bg-muted rounded w-1/2 mb-4"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded"></div>
+                    <div className="h-3 bg-muted rounded w-2/3"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (businesses.length === 0) {
+    return (
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
+              Featured Businesses
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+              Featured businesses will appear here as they join our directory
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
-            Featured Listings
+            Featured Businesses
           </Badge>
           <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
-            Top-Rated Businesses
+            Trusted Local Partners
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Discover the most trusted and highly-rated businesses in Seychelles
+            Discover verified businesses that are trusted by the community
           </p>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {featuredBusinesses.map((business, index) => (
+          {businesses.map((business, index) => (
             <Card 
               key={business.id}
               className="group cursor-pointer hover:shadow-card-hover transition-all duration-300 border-border/50 hover:border-primary/30 overflow-hidden animate-slide-up"
               style={{ animationDelay: `${index * 0.2}s` }}
             >
-              <div className="relative">
-                <img 
-                  src={business.image} 
-                  alt={business.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-4 left-4 flex gap-2">
-                  {business.featured && (
-                    <Badge className="bg-primary text-primary-foreground">
-                      Featured
-                    </Badge>
-                  )}
-                  {business.verified && (
-                    <Badge variant="secondary" className="bg-green-500 text-white">
-                      Verified
-                    </Badge>
-                  )}
+              {/* Only show cover image if business uploaded one */}
+              {business.cover_image_url && (
+                <div className="relative">
+                  <img 
+                    src={business.cover_image_url} 
+                    alt={business.name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    {business.featured && (
+                      <Badge className="bg-primary text-primary-foreground">
+                        Featured
+                      </Badge>
+                    )}
+                    {business.verified && (
+                      <Badge variant="secondary" className="bg-green-500 text-white">
+                        <Verified className="w-3 h-3 mr-1" />
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="secondary" 
-                  className="absolute top-4 right-4 rounded-full w-10 h-10 p-0 bg-white/80 hover:bg-white"
-                >
-                  <Heart className="h-4 w-4" />
-                </Button>
-              </div>
+              )}
               
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-xl font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
                       {business.name}
                     </h3>
                     <Badge variant="outline" className="text-xs">
-                      {business.category}
+                      {formatCategory(business.category)}
                     </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {business.openNow ? (
-                      <div className="flex items-center gap-1 text-green-600 text-xs">
-                        <Clock className="h-3 w-3" />
-                        Open
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-gray-500 text-xs">
-                        <Clock className="h-3 w-3" />
-                        Closed
+                    {!business.cover_image_url && (
+                      <div className="flex gap-1 mt-2">
+                        {business.featured && (
+                          <Badge className="bg-primary text-primary-foreground text-xs">
+                            Featured
+                          </Badge>
+                        )}
+                        {business.verified && (
+                          <Badge variant="secondary" className="bg-green-500 text-white text-xs">
+                            <Verified className="w-3 h-3 mr-1" />
+                            Verified
+                          </Badge>
+                        )}
                       </div>
                     )}
                   </div>
+                  {business.logo_url && (
+                    <img 
+                      src={business.logo_url} 
+                      alt={`${business.name} logo`}
+                      className="w-12 h-12 rounded-lg object-cover ml-3"
+                    />
+                  )}
                 </div>
                 
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium text-foreground">{business.rating}</span>
+                {business.average_rating > 0 && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="font-medium text-foreground">{business.average_rating.toFixed(1)}</span>
+                    </div>
+                    <span className="text-muted-foreground text-sm">
+                      ({business.total_reviews} review{business.total_reviews !== 1 ? 's' : ''})
+                    </span>
                   </div>
-                  <span className="text-muted-foreground text-sm">
-                    ({business.reviews} reviews)
-                  </span>
-                </div>
+                )}
                 
-                <div className="flex items-center gap-1 mb-4 text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span className="text-sm">{business.location}</span>
-                </div>
+                {(business.address || business.island) && (
+                  <div className="flex items-center gap-1 mb-4 text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span className="text-sm">
+                      {business.address}
+                      {business.address && business.island && ', '}
+                      {business.island}
+                    </span>
+                  </div>
+                )}
                 
-                <p className="text-sm text-muted-foreground mb-6 line-clamp-3">
-                  {business.description}
-                </p>
+                {business.description && (
+                  <p className="text-sm text-muted-foreground mb-6 line-clamp-3">
+                    {business.description}
+                  </p>
+                )}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="rounded-full w-9 h-9 p-0">
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" className="rounded-full w-9 h-9 p-0">
-                      <MessageCircle className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" className="rounded-full w-9 h-9 p-0">
-                      <Globe className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" className="rounded-full w-9 h-9 p-0">
-                      <Facebook className="h-4 w-4" />
-                    </Button>
+                    {business.phone && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="rounded-full w-9 h-9 p-0"
+                        asChild
+                      >
+                        <a href={`tel:${business.phone}`}>
+                          <Phone className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {business.whatsapp && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="rounded-full w-9 h-9 p-0"
+                        asChild
+                      >
+                        <a href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {business.website && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="rounded-full w-9 h-9 p-0"
+                        asChild
+                      >
+                        <a href={business.website} target="_blank" rel="noopener noreferrer">
+                          <Globe className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {business.facebook_url && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="rounded-full w-9 h-9 p-0"
+                        asChild
+                      >
+                        <a href={business.facebook_url} target="_blank" rel="noopener noreferrer">
+                          <Facebook className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
                   </div>
-                  <Button variant="default" size="sm" className="bg-primary hover:bg-primary-dark">
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="bg-primary hover:bg-primary-dark"
+                    onClick={() => window.location.href = `/directory?business=${business.id}`}
+                  >
                     View Details
                   </Button>
                 </div>
@@ -185,8 +294,13 @@ const FeaturedListings = () => {
         </div>
         
         <div className="text-center mt-12">
-          <Button size="lg" variant="outline" className="hover:bg-primary hover:text-primary-foreground">
-            View All Listings
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="hover:bg-primary hover:text-primary-foreground"
+            onClick={() => window.location.href = '/directory'}
+          >
+            View All Businesses
           </Button>
         </div>
       </div>

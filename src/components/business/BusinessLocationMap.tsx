@@ -102,8 +102,7 @@ const BusinessLocationMap = ({
             >
               <MapPin className="w-8 h-8 text-primary mb-2" />
               <span className="text-sm text-muted-foreground text-center px-4">
-                {business.address}
-                {business.island && `, ${business.island}`}
+                Click to view location
               </span>
               <Button 
                 variant="outline" 

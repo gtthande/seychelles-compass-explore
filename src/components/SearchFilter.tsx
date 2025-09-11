@@ -431,8 +431,9 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
 
 const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
   <Card className="hover:shadow-lg transition-shadow">
-    <div className="relative">
-      {business.cover_image_url ? (
+    {/* Only show cover image if business uploaded one */}
+    {business.cover_image_url && (
+      <div className="relative">
         <div className="h-48 relative overflow-hidden rounded-t-lg">
           <img 
             src={business.cover_image_url} 
@@ -440,25 +441,13 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
             className="w-full h-full object-cover"
           />
         </div>
-      ) : (
-        <div className="h-48 bg-gradient-to-br from-primary/10 to-primary/5 rounded-t-lg flex items-center justify-center">
-          <Building2 className="w-12 h-12 text-primary/60" />
-        </div>
-      )}
-      {business.featured && (
-        <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">
-          Featured
-        </Badge>
-      )}
-      <Button 
-        size="sm" 
-        variant="secondary" 
-        className="absolute top-2 right-2 rounded-full w-8 h-8 p-0"
-      >
-        <Heart className="h-4 w-4" />
-      </Button>
-    </div>
-    
+        {business.featured && (
+          <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">
+            Featured
+          </Badge>
+        )}
+      </div>
+    )}
     <CardHeader className="pb-3">
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -466,6 +455,11 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
           <CardDescription className="text-sm">
             {business.category}
           </CardDescription>
+          {!business.cover_image_url && business.featured && (
+            <Badge className="bg-primary text-primary-foreground text-xs mt-2">
+              Featured
+            </Badge>
+          )}
         </div>
         {business.logo_url && (
           <img 

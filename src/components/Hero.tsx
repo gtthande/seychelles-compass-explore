@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Search, MapPin, Users, Star } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
-import heroImage from "@/assets/hero-seychelles.jpg";
 import { useState } from "react";
 
 const Hero = () => {
@@ -10,17 +9,12 @@ const Hero = () => {
   const [searchValue, setSearchValue] = useState("");
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/20" />
-      </div>
+    <section className="relative min-h-screen flex items-center justify-center bg-neutral-gradient">
+      {/* Clean background without stock imagery */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/20" />
       
       {/* Hero Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center text-white">
+      <div className="relative z-10 container mx-auto px-4 text-center text-foreground">
         <div className="max-w-4xl mx-auto animate-fade-in">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             Explore
@@ -29,13 +23,13 @@ const Hero = () => {
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl mb-8 text-gray-100 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl mb-8 text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Find trusted businesses, discover local services, and explore everything Seychelles has to offer
           </p>
           
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-12">
-            <div className="relative bg-white/10 backdrop-blur-md rounded-full p-2 border border-white/20">
+            <div className="relative bg-card border border-border rounded-full p-2 shadow-card">
               <SearchWithTypeahead
                 value={searchValue}
                 onChange={setSearchValue}
@@ -49,31 +43,31 @@ const Hero = () => {
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <Users className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold">
+                <span className="text-3xl font-bold text-foreground">
                   {loading ? (
-                    <div className="animate-pulse bg-white/20 rounded w-12 h-8 mx-auto" />
+                    <div className="animate-pulse bg-muted rounded w-12 h-8 mx-auto" />
                   ) : (
                     `${counters.businesses}+`
                   )}
                 </span>
               </div>
-              <p className="text-gray-200">Trusted Businesses</p>
+              <p className="text-muted-foreground">Trusted Businesses</p>
             </div>
             
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <MapPin className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold">15+</span>
+                <span className="text-3xl font-bold text-foreground">15+</span>
               </div>
-              <p className="text-gray-200">Islands Covered</p>
+              <p className="text-muted-foreground">Islands Covered</p>
             </div>
             
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <Star className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold">
+                <span className="text-3xl font-bold text-foreground">
                   {loading ? (
-                    <div className="animate-pulse bg-white/20 rounded w-12 h-8 mx-auto" />
+                    <div className="animate-pulse bg-muted rounded w-12 h-8 mx-auto" />
                   ) : counters.reviews > 0 ? (
                     "4.8"
                   ) : (
@@ -81,16 +75,16 @@ const Hero = () => {
                   )}
                 </span>
               </div>
-              <p className="text-gray-200">Quality Rating</p>
+              <p className="text-muted-foreground">Quality Rating</p>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Floating Animation */}
+      {/* Simple scroll indicator */}
       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-float">
-        <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-white/50 rounded-full mt-2 animate-pulse"></div>
+        <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center">
+          <div className="w-1 h-3 bg-muted-foreground/50 rounded-full mt-2 animate-pulse"></div>
         </div>
       </div>
     </section>

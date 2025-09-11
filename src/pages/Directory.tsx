@@ -12,6 +12,7 @@ import LiveCounters from "@/components/LiveCounters";
 import GoogleMap from "@/components/GoogleMap";
 import ImageSearch from "@/components/ImageSearch";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
+import BusinessLocationMap from "@/components/business/BusinessLocationMap";
 import { 
   MapPin, 
   Phone, 
@@ -285,112 +286,134 @@ const Directory = () => {
 
   const groupedBusinesses = groupBusinessesByCategory(filteredBusinesses);
 
-  const BusinessListingCard = ({ business }: { business: Business }) => (
-    <Card className="hover:shadow-sm transition-all duration-200 border-border/50">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
-                {business.name}
-              </h3>
-              {business.verified && (
-                <Badge variant="secondary" className="text-xs">
-                  <Verified className="w-3 h-3 mr-1" />
-                  Verified
-                </Badge>
-              )}
-              {business.featured && (
-                <Badge className="text-xs bg-primary text-primary-foreground">
-                  Featured
-                </Badge>
-              )}
-            </div>
-            
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              {business.phone && (
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-auto p-1 hover:bg-accent"
-                    asChild
-                  >
-                    <a href={`tel:${business.phone}`} className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-primary" />
-                      <span className="text-foreground hover:text-primary">{business.phone}</span>
-                    </a>
-                  </Button>
-                </div>
-              )}
-              
-              {business.email && (
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-auto p-1 hover:bg-accent"
-                    asChild
-                  >
-                    <a href={`mailto:${business.email}`} className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-primary" />
-                      <span className="text-foreground hover:text-primary">{business.email}</span>
-                    </a>
-                  </Button>
-                </div>
-              )}
-            </div>
+  const BusinessListingCard = ({ business }: { business: Business }) => {
+    const hasLocationData = business.latitude && business.longitude && business.address;
+    
+    return (
+      <Card className="hover:shadow-sm transition-all duration-200 border-border/50">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Business Info Column */}
+            <div className="lg:col-span-2 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
+                      {business.name}
+                    </h3>
+                    {business.verified && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Verified className="w-3 h-3 mr-1" />
+                        Verified
+                      </Badge>
+                    )}
+                    {business.featured && (
+                      <Badge className="text-xs bg-primary text-primary-foreground">
+                        Featured
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* Contact Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    {business.phone && (
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-auto p-1 hover:bg-accent"
+                          asChild
+                        >
+                          <a href={`tel:${business.phone}`} className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-primary" />
+                            <span className="text-foreground hover:text-primary">{business.phone}</span>
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {business.email && (
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-auto p-1 hover:bg-accent"
+                          asChild
+                        >
+                          <a href={`mailto:${business.email}`} className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-primary" />
+                            <span className="text-foreground hover:text-primary">{business.email}</span>
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
 
-            {business.address && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>{business.address}</span>
-                {business.island && (
-                  <Badge variant="outline" className="ml-2">{business.island}</Badge>
+                  {business.address && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span>{business.address}</span>
+                      {business.island && (
+                        <Badge variant="outline" className="ml-2">{business.island}</Badge>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Social Links */}
+                  <div className="flex items-center gap-1">
+                    {business.facebook_url && (
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                        <a href={business.facebook_url} target="_blank" rel="noopener noreferrer">
+                          <Facebook className="w-4 h-4 text-blue-600" />
+                        </a>
+                      </Button>
+                    )}
+                    
+                    {business.instagram_url && (
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                        <a href={business.instagram_url} target="_blank" rel="noopener noreferrer">
+                          <Instagram className="w-4 h-4 text-pink-600" />
+                        </a>
+                      </Button>
+                    )}
+
+                    {business.website && (
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                        <a href={business.website} target="_blank" rel="noopener noreferrer">
+                          <Globe className="w-4 h-4 text-primary" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {business.logo_url && (
+                  <img 
+                    src={business.logo_url} 
+                    alt={`${business.name} logo`}
+                    className="w-12 h-12 rounded-lg object-cover ml-4 flex-shrink-0"
+                  />
                 )}
               </div>
-            )}
-
-            {/* Social Links */}
-            <div className="flex items-center gap-1">
-              {business.facebook_url && (
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                  <a href={business.facebook_url} target="_blank" rel="noopener noreferrer">
-                    <Facebook className="w-4 h-4 text-blue-600" />
-                  </a>
-                </Button>
-              )}
-              
-              {business.instagram_url && (
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                  <a href={business.instagram_url} target="_blank" rel="noopener noreferrer">
-                    <Instagram className="w-4 h-4 text-pink-600" />
-                  </a>
-                </Button>
-              )}
-
-              {business.website && (
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                  <a href={business.website} target="_blank" rel="noopener noreferrer">
-                    <Globe className="w-4 h-4 text-primary" />
-                  </a>
-                </Button>
-              )}
             </div>
-          </div>
 
-          {business.logo_url && (
-            <img 
-              src={business.logo_url} 
-              alt={`${business.name} logo`}
-              className="w-12 h-12 rounded-lg object-cover ml-4"
-            />
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+            {/* Location Map Column - Only show if location data exists */}
+            {hasLocationData && (
+              <div className="lg:col-span-1">
+                <div className="sticky top-4">
+                  <BusinessLocationMap 
+                    business={business} 
+                    height="160px" 
+                    showTitle={false}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const CategoryAccordion = ({ categoryGroup }: { categoryGroup: CategoryGroup }) => (
     <Accordion type="single" collapsible className="w-full">

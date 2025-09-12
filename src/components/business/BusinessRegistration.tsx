@@ -19,14 +19,14 @@ import { cn } from "@/lib/utils";
 const appointmentSchema = z.object({
   business_name: z.string().min(2, "Business name must be at least 2 characters"),
   contact_person: z.string().min(2, "Contact person name must be at least 2 characters"),
-  phone: z.string().optional(),
+  phone: z.string().min(1, "Phone number is required"),
   whatsapp: z.string().optional(),
-  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
-  website: z.string().url("Please enter a valid website URL").optional().or(z.literal("")),
-  linkedin_url: z.string().url("Please enter a valid LinkedIn URL").optional().or(z.literal("")),
-  youtube_url: z.string().url("Please enter a valid YouTube URL").optional().or(z.literal("")),
-  facebook_url: z.string().url("Please enter a valid Facebook URL").optional().or(z.literal("")),
-  instagram_url: z.string().url("Please enter a valid Instagram URL").optional().or(z.literal("")),
+  email: z.string().email("Please enter a valid email address").min(1, "Email is required"),
+  website: z.string().refine((val) => !val || val.startsWith('http'), "Please enter a valid website URL").optional(),
+  linkedin_url: z.string().refine((val) => !val || val.startsWith('http'), "Please enter a valid LinkedIn URL").optional(),
+  youtube_url: z.string().refine((val) => !val || val.startsWith('http'), "Please enter a valid YouTube URL").optional(),
+  facebook_url: z.string().refine((val) => !val || val.startsWith('http'), "Please enter a valid Facebook URL").optional(),
+  instagram_url: z.string().refine((val) => !val || val.startsWith('http'), "Please enter a valid Instagram URL").optional(),
   preferred_date: z.date({
     required_error: "Please select a preferred date",
   }),
@@ -66,67 +66,37 @@ const BusinessRegistration = () => {
 
   const handleDownloadForm = async () => {
     try {
-      // Upload the PDF to storage if it doesn't exist
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('business-documents')
-        .upload('Business_Registration_Form.pdf', await fetch('/Business_Registration_Form.pdf').then(r => r.blob()), {
-          upsert: true,
-          contentType: 'application/pdf'
-        });
-
-      if (uploadError) {
-        console.log('Upload note:', uploadError.message);
-      }
-
-      // Get the public URL for the business registration form
-      const { data } = supabase.storage
-        .from('business-documents')
-        .getPublicUrl('Business_Registration_Form.pdf');
-      
-      if (data?.publicUrl) {
-        // Verify the file is accessible
-        const response = await fetch(data.publicUrl);
-        if (response.ok) {
-          window.open(data.publicUrl, '_blank');
-          
-          toast({
-            title: "Form Opened",
-            description: "Business registration form opened in new tab.",
-          });
-          return;
-        }
-      }
-      
-      throw new Error('Storage form not accessible');
-    } catch (error) {
-      console.error('Error accessing storage form:', error);
-      
-      try {
-        // Fallback to local PDF file
-        const response = await fetch('/Business_Registration_Form.pdf');
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          window.URL.revokeObjectURL(url);
-          
-          toast({
-            title: "Form Opened",
-            description: "Business registration form opened in new tab.",
-          });
-          return;
-        }
+      // Try to access the local PDF file first
+      const response = await fetch('/business-registration-form.pdf');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         
-        throw new Error('Local PDF not available');
-      } catch (fallbackError) {
-        console.error('Error accessing local form:', fallbackError);
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'iCompass_Business_Registration_Form.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
         
         toast({
-          title: "Form Temporarily Unavailable",
-          description: "Unable to access the registration form. Please contact us directly for assistance.",
-          variant: "destructive",
+          title: "Form Downloaded",
+          description: "Business registration form downloaded successfully.",
         });
+        return;
       }
+      
+      throw new Error('PDF not available');
+    } catch (error) {
+      console.error('Error downloading form:', error);
+      
+      toast({
+        title: "Download Failed",
+        description: "Unable to download the registration form. Please contact us directly for assistance.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -314,10 +284,10 @@ const BusinessRegistration = () => {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Phone className="w-4 h-4" />
-                          Phone Number
-                        </FormLabel>
+                         <FormLabel className="flex items-center gap-2">
+                           <Phone className="w-4 h-4" />
+                           Phone Number *
+                         </FormLabel>
                         <FormControl>
                           <Input placeholder="+248 XXXXXXX" {...field} />
                         </FormControl>
@@ -348,10 +318,10 @@ const BusinessRegistration = () => {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
-                          Email Address
-                        </FormLabel>
+                         <FormLabel className="flex items-center gap-2">
+                           <Mail className="w-4 h-4" />
+                           Email Address *
+                         </FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="business@example.com" {...field} />
                         </FormControl>

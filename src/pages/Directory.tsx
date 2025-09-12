@@ -31,7 +31,8 @@ import {
   List,
   Filter,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Navigation
 } from "lucide-react";
 
 interface Business {
@@ -257,7 +258,20 @@ const Directory = () => {
 
     businesses.forEach(business => {
       const category = formatCategory(business.category);
-      const subcategory = business.subcategory || (business.verified ? 'Verified' : 'General');
+      
+      // Create proper subcategories based on business type
+      let subcategory = 'General';
+      if (business.category === 'healthcare') {
+        subcategory = business.verified ? 'Government' : 'Private';
+      } else if (business.category === 'hospitality') {
+        subcategory = business.verified ? 'Licensed Hotels' : 'Guesthouses & B&Bs';
+      } else if (business.category === 'education') {
+        subcategory = business.verified ? 'Government Schools' : 'Private Institutions';
+      } else if (business.category === 'financial_services') {
+        subcategory = business.verified ? 'Banks' : 'Other Financial Services';
+      } else {
+        subcategory = business.verified ? 'Verified' : 'General';
+      }
 
       if (!grouped[category]) {
         grouped[category] = {};
@@ -275,9 +289,9 @@ const Directory = () => {
       });
     });
 
-    // Convert to array and sort categories
+    // Convert to array and sort categories alphabetically
     return Object.keys(grouped)
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .map(category => ({
         category,
         subcategories: grouped[category]
@@ -291,7 +305,7 @@ const Directory = () => {
     
     return (
       <Card className="hover:shadow-sm transition-all duration-200 border-border/50">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Business Info Column */}
             <div className="lg:col-span-2 space-y-3">
@@ -314,40 +328,56 @@ const Directory = () => {
                     )}
                   </div>
                   
-                  {/* Contact Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    {business.phone && (
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-auto p-1 hover:bg-accent"
-                          asChild
-                        >
-                          <a href={`tel:${business.phone}`} className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-primary" />
-                            <span className="text-foreground hover:text-primary">{business.phone}</span>
-                          </a>
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {business.email && (
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-auto p-1 hover:bg-accent"
-                          asChild
-                        >
-                          <a href={`mailto:${business.email}`} className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-primary" />
-                            <span className="text-foreground hover:text-primary">{business.email}</span>
-                          </a>
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                   {/* Contact Information */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                     {business.phone && (
+                       <div className="flex items-center gap-2">
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
+                           className="h-auto p-1 hover:bg-accent"
+                           asChild
+                         >
+                           <a href={`tel:${business.phone}`} className="flex items-center gap-2">
+                             <Phone className="w-4 h-4 text-primary" />
+                             <span className="text-foreground hover:text-primary truncate">{business.phone}</span>
+                           </a>
+                         </Button>
+                       </div>
+                     )}
+                     
+                     {business.email && (
+                       <div className="flex items-center gap-2">
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
+                           className="h-auto p-1 hover:bg-accent"
+                           asChild
+                         >
+                           <a href={`mailto:${business.email}`} className="flex items-center gap-2">
+                             <Mail className="w-4 h-4 text-primary" />
+                             <span className="text-foreground hover:text-primary truncate">{business.email}</span>
+                           </a>
+                         </Button>
+                       </div>
+                     )}
+                     
+                     {business.whatsapp && (
+                       <div className="flex items-center gap-2 md:col-span-2">
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
+                           className="h-auto p-1 hover:bg-accent"
+                           asChild
+                         >
+                           <a href={`https://wa.me/${business.whatsapp.replace(/[^\d]/g, '')}`} className="flex items-center gap-2" target="_blank" rel="noopener noreferrer">
+                             <MessageCircle className="w-4 h-4 text-green-600" />
+                             <span className="text-foreground hover:text-primary truncate">WhatsApp</span>
+                           </a>
+                         </Button>
+                       </div>
+                     )}
+                   </div>
 
                   {business.address && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -359,32 +389,48 @@ const Directory = () => {
                     </div>
                   )}
 
-                  {/* Social Links */}
-                  <div className="flex items-center gap-1">
-                    {business.facebook_url && (
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                        <a href={business.facebook_url} target="_blank" rel="noopener noreferrer">
-                          <Facebook className="w-4 h-4 text-blue-600" />
-                        </a>
-                      </Button>
-                    )}
-                    
-                    {business.instagram_url && (
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                        <a href={business.instagram_url} target="_blank" rel="noopener noreferrer">
-                          <Instagram className="w-4 h-4 text-pink-600" />
-                        </a>
-                      </Button>
-                    )}
+                   {/* Social Links */}
+                   <div className="flex items-center gap-1 flex-wrap">
+                     {business.website && (
+                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                         <a href={business.website} target="_blank" rel="noopener noreferrer" aria-label="Visit website">
+                           <Globe className="w-4 h-4 text-primary" />
+                         </a>
+                       </Button>
+                     )}
+                     
+                     {business.facebook_url && (
+                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                         <a href={business.facebook_url} target="_blank" rel="noopener noreferrer" aria-label="Facebook page">
+                           <Facebook className="w-4 h-4 text-blue-600" />
+                         </a>
+                       </Button>
+                     )}
+                     
+                     {business.instagram_url && (
+                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                         <a href={business.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram profile">
+                           <Instagram className="w-4 h-4 text-pink-600" />
+                         </a>
+                       </Button>
+                     )}
 
-                    {business.website && (
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                        <a href={business.website} target="_blank" rel="noopener noreferrer">
-                          <Globe className="w-4 h-4 text-primary" />
-                        </a>
-                      </Button>
-                    )}
-                  </div>
+                     {business.linkedin_url && (
+                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                         <a href={business.linkedin_url} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile">
+                           <Linkedin className="w-4 h-4 text-blue-700" />
+                         </a>
+                       </Button>
+                     )}
+
+                     {business.youtube_url && (
+                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                         <a href={business.youtube_url} target="_blank" rel="noopener noreferrer" aria-label="YouTube channel">
+                           <Youtube className="w-4 h-4 text-red-600" />
+                         </a>
+                       </Button>
+                     )}
+                   </div>
                 </div>
 
                 {business.logo_url && (
@@ -403,9 +449,19 @@ const Directory = () => {
                 <div className="sticky top-4">
                   <BusinessLocationMap 
                     business={business} 
-                    height="160px" 
+                    height="140px" 
                     showTitle={false}
                   />
+                  {/* Map directions link */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mt-2 text-xs"
+                    onClick={() => openInMaps(business)}
+                  >
+                    <Navigation className="w-3 h-3 mr-1" />
+                    Get Directions
+                  </Button>
                 </div>
               </div>
             )}
@@ -465,7 +521,7 @@ const Directory = () => {
         <LiveCounters />
 
         {/* Search and Filters */}
-        <div className="bg-card rounded-xl p-6 shadow-card mb-8">
+        <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card mb-8">
           {/* Image Search */}
           <ImageSearch onSearchResults={handleImageSearchResults} />
           

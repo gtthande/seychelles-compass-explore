@@ -1,0 +1,5 @@
+[33m8f7162e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m docs: complete documentation workflow - README refresh, DEVLOG, schema, RLS, feature-map, architecture, security-audit, runbook, and .env.example
+[33m36dbab7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add project documentation
+[33mdf0eced[m Fix breaking issues
+[33mb5ad16a[m Approve tool use
+[33ma0f937f[m Add project documentation

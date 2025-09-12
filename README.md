@@ -27,6 +27,18 @@ A comprehensive business directory and registration platform for the Seychelles 
 - **File Storage**: Supabase Storage with public/private buckets
 - **External APIs**: Google Maps, OpenAI, Resend (email)
 
+## Database Overview
+
+The application uses Supabase PostgreSQL with comprehensive Row Level Security (RLS) policies. See [Database Schema Documentation](docs/schema.md) for detailed information and [RLS Policies Documentation](docs/rls.md) for security details.
+
+**Core Tables:**
+- `businesses` - Main business entities
+- `profiles` - User profiles with role management
+- `products` - Business offerings
+- `reviews` - Customer feedback
+- `appointments` - Registration requests
+- `categories` - Business categories
+
 ## Database Schema
 
 ### Core Tables
@@ -377,3 +389,96 @@ For alternative deployment platforms:
 For questions, issues, or contributions, please refer to the project documentation or contact the development team.
 
 **Built with ❤️ for the Seychelles business community**
+
+---
+
+## Tech Stack & Quick Start
+
+### Core Technologies
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Framework**: Tailwind CSS + shadcn/ui components
+- **Backend**: Supabase (PostgreSQL + Edge Functions)
+- **State Management**: TanStack React Query
+- **Forms**: React Hook Form + Zod validation
+- **Maps**: Google Maps API
+- **AI**: OpenAI API (GPT-4 Vision, GPT-4o-mini)
+
+### Quick Start
+```bash
+# Install dependencies
+npm install
+
+# Set up environment variables (see .env.example)
+cp .env.example .env.local
+
+# Start development server
+npm run dev
+
+# For Supabase local development
+supabase start
+```
+
+## Project Structure
+
+```
+├── src/
+│   ├── components/          # React components
+│   │   ├── ui/             # shadcn/ui components (Lovable-generated)
+│   │   ├── admin/          # Admin components
+│   │   ├── business/       # Business portal components
+│   │   └── [feature].tsx   # Feature components
+│   ├── pages/              # Route components
+│   ├── hooks/              # Custom React hooks
+│   ├── integrations/       # External service integrations
+│   └── lib/                # Utility functions
+├── supabase/
+│   ├── functions/          # Edge functions (AI search, geocoding, etc.)
+│   └── migrations/         # Database migrations
+├── public/                 # Static assets
+└── docs/                   # Documentation (Cursor-managed)
+```
+
+## Features Summary
+
+### ✅ Implemented Features
+- **Business Registration**: Appointment-based onboarding system
+- **Public Directory**: Categorized listings with advanced search
+- **AI-Powered Search**: Natural language and image-based discovery
+- **Google Maps Integration**: Interactive maps with geocoding
+- **User Management**: Authentication with role-based access
+- **Admin Panel**: Business approval and system management
+- **Real-time Features**: Live counters and status updates
+- **File Storage**: Document and image management
+
+### 🏗️ Architecture Highlights
+- **Responsive Design**: Mobile-first approach
+- **Real-time Updates**: Supabase subscriptions
+- **Error Handling**: Comprehensive error boundaries
+- **Performance**: Optimized with React Query caching
+- **Security**: Row-level security (RLS) policies
+
+## Lovable vs Cursor Ownership
+
+### 🚫 Lovable-Generated Flows (Do Not Modify Manually)
+- **Authentication System**: Login/signup flows, session management
+- **Business Registration**: Appointment booking and approval workflow
+- **AI Search Functions**: OpenAI integration for natural language and image search
+- **Database Schema**: Tables, RLS policies, and migrations
+- **Core UI Components**: shadcn/ui component library
+- **Build Configuration**: Vite, TypeScript, and package.json setup
+
+### ✅ Cursor-Safe Areas (Safe to Edit)
+- **Documentation**: All files in `docs/` directory
+- **Configuration Files**: Environment variables, deployment configs
+- **Bug Fixes**: Patches to existing functionality
+- **New Features**: Additional components and pages
+- **Styling**: Custom CSS and Tailwind modifications
+- **Content**: Static assets, images, and text content
+- **Testing**: Test files and testing configurations
+
+### 🔄 Collaboration Guidelines
+- Always test changes in development environment
+- Use proper migration tools for database changes
+- Follow existing code patterns and conventions
+- Document new features in DEVLOG.md
+- Respect the separation between generated and custom code

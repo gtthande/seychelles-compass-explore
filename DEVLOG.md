@@ -351,6 +351,131 @@ All tables have RLS enabled with appropriate policies:
 - Database backups and migrations
 - Monitoring and analytics
 
+## Known Issues & Bug Tracking
+
+### High Priority
+
+#### 1. Google Maps API Key Management ⚠️
+**Status**: Partial - Manual input required
+**Files**: `src/components/GoogleMap.tsx:43-199`
+**Repro Steps**:
+1. Navigate to any page with Google Maps component
+2. Observe "Google Maps API Key Required" prompt
+3. Must manually enter API key each session
+
+**Expected vs Actual**:
+- **Expected**: API key loaded from environment variables automatically
+- **Actual**: Requires manual user input stored in localStorage
+
+**Likely Cause**: 
+- Missing environment variable configuration
+- No fallback to `VITE_GOOGLE_MAPS_API_KEY` or similar
+- Component relies on localStorage instead of build-time env vars
+
+**Ownership**: Cursor
+**Suggested Fix**: 
+- Add `VITE_GOOGLE_MAPS_API_KEY` to environment variables
+- Modify GoogleMap component to check `import.meta.env.VITE_GOOGLE_MAPS_API_KEY` first
+- Fallback to localStorage only if env var not available
+- Update `.env.example` with required Google Maps API key
+
+#### 2. Missing Environment Variable Documentation ⚠️
+**Status**: Partial - Incomplete setup instructions
+**Files**: No `.env.example` file exists
+**Repro Steps**:
+1. Clone repository
+2. Try to run `npm run dev`
+3. Missing environment variable guidance
+
+**Expected vs Actual**:
+- **Expected**: Clear `.env.example` with all required variables
+- **Actual**: No environment variable template provided
+
+**Likely Cause**: 
+- Environment variables not documented in setup process
+- Missing template file for new developers
+
+**Ownership**: Cursor
+**Suggested Fix**:
+- Create `.env.example` with all required variables
+- Update README.md with environment setup instructions
+
+### Medium Priority
+
+#### 3. Error Handling in Google Maps Component ⚠️
+**Status**: Partial - Basic error handling only
+**Files**: `src/components/GoogleMap.tsx:64-66`
+**Repro Steps**:
+1. Enter invalid Google Maps API key
+2. Observe generic error message
+3. No specific error handling for different failure types
+
+**Expected vs Actual**:
+- **Expected**: Specific error messages for different failure types
+- **Actual**: Generic "Failed to load Google Maps" error
+
+**Likely Cause**: 
+- Basic error handling in script.onerror
+- No differentiation between error types
+
+**Ownership**: Cursor
+**Suggested Fix**:
+- Add specific error handling for different Google Maps API errors
+- Implement retry logic for network failures
+- Add user-friendly error messages with troubleshooting tips
+
+## Cursor Workflow Guide
+
+### Safe Development Practices
+1. **Always work in development branch**
+2. **Test changes locally before committing**
+3. **Use proper migration tools for database changes**
+4. **Follow existing code patterns and conventions**
+5. **Document all changes in this DEVLOG.md**
+
+### Areas Safe for Cursor Editing
+- `docs/` directory - All documentation files
+- `src/components/[feature].tsx` - Feature-specific components
+- `src/pages/` - Page components (layout and styling)
+- `src/hooks/` - Custom React hooks
+- `src/lib/` - Utility functions
+- Configuration files (environment, deployment)
+- Static assets and content
+- Test files
+
+### Areas to Avoid Modifying
+- `src/components/ui/` - shadcn/ui components (Lovable-generated)
+- `src/integrations/supabase/` - Core Supabase integration
+- `supabase/migrations/` - Database schema changes
+- `package.json` - Dependencies and scripts
+- Core authentication flows
+- AI search functions
+- Database RLS policies
+
+### Adding New Features
+1. Create feature branch from main
+2. Implement changes in appropriate directories
+3. Add tests for new functionality
+4. Update documentation
+5. Test thoroughly in development
+6. Create pull request with detailed description
+
+## Development Notes
+
+### Architecture Decisions
+- **State Management**: Using TanStack React Query for server state
+- **Form Handling**: React Hook Form with Zod validation
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **Real-time**: Supabase subscriptions for live updates
+- **Error Handling**: React Error Boundaries throughout app
+
+### Performance Considerations
+- Database queries optimized with proper indexing
+- Image optimization with lazy loading
+- Code splitting implemented
+- Caching strategy with React Query
+- Real-time subscriptions optimized for bandwidth
+
 ## Future Development Considerations
 
 ### Scalability

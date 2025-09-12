@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Calendar, CalendarIcon, Download, Building2, Phone, Mail, Globe, Linkedin, Youtube, Facebook, Instagram, MessageCircle, Clock, CheckCircle } from "lucide-react";
+import { Calendar, CalendarIcon, Download, Building2, Phone, Mail, Globe, Linkedin, Youtube, Facebook, Instagram, MessageCircle, Clock, CheckCircle, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -504,23 +505,73 @@ const BusinessRegistration = () => {
               </div>
 
               {/* Additional Notes */}
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Additional Notes or Message</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Any additional information you'd like to share..."
-                        className="min-h-[100px]"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  {/* Business Location */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      Business Location (Optional)
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Help customers find you by providing your business address or location details.
+                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="business-address">Business Address</Label>
+                        <Textarea 
+                          id="business-address"
+                          placeholder="e.g., Victoria House, Victoria, Mahé, Seychelles"
+                          className="mt-2"
+                          rows={2}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="coordinates">GPS Coordinates (Optional)</Label>
+                          <Input 
+                            id="coordinates"
+                            placeholder="e.g., -4.6191, 55.4513"
+                            className="mt-2"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Format: Latitude, Longitude
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="island">Island</Label>
+                          <Select>
+                            <SelectTrigger className="mt-2">
+                              <SelectValue placeholder="Select island" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="mahe">Mahé</SelectItem>
+                              <SelectItem value="praslin">Praslin</SelectItem>
+                              <SelectItem value="la-digue">La Digue</SelectItem>
+                              <SelectItem value="silhouette">Silhouette</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Additional Notes or Message</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Any additional information you'd like to share..."
+                            className="min-h-[100px]"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
               <Button type="submit" size="lg" className="w-full" disabled={loading}>
                 {loading ? "Submitting..." : "Request Appointment"}

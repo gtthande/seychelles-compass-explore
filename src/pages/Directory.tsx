@@ -144,14 +144,18 @@ const Directory = () => {
 
   useEffect(() => {
     fetchBusinesses();
-    
-    // Check for URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const categoryParam = urlParams.get('category');
-    if (categoryParam) {
-      setSelectedCategory(categoryParam);
-    }
   }, []);
+
+  useEffect(() => {
+    // Check for URL parameters after categories and businesses are loaded
+    if (categories.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const categoryParam = urlParams.get('category');
+      if (categoryParam && categories.some(cat => cat.value === categoryParam)) {
+        setSelectedCategory(categoryParam);
+      }
+    }
+  }, [categories]);
 
   useEffect(() => {
     // Apply all filters

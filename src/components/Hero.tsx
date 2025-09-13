@@ -4,7 +4,7 @@ import { useLiveCounters } from "@/hooks/useLiveCounters";
 import { useHeroSection } from "@/hooks/useHeroSection";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import { useState } from "react";
-import heroImage from "@/assets/hero-seychelles-beach.jpg";
+// Hero image is now persistently stored in public/assets/hero.jpg
 
 const Hero = () => {
   const { counters, loading } = useLiveCounters();
@@ -19,7 +19,7 @@ const Hero = () => {
         style={{ 
           backgroundImage: heroSection?.image_url 
             ? `url(${heroSection.image_url})` 
-            : `url(${heroImage})`
+            : `url(/assets/hero.jpg)`
         }}
       />
       

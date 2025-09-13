@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,20 @@ import SettingsManager from "@/components/admin/SettingsManager";
 
 const AdminPanel = () => {
   const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Determine default tab based on URL
+  const getDefaultTab = () => {
+    if (location.pathname === '/admin/settings') {
+      return 'settings';
+    }
+    return 'hero';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getDefaultTab());
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -41,6 +54,20 @@ const AdminPanel = () => {
 
     checkAdminStatus();
   }, [user, authLoading]);
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    setActiveTab(getDefaultTab());
+  }, [location.pathname]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === 'settings') {
+      navigate('/admin/settings');
+    } else {
+      navigate('/admin');
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -108,7 +135,7 @@ const AdminPanel = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="hero" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="hero" className="flex items-center gap-2">
             <Image className="w-4 h-4" />

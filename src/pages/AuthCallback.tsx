@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, CheckCircle, XCircle, RefreshCw, Home } from "lucide-react";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -93,6 +94,17 @@ const AuthCallback = () => {
     }
   };
 
+  const handleRetry = () => {
+    setStatus('loading');
+    setErrorMessage('');
+    // Retry the auth callback
+    window.location.reload();
+  };
+
+  const handleGoHome = () => {
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
       <Card className="w-full max-w-md text-center">
@@ -118,12 +130,34 @@ const AuthCallback = () => {
                   <li>• Invalid verification token</li>
                 </ul>
               </div>
-              <button 
-                onClick={() => navigate('/auth')} 
-                className="text-primary hover:underline text-sm"
-              >
-                Try signing up again
-              </button>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  onClick={handleRetry}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+                <Button 
+                  onClick={() => navigate('/auth')} 
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                >
+                  Go to Sign In
+                </Button>
+                <Button 
+                  onClick={handleGoHome}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                >
+                  <Home className="w-4 h-4 mr-2" />
+                  Go Home
+                </Button>
+              </div>
             </div>
           )}
           {status === 'success' && (

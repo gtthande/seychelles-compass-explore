@@ -8,6 +8,7 @@ import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image } from "l
 import CategoryManager from "@/components/admin/CategoryManager";
 import AppointmentManager from "@/components/admin/AppointmentManager";
 import HeroSectionManager from "@/components/admin/HeroSectionManager";
+import DataSeeder from "@/components/admin/DataSeeder";
 
 const AdminPanel = () => {
   const { user, loading: authLoading } = useAuth();
@@ -179,19 +180,22 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="settings">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Settings</CardTitle>
-              <CardDescription>
-                Configure global settings and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                System settings functionality coming soon...
-              </p>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <DataSeeder />
+            <Card>
+              <CardHeader>
+                <CardTitle>System Settings</CardTitle>
+                <CardDescription>
+                  Configure global settings and preferences
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Additional system settings functionality coming soon...
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

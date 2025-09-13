@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin } from 'lucide-react';
+import { MapPin, Loader2 } from 'lucide-react';
+import { useGoogleMapsApiKey } from '@/hooks/useGoogleMapsApiKey';
 
 interface Business {
   id: string;
@@ -40,8 +41,9 @@ const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMap
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  const [apiKey, setApiKey] = useState('');
+  const [manualApiKey, setManualApiKey] = useState('');
   const [showApiInput, setShowApiInput] = useState(false);
+  const { apiKey, loading: apiKeyLoading, error: apiKeyError } = useGoogleMapsApiKey();
 
   // Check if Google Maps is loaded
   const isGoogleMapsLoaded = () => {
@@ -148,15 +150,22 @@ const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMap
   };
 
   useEffect(() => {
-    // Try to get API key from localStorage first
-    const savedApiKey = localStorage.getItem('google_maps_api_key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-      loadGoogleMaps(savedApiKey);
+    if (apiKeyLoading) return;
+    
+    if (apiKey) {
+      loadGoogleMaps(apiKey);
+    } else if (apiKeyError) {
+      // Fallback to localStorage if database fetch failed
+      const savedApiKey = localStorage.getItem('google_maps_api_key');
+      if (savedApiKey) {
+        loadGoogleMaps(savedApiKey);
+      } else {
+        setShowApiInput(true);
+      }
     } else {
       setShowApiInput(true);
     }
-  }, []);
+  }, [apiKey, apiKeyLoading, apiKeyError]);
 
   useEffect(() => {
     if (map && businesses.length > 0) {
@@ -173,12 +182,23 @@ const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMap
 
   const handleApiKeySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (apiKey.trim()) {
-      localStorage.setItem('google_maps_api_key', apiKey);
+    if (manualApiKey.trim()) {
+      localStorage.setItem('google_maps_api_key', manualApiKey);
       setShowApiInput(false);
-      loadGoogleMaps(apiKey);
+      loadGoogleMaps(manualApiKey);
     }
   };
+
+  if (apiKeyLoading) {
+    return (
+      <div className="w-full h-96 bg-muted rounded-lg flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading map configuration...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showApiInput) {
     return (
@@ -187,16 +207,19 @@ const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMap
           <MapPin className="w-16 h-16 mx-auto text-muted-foreground" />
           <h3 className="text-lg font-semibold">Google Maps API Key Required</h3>
           <p className="text-sm text-muted-foreground">
-            To display the map, please enter your Google Maps API key. You can get one from the Google Cloud Console.
+            {apiKeyError 
+              ? 'Unable to load API key from server. Please enter your Google Maps API key manually.'
+              : 'To display the map, please enter your Google Maps API key. You can get one from the Google Cloud Console.'
+            }
           </p>
           <form onSubmit={handleApiKeySubmit} className="space-y-3">
             <Input
               type="text"
               placeholder="Enter Google Maps API Key"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              value={manualApiKey}
+              onChange={(e) => setManualApiKey(e.target.value)}
             />
-            <Button type="submit" disabled={!apiKey.trim()}>
+            <Button type="submit" disabled={!manualApiKey.trim()}>
               Load Map
             </Button>
           </form>

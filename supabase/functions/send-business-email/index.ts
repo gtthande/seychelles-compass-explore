@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { getApiKey } from './_shared/get-api-key.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +52,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const resendApiKey = await getApiKey('RESEND_API_KEY');
+    if (!resendApiKey) {
+      throw new Error('Resend API key not configured in admin settings');
+    }
+
+    const resend = new Resend(resendApiKey);
     const requestData = await req.json();
 
     // Handle appointment request emails

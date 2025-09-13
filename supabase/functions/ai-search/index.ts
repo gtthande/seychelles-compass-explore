@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getApiKey } from './_shared/get-api-key.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,9 +16,9 @@ serve(async (req) => {
   try {
     const { query } = await req.json();
     
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const openAIApiKey = await getApiKey('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+      throw new Error('OpenAI API key not configured in admin settings');
     }
 
     // Initialize Supabase client

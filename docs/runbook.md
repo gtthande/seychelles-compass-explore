@@ -212,12 +212,59 @@ npm run dev
 **Error**: "Google Maps API Key Required" prompt
 **Solution**:
 ```bash
-# Add to .env.local
-VITE_GOOGLE_MAPS_API_KEY=your_actual_api_key
-
-# Restart development server
-npm run dev
+# API keys are now managed via Admin Panel
+# Navigate to /admin/settings and configure Google Maps API key
+# Or manually enter key in the map component (fallback)
 ```
+
+### Admin Panel Issues
+
+#### 3. Hero image not loading
+**Error**: Hero section shows placeholder or broken image
+**Solution**:
+- Verify `/public/assets/hero.jpg` exists and is referenced in `Hero.tsx`
+- Check image path in hero section settings via admin panel
+- Ensure image file is properly uploaded to public assets
+
+#### 4. Shortcut icons missing
+**Error**: Category grid shows missing icons
+**Solution**:
+- Confirm `/public/assets/shortcuts/` files exist
+- Verify paths are correct in `CategoryGrid.tsx`
+- Check icon file extensions and naming conventions
+
+#### 5. Demo data not seeding
+**Error**: Database appears empty or missing test data
+**Solution**:
+- Ensure Supabase connection is active
+- Run seed script manually: `npm run seed`
+- Check admin panel data seeder component
+- Verify database migrations are applied
+
+#### 6. Local run issues
+**Error**: Development server fails to start or has runtime errors
+**Solution**:
+- Check `.env` values (Supabase keys, API keys) are valid
+- Verify all dependencies are installed: `npm install`
+- Check for TypeScript errors: `npm run lint`
+- Ensure port 5173 is available
+
+#### 7. Broken imports
+**Error**: Module not found or import errors
+**Solution**:
+- Ensure no references to deleted Lovable placeholder files remain
+- Check import paths are correct and files exist
+- Verify component exports are properly defined
+- Run `npm run build` to catch build-time import issues
+
+#### 8. API Key Configuration Issues
+**Error**: External services (OpenAI, Resend, Google Maps) not working
+**Solution**:
+- Navigate to `/admin/settings` in the admin panel
+- Configure API keys through the secure settings interface
+- Ensure you have admin privileges to access settings
+- Check that keys are valid and have proper permissions
+- Verify edge functions are deployed with updated code
 
 #### 3. Supabase Connection Issues
 **Error**: Supabase client connection failed

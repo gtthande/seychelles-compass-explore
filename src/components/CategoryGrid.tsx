@@ -17,6 +17,10 @@ import {
   Package,
   Briefcase
 } from "lucide-react";
+import restaurantImage from "@/assets/category-restaurant.jpg";
+import hotelImage from "@/assets/category-hotels.jpg";
+import divingImage from "@/assets/category-diving.jpg";
+import retailImage from "@/assets/category-retail.jpg";
 
 interface Category {
   id: string;
@@ -70,6 +74,18 @@ const getColorForCategory = (index: number) => {
   ];
   
   return colors[index % colors.length];
+};
+
+const getImageForCategory = (slug: string) => {
+  const imageMap: Record<string, string> = {
+    food: restaurantImage,
+    accommodation: hotelImage,
+    tours: divingImage,
+    retail: retailImage,
+    'water-sports': divingImage,
+  };
+  
+  return imageMap[slug] || null;
 };
 
 const CategoryGrid = () => {
@@ -205,18 +221,35 @@ const CategoryGrid = () => {
           {categories.map((category, index) => {
             const IconComponent = getIconForCategory(category.slug);
             const colorGradient = getColorForCategory(index);
+            const categoryImage = getImageForCategory(category.slug);
             
             return (
               <Card 
                 key={category.id}
-                className="group cursor-pointer hover:shadow-card-hover transition-all duration-300 border-border/50 hover:border-primary/30 animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className="group cursor-pointer hover:shadow-card-hover transition-all duration-300 border-border/50 hover:border-primary/30 animate-fade-in overflow-hidden"
+                style={{ animationDelay: `${index * 0.1}s`, boxShadow: 'var(--card-shadow)' }}
                 onClick={() => handleCategoryClick(category)}
               >
-                <CardContent className="p-6 text-center">
-                  <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${colorGradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                    <IconComponent className="h-8 w-8 text-white" />
+                {categoryImage && (
+                  <div className="relative h-32 overflow-hidden">
+                    <img 
+                      src={categoryImage} 
+                      alt={category.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    <div className={`absolute top-3 left-3 w-10 h-10 rounded-full bg-gradient-to-r ${colorGradient} flex items-center justify-center shadow-lg`}>
+                      <IconComponent className="h-5 w-5 text-white" />
+                    </div>
                   </div>
+                )}
+                
+                <CardContent className={`${categoryImage ? 'p-4' : 'p-6'} text-center`}>
+                  {!categoryImage && (
+                    <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${colorGradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                      <IconComponent className="h-8 w-8 text-white" />
+                    </div>
+                  )}
                   
                   <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                     {category.name}

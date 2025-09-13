@@ -8,45 +8,46 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Clean Neutral Theme */
-    --background: 0 0% 100%;
-    --foreground: 210 11% 15%;
+    /* Seychelles Ocean Theme */
+    --background: 195 10% 99%;
+    --foreground: 200 15% 20%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 210 11% 15%;
+    --card: 195 20% 98%;
+    --card-foreground: 200 15% 20%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 11% 15%;
+    --popover: 195 20% 98%;
+    --popover-foreground: 200 15% 20%;
 
-    /* Professional Blue Primary */
-    --primary: 210 100% 50%;
+    /* Seychelles Turquoise Primary */
+    --primary: 186 85% 45%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 210 100% 97%;
-    --primary-dark: 210 100% 40%;
+    --primary-light: 186 85% 95%;
+    --primary-dark: 186 85% 35%;
 
-    /* Neutral Gray Secondary */
-    --secondary: 210 11% 97%;
-    --secondary-foreground: 210 11% 15%;
+    /* Coral Accent */
+    --secondary: 186 25% 92%;
+    --secondary-foreground: 200 15% 25%;
 
-    --muted: 210 11% 96%;
-    --muted-foreground: 210 6% 46%;
+    --muted: 190 15% 94%;
+    --muted-foreground: 200 10% 50%;
 
-    --accent: 210 11% 96%;
-    --accent-foreground: 210 11% 15%;
+    --accent: 35 85% 85%;
+    --accent-foreground: 200 15% 25%;
 
-    --destructive: 0 100% 50%;
+    --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 11% 91%;
-    --input: 210 11% 95%;
-    --ring: 210 100% 50%;
+    --border: 190 20% 88%;
+    --input: 190 15% 92%;
+    --ring: 186 85% 45%;
 
-    /* Clean Professional Design Tokens */
-    --neutral-gradient: linear-gradient(135deg, hsl(210 11% 96%), hsl(210 11% 98%));
-    --hero-gradient: linear-gradient(135deg, hsl(210 100% 50%) 0%, hsl(210 100% 45%) 50%, hsl(210 11% 96%) 100%);
-    --card-shadow: 0 1px 3px 0 hsl(210 11% 15% / 0.1), 0 1px 2px 0 hsl(210 11% 15% / 0.06);
-    --card-shadow-hover: 0 4px 6px -1px hsl(210 11% 15% / 0.1), 0 2px 4px -1px hsl(210 11% 15% / 0.06);
-    --glow-shadow: 0 0 15px hsl(210 100% 50% / 0.15);
+    /* Seychelles Design Tokens */
+    --ocean-gradient: linear-gradient(135deg, hsl(186 85% 45%), hsl(195 75% 55%), hsl(205 65% 65%));
+    --tropical-gradient: linear-gradient(135deg, hsl(186 85% 45%) 0%, hsl(35 85% 75%) 100%);
+    --hero-overlay: linear-gradient(135deg, hsl(186 85% 25% / 0.7), hsl(200 50% 15% / 0.6));
+    --card-shadow: 0 4px 12px hsl(186 85% 45% / 0.08);
+    --card-shadow-hover: 0 8px 24px hsl(186 85% 45% / 0.15);
+    --tropical-glow: 0 0 30px hsl(186 85% 45% / 0.3);
     
     /* Smooth Transitions */
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -65,33 +66,42 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 210 11% 3%;
-    --foreground: 210 11% 98%;
+    /* Seychelles Night Theme */
+    --background: 200 20% 8%;
+    --foreground: 186 15% 95%;
 
-    --card: 210 11% 3%;
-    --card-foreground: 210 11% 98%;
+    --card: 200 25% 10%;
+    --card-foreground: 186 15% 95%;
 
-    --popover: 210 11% 3%;
-    --popover-foreground: 210 11% 98%;
+    --popover: 200 25% 10%;
+    --popover-foreground: 186 15% 95%;
 
-    --primary: 210 100% 60%;
-    --primary-foreground: 210 11% 3%;
+    --primary: 186 85% 55%;
+    --primary-foreground: 200 20% 8%;
 
-    --secondary: 210 11% 10%;
-    --secondary-foreground: 210 11% 98%;
+    --secondary: 200 20% 15%;
+    --secondary-foreground: 186 15% 95%;
 
-    --muted: 210 11% 10%;
-    --muted-foreground: 210 6% 63%;
+    --muted: 200 15% 15%;
+    --muted-foreground: 186 10% 65%;
 
-    --accent: 210 11% 10%;
-    --accent-foreground: 210 11% 98%;
+    --accent: 35 75% 25%;
+    --accent-foreground: 186 15% 95%;
 
-    --destructive: 0 100% 50%;
-    --destructive-foreground: 210 11% 98%;
+    --destructive: 0 75% 65%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 210 11% 15%;
-    --input: 210 11% 15%;
-    --ring: 210 100% 60%;
+    --border: 200 20% 20%;
+    --input: 200 15% 18%;
+    --ring: 186 85% 55%;
+
+    /* Seychelles Night Design Tokens */
+    --ocean-gradient: linear-gradient(135deg, hsl(186 85% 25%), hsl(195 65% 35%), hsl(205 55% 45%));
+    --tropical-gradient: linear-gradient(135deg, hsl(186 85% 25%) 0%, hsl(35 75% 45%) 100%);
+    --hero-overlay: linear-gradient(135deg, hsl(186 85% 15% / 0.8), hsl(200 50% 8% / 0.7));
+    --card-shadow: 0 4px 12px hsl(200 20% 5% / 0.3);
+    --card-shadow-hover: 0 8px 24px hsl(200 20% 5% / 0.4);
+    --tropical-glow: 0 0 30px hsl(186 85% 55% / 0.4);
     
     --sidebar-background: 210 11% 5%;
     --sidebar-foreground: 210 11% 95%;

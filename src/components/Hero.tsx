@@ -4,6 +4,7 @@ import { useLiveCounters } from "@/hooks/useLiveCounters";
 import { useHeroSection } from "@/hooks/useHeroSection";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import { useState } from "react";
+import heroImage from "@/assets/hero-seychelles-beach.jpg";
 
 const Hero = () => {
   const { counters, loading } = useLiveCounters();
@@ -11,17 +12,19 @@ const Hero = () => {
   const [searchValue, setSearchValue] = useState("");
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-neutral-gradient">
-      {/* Background image if available */}
-      {heroSection?.image_url && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${heroSection.image_url})` }}
-        />
-      )}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Seychelles Beach Background */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+        style={{ 
+          backgroundImage: heroSection?.image_url 
+            ? `url(${heroSection.image_url})` 
+            : `url(${heroImage})`
+        }}
+      />
       
-      {/* Clean background overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background/80 to-accent/20" />
+      {/* Tropical overlay for readability */}
+      <div className="absolute inset-0" style={{ background: 'var(--hero-overlay)' }} />
       
       {/* Hero Content */}
       <div className="relative z-10 container mx-auto px-4 text-center text-foreground">
@@ -47,11 +50,11 @@ const Hero = () => {
           
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-12">
-            <div className="relative bg-card border border-border rounded-full p-2 shadow-card">
+            <div className="relative bg-card/95 backdrop-blur-sm border border-border/50 rounded-full p-2" style={{ boxShadow: 'var(--card-shadow)' }}>
               <SearchWithTypeahead
                 value={searchValue}
                 onChange={setSearchValue}
-                placeholder="What are you looking for today?"
+                placeholder="Discover Seychelles businesses & services..."
               />
             </div>
           </div>
@@ -99,10 +102,10 @@ const Hero = () => {
         </div>
       </div>
       
-      {/* Simple scroll indicator */}
+      {/* Tropical scroll indicator */}
       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-float">
-        <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-muted-foreground/50 rounded-full mt-2 animate-pulse"></div>
+        <div className="w-6 h-10 border-2 border-card/60 backdrop-blur-sm rounded-full flex justify-center">
+          <div className="w-1 h-3 bg-primary rounded-full mt-2 animate-pulse"></div>
         </div>
       </div>
     </section>

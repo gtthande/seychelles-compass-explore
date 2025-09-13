@@ -23,6 +23,7 @@ const DataSeeder = () => {
       description: "Professional diving services in the beautiful waters of Seychelles. We offer PADI courses, equipment rental, and guided dives to the best spots around the islands.",
       category: "tourism",
       status: "active",
+      owner_id: "00000000-0000-0000-0000-000000000001", // Demo owner ID
       phone: "+248 2 123 456",
       whatsapp: "+248 2 123 456",
       email: "info@paradisedive.sc",
@@ -53,6 +54,7 @@ const DataSeeder = () => {
       description: "Authentic Seychellois cuisine with a modern twist. We serve traditional dishes made with fresh local ingredients and spices.",
       category: "restaurants",
       status: "active",
+      owner_id: "00000000-0000-0000-0000-000000000002", // Demo owner ID
       phone: "+248 2 234 567",
       whatsapp: "+248 2 234 567",
       email: "hello@spicecafe.sc",
@@ -83,6 +85,7 @@ const DataSeeder = () => {
       description: "Discover the natural beauty of Praslin Island with our guided tours. Visit Vallée de Mai, Anse Lazio, and other stunning locations.",
       category: "tourism",
       status: "active",
+      owner_id: "00000000-0000-0000-0000-000000000003", // Demo owner ID
       phone: "+248 2 345 678",
       whatsapp: "+248 2 345 678",
       email: "tours@praslin.sc",

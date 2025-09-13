@@ -472,6 +472,30 @@ export type Database = {
           },
         ]
       }
+      hero_section: {
+        Row: {
+          id: string
+          title: string
+          subtitle: string | null
+          image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          subtitle?: string | null
+          image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          subtitle?: string | null
+          image_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

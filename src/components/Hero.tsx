@@ -1,31 +1,49 @@
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Users, Star } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
+import { useHeroSection } from "@/hooks/useHeroSection";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import { useState } from "react";
 
 const Hero = () => {
   const { counters, loading } = useLiveCounters();
+  const { heroSection, loading: heroLoading } = useHeroSection();
   const [searchValue, setSearchValue] = useState("");
 
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-neutral-gradient">
-      {/* Clean background without stock imagery */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/20" />
+      {/* Background image if available */}
+      {heroSection?.image_url && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroSection.image_url})` }}
+        />
+      )}
+      
+      {/* Clean background overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background/80 to-accent/20" />
       
       {/* Hero Content */}
       <div className="relative z-10 container mx-auto px-4 text-center text-foreground">
         <div className="max-w-4xl mx-auto animate-fade-in">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Explore
-            <span className="block bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
-              Seychelles
-            </span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl mb-8 text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Find trusted businesses, discover local services, and explore everything Seychelles has to offer
-          </p>
+          {heroLoading ? (
+            <div className="space-y-6">
+              <div className="animate-pulse">
+                <div className="h-16 md:h-20 bg-muted rounded w-3/4 mx-auto mb-6"></div>
+                <div className="h-6 md:h-8 bg-muted rounded w-1/2 mx-auto mb-8"></div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+                {heroSection?.title || 'Welcome to iCompass Seychelles'}
+              </h1>
+              
+              <p className="text-xl md:text-2xl mb-8 text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                {heroSection?.subtitle || 'Find trusted businesses, discover local services, and explore everything Seychelles has to offer'}
+              </p>
+            </>
+          )}
           
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-12">

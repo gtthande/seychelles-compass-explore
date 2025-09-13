@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Settings, Users, Package, FolderOpen, Calendar } from "lucide-react";
+import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image } from "lucide-react";
 import CategoryManager from "@/components/admin/CategoryManager";
 import AppointmentManager from "@/components/admin/AppointmentManager";
+import HeroSectionManager from "@/components/admin/HeroSectionManager";
 
 const AdminPanel = () => {
   const { user, loading: authLoading } = useAuth();
@@ -105,8 +106,12 @@ const AdminPanel = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="appointments" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="hero" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="hero" className="flex items-center gap-2">
+            <Image className="w-4 h-4" />
+            Hero Section
+          </TabsTrigger>
           <TabsTrigger value="appointments" className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             Appointments
@@ -128,6 +133,10 @@ const AdminPanel = () => {
             Settings
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="hero">
+          <HeroSectionManager />
+        </TabsContent>
 
         <TabsContent value="appointments">
           <AppointmentManager />

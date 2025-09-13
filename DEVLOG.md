@@ -146,28 +146,38 @@ iCompass Seychelles is a comprehensive business directory and registration platf
 
 ### 6. Admin Panel System
 
-**Purpose**: Administrative oversight of businesses, appointments, and users.
+**Purpose**: Administrative oversight of businesses, appointments, users, and site content.
 
 **Components Involved**:
 - `src/pages/AdminPanel.tsx` - Main admin interface
 - `src/components/admin/AppointmentManager.tsx` - Appointment management
 - `src/components/admin/CategoryManager.tsx` - Category management
+- `src/components/admin/HeroSectionManager.tsx` - Hero section content management
 
 **Supabase Tables**:
 - `audit_logs` - System activity tracking
   - Fields: table_name, record_id, action, user_id, old_values, new_values
+- `hero_section` - Homepage hero section content
+  - Fields: id, title, subtitle, image_url, updated_at
 
 **Database Functions**:
 - `is_admin()` - Check admin status
 - `get_live_counters()` - Dashboard statistics
 - `audit_trigger()` - Automatic audit logging
+- `update_updated_at_column()` - Automatic timestamp updates
 
 **Logic & Validation**:
 - Role-based access control
 - Appointment status management (pending → approved/rejected)
 - Business verification system
 - Category management (create, edit, deactivate)
+- Hero section content management with image upload
 - Real-time statistics and counters
+
+**RLS Policies**:
+- `Anyone can view hero section` - Public access to hero content
+- `Admins can update hero section` - Admin-only content editing
+- `Admins can insert hero section` - Admin-only content creation
 
 ### 7. Search & Discovery Features
 
@@ -308,6 +318,33 @@ All tables have RLS enabled with appropriate policies:
 
 ### AI Services
 - OpenAI API for image analysis and search
+
+## Recent Updates
+
+### Hero Section Refactoring (January 2025)
+
+**Purpose**: Made the homepage hero section fully editable through the admin panel.
+
+**Changes Made**:
+- **Database**: Created `hero_section` table with title, subtitle, image_url, and updated_at fields
+- **Migration**: `20250113000000_create_hero_section_table.sql` - Includes RLS policies and default data
+- **Components**: 
+  - Updated `src/components/Hero.tsx` to fetch data dynamically from Supabase
+  - Created `src/hooks/useHeroSection.ts` for data management
+  - Added `src/components/admin/HeroSectionManager.tsx` for admin editing
+- **Admin Panel**: Extended `src/pages/AdminPanel.tsx` with new "Hero Section" tab
+- **Types**: Updated `src/integrations/supabase/types.ts` with hero_section table definitions
+
+**Features**:
+- Dynamic hero content loading with fallback to default values
+- Admin-only image upload to Supabase storage (hero/ folder)
+- Real-time content updates without page refresh
+- Background image support with overlay for text readability
+- Form validation and error handling
+
+**Ownership**: 
+- **Original Implementation**: Lovable (hard-coded hero section)
+- **Refactoring**: Cursor (migrated to Supabase with admin editing capabilities)
 
 ## Development Notes
 

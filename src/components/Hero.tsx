@@ -41,35 +41,30 @@ const Hero = () => {
       {/* Hero Content */}
       <div className="relative z-10 container mx-auto px-4 text-center text-white pt-4 md:pt-8">
         <div className="max-w-5xl mx-auto">
-          {/* Hero Text with Desktop-Only Overlay */}
-          <div className="relative">
-            {/* Desktop-only semi-transparent overlay behind text */}
-            <div className="hidden md:block absolute inset-0 bg-black/30 rounded-2xl -m-6 md:-m-8 lg:-m-12"></div>
-            
-            <div className="relative p-6 md:p-8 lg:p-12">
-              {heroLoading ? (
-                <div className="space-y-8">
-                  <div className="animate-pulse">
-                    <div className="h-20 md:h-24 bg-white/20 rounded-lg w-4/5 mx-auto mb-8"></div>
-                    <div className="h-8 md:h-10 bg-white/15 rounded-lg w-3/5 mx-auto mb-12"></div>
-                  </div>
+          {/* Hero Text - Clean without overlay */}
+          <div className="p-6 md:p-8 lg:p-12">
+            {heroLoading ? (
+              <div className="space-y-8">
+                <div className="animate-pulse">
+                  <div className="h-20 md:h-24 bg-white/20 rounded-lg w-4/5 mx-auto mb-8"></div>
+                  <div className="h-8 md:h-10 bg-white/15 rounded-lg w-3/5 mx-auto mb-12"></div>
                 </div>
-              ) : (
-                <div className="space-y-8 animate-fade-in">
-                  {/* Main Title with Gradient Text */}
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 md:mb-8 leading-tight">
-                    <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
-                      {heroSection ? heroSection.title : 'Explore Seychelles'}
-                    </span>
-                  </h1>
-                  
-                  {/* Subtitle with Better Typography */}
-                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 mb-8 md:mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
-                    {heroSection ? heroSection.subtitle : 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
-                  </p>
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-8 animate-fade-in">
+                {/* Main Title with Gradient Text */}
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 md:mb-8 leading-tight">
+                  <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
+                    {heroSection ? heroSection.title : 'Explore Seychelles'}
+                  </span>
+                </h1>
+                
+                {/* Subtitle with Better Typography */}
+                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 mb-8 md:mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
+                  {heroSection ? heroSection.subtitle : 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
+                </p>
+              </div>
+            )}
           </div>
           
           {/* Clean Search Bar - No shadows, borders, or backgrounds */}

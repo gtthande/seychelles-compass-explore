@@ -588,6 +588,18 @@ git pull origin main
 - **Build Errors**: Run `npm install` to ensure dependencies are up to date
 - **Styling Issues**: Check that Tailwind classes are properly applied and not overridden
 
+### Hero Section Fix
+
+**Issue**: JSX syntax error causing build failures with "Expected corresponding JSX closing tag for <section>"
+
+**Solution**:
+1. Ensure all JSX tags are properly nested and closed
+2. Check for missing closing tags in Hero.tsx component
+3. Remove any overlay styling that may interfere with background display
+4. Verify build with `npm run build` before committing
+
+**Current Status**: ✅ Fixed - Hero section now renders cleanly without overlay, showing background image clearly with proper text contrast and responsive design.
+
 ## Project Structure
 
 ```

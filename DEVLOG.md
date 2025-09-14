@@ -2,7 +2,37 @@
 
 ## Recent Updates
 
-### 🎨 Hero Section UI Enhancement (Latest - 2025-01-13)
+### 🔧 Hero Section Fix & JSX Syntax Correction (Latest - 2025-01-13)
+**Status**: ✅ Completed  
+**Description**: Fixed critical JSX syntax error, removed overlay for clean background display, and verified build stability.
+
+**Key Changes**:
+- **JSX Syntax Fix**: Corrected missing closing tag error at line 139 that was causing build failures
+- **Overlay Removal**: Removed desktop-only dark overlay (`bg-black/30`) to show background image clearly
+- **Clean Structure**: Simplified Hero layout with proper nesting and consistent closing tags
+- **Build Verification**: Confirmed `npm run build` completes successfully without errors
+- **Responsive Design**: Maintained clean, responsive layout with proper text centering
+- **Scroll Indicator**: Verified scroll indicator at bottom still functions correctly
+
+**Files Modified**:
+- `src/components/Hero.tsx` - Fixed JSX structure and removed overlay styling
+- `DEVLOG.md` - This documentation update
+- `README.md` - Added Hero Section Fix troubleshooting notes
+
+**Technical Details**:
+- Fixed JSX closing tag mismatch that was causing "Expected corresponding JSX closing tag for <section>" error
+- Removed `hidden md:block absolute inset-0 bg-black/30 rounded-2xl` overlay styling
+- Simplified Hero text container to clean `p-6 md:p-8 lg:p-12` padding
+- Maintained all existing functionality: search bar, stats cards, scroll indicator
+- Build now completes successfully in ~22 seconds without syntax errors
+
+**Ownership**: 
+- **JSX Syntax Fix**: Cursor (corrected critical build-breaking syntax error)
+- **Overlay Removal**: Cursor (cleaned up Hero section for better background visibility)
+
+---
+
+### 🎨 Hero Section UI Enhancement (2025-01-13)
 **Status**: ✅ Completed  
 **Description**: Improved Hero section with desktop-only text overlay and completely transparent search box for a clean, modern look.
 

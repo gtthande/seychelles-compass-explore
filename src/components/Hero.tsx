@@ -11,7 +11,7 @@ const Hero = () => {
   const [searchValue, setSearchValue] = useState("");
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-20">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 md:pt-32 pb-16 md:pb-20">
       {/* Persistent Seychelles Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -39,95 +39,96 @@ const Hero = () => {
       </div>
       
       {/* Hero Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center text-white pt-8">
+      <div className="relative z-10 container mx-auto px-4 text-center text-white pt-4 md:pt-8">
         <div className="max-w-5xl mx-auto">
-          {heroLoading ? (
-            <div className="space-y-8">
-              <div className="animate-pulse">
-                <div className="h-20 md:h-24 bg-white/20 rounded-lg w-4/5 mx-auto mb-8"></div>
-                <div className="h-8 md:h-10 bg-white/15 rounded-lg w-3/5 mx-auto mb-12"></div>
+          {/* Semi-transparent overlay behind text for better readability */}
+          <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 md:p-8 lg:p-12">
+            {heroLoading ? (
+              <div className="space-y-8">
+                <div className="animate-pulse">
+                  <div className="h-20 md:h-24 bg-white/20 rounded-lg w-4/5 mx-auto mb-8"></div>
+                  <div className="h-8 md:h-10 bg-white/15 rounded-lg w-3/5 mx-auto mb-12"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-8 animate-fade-in">
+                {/* Main Title with Gradient Text */}
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 md:mb-8 leading-tight">
+                  <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
+                    {heroSection ? heroSection.title : 'Explore Seychelles'}
+                  </span>
+                </h1>
+                
+                {/* Subtitle with Better Typography */}
+                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 mb-8 md:mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
+                  {heroSection ? heroSection.subtitle : 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
+                </p>
+              </div>
+            )}
+            
+            {/* Enhanced Search Bar */}
+            <div className="max-w-3xl mx-auto mb-16">
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary via-blue-500 to-cyan-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-1000"></div>
+                <div className="relative bg-white/95 backdrop-blur-md border border-white/20 rounded-full p-3 shadow-2xl">
+                  <SearchWithTypeahead
+                    value={searchValue}
+                    onChange={setSearchValue}
+                    placeholder="What are you looking for in Seychelles?"
+                    className="text-gray-800 placeholder:text-gray-500"
+                  />
+                </div>
               </div>
             </div>
-          ) : (
-            <div className="space-y-8 animate-fade-in">
-              {/* Main Title with Gradient Text */}
-              <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
-                <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
-                  {heroSection ? heroSection.title : 'Explore Seychelles'}
-                </span>
-              </h1>
+            
+            {/* Enhanced Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              <div className="group">
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="p-3 bg-primary/20 rounded-full">
+                      <Users className="h-10 w-10 text-white" />
+                    </div>
+                  </div>
+                  <div className="text-4xl font-bold text-white mb-2">
+                    {loading ? (
+                      <div className="animate-pulse bg-white/20 rounded h-10 w-16 mx-auto"></div>
+                    ) : (
+                      `${counters.businesses}+`
+                    )}
+                  </div>
+                  <p className="text-white/80 text-lg font-medium">Trusted Businesses</p>
+                </div>
+              </div>
               
-              {/* Subtitle with Better Typography */}
-              <p className="text-xl md:text-3xl mb-12 text-white/90 max-w-3xl mx-auto leading-relaxed font-light drop-shadow-lg">
-                {heroSection ? heroSection.subtitle : 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
-              </p>
-            </div>
-          )}
-          
-          {/* Enhanced Search Bar */}
-          <div className="max-w-3xl mx-auto mb-16">
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary via-blue-500 to-cyan-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-1000"></div>
-              <div className="relative bg-white/95 backdrop-blur-md border border-white/20 rounded-full p-3 shadow-2xl">
-                <SearchWithTypeahead
-                  value={searchValue}
-                  onChange={setSearchValue}
-                  placeholder="What are you looking for in Seychelles?"
-                  className="text-gray-800 placeholder:text-gray-500"
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* Enhanced Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-slide-up">
-            <div className="group">
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="p-3 bg-primary/20 rounded-full">
-                    <Users className="h-10 w-10 text-white" />
+              <div className="group">
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="p-3 bg-accent/20 rounded-full">
+                      <MapPin className="h-10 w-10 text-white" />
+                    </div>
                   </div>
+                  <div className="text-4xl font-bold text-white mb-2">15+</div>
+                  <p className="text-white/80 text-lg font-medium">Islands Covered</p>
                 </div>
-                <div className="text-4xl font-bold text-white mb-2">
-                  {loading ? (
-                    <div className="animate-pulse bg-white/20 rounded w-16 h-10 mx-auto" />
-                  ) : (
-                    `${counters.businesses}+`
-                  )}
-                </div>
-                <p className="text-white/80 text-lg font-medium">Trusted Businesses</p>
               </div>
-            </div>
-            
-            <div className="group">
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="p-3 bg-accent/20 rounded-full">
-                    <MapPin className="h-10 w-10 text-white" />
+              
+              <div className="group">
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="p-3 bg-yellow-500/20 rounded-full">
+                      <Star className="h-10 w-10 text-white" />
+                    </div>
                   </div>
-                </div>
-                <div className="text-4xl font-bold text-white mb-2">15+</div>
-                <p className="text-white/80 text-lg font-medium">Islands Covered</p>
-              </div>
-            </div>
-            
-            <div className="group">
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="p-3 bg-yellow-500/20 rounded-full">
-                    <Star className="h-10 w-10 text-white" />
+                  <div className="text-4xl font-bold text-white mb-2">
+                    {loading ? (
+                      <div className="animate-pulse bg-white/20 rounded h-10 w-16 mx-auto"></div>
+                    ) : (
+                      "New"
+                    )}
                   </div>
+                  <p className="text-white/80 text-lg font-medium">Quality Rating</p>
                 </div>
-                <div className="text-4xl font-bold text-white mb-2">
-                  {loading ? (
-                    <div className="animate-pulse bg-white/20 rounded w-16 h-10 mx-auto" />
-                  ) : counters.reviews > 0 ? (
-                    "4.8"
-                  ) : (
-                    "New"
-                  )}
-                </div>
-                <p className="text-white/80 text-lg font-medium">Quality Rating</p>
               </div>
             </div>
           </div>

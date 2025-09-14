@@ -18,6 +18,7 @@ A comprehensive business directory and registration platform for the Seychelles 
 - **Booking System**: Service appointment scheduling
 - **Real-time Features**: Live counters, search suggestions, and status updates
 - **Payments Subsystem**: Visa/Mastercard direct payments with optional Stripe integration
+- **Responsive Hero Section**: Beautiful Seychelles-themed hero with mobile-optimized design
 
 ### 🏗️ Architecture
 
@@ -472,6 +473,14 @@ STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 # For seeding (optional)
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
+
+### Hero Section Configuration
+The Hero section is fully responsive and includes:
+- **Responsive Design**: Automatically adjusts padding and text sizes for mobile/desktop
+- **Semi-transparent Overlay**: Ensures text readability on bright background images
+- **Admin Management**: Hero content can be edited via Admin Panel → Hero Section
+- **Background Image**: Uses `/public/assets/hero.jpg` (Seychelles-themed)
+- **Typography**: Scales from `text-4xl` on mobile to `text-8xl` on desktop
 
 ## Project Structure
 

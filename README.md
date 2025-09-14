@@ -17,6 +17,7 @@ A comprehensive business directory and registration platform for the Seychelles 
 - **Product/Service Showcase**: Business offerings with inventory management
 - **Booking System**: Service appointment scheduling
 - **Real-time Features**: Live counters, search suggestions, and status updates
+- **Payments Subsystem**: Visa/Mastercard direct payments with optional Stripe integration
 
 ### 🏗️ Architecture
 
@@ -38,6 +39,8 @@ The application uses Supabase PostgreSQL with comprehensive Row Level Security (
 - `reviews` - Customer feedback
 - `appointments` - Registration requests
 - `categories` - Business categories
+- `payments` - Payment transactions and processing
+- `app_settings` - System configuration and API keys
 
 ## Database Schema
 
@@ -141,6 +144,30 @@ Service booking system
 - total_price (numeric), currency (text)
 - booking_details (jsonb)
 - status (text, default: 'pending')
+- created_at, updated_at (timestamptz)
+```
+
+#### `payments`
+Payment transactions and processing
+```sql
+- id (uuid, PK)
+- user_id (uuid, FK to profiles)
+- amount (numeric, required)
+- currency (text, default: 'USD')
+- status (text, default: 'pending')
+- payment_provider (text, default: 'visa_mastercard')
+- provider_payment_id (text)
+- provider_session_id (text)
+- metadata (jsonb, default: '{}')
+- created_at, updated_at (timestamptz)
+```
+
+#### `app_settings`
+System configuration and API keys
+```sql
+- id (uuid, PK)
+- key (text, unique, required)
+- value (text, required)
 - created_at, updated_at (timestamptz)
 ```
 
@@ -405,17 +432,45 @@ For questions, issues, or contributions, please refer to the project documentati
 
 ### Quick Start
 ```bash
-# Install dependencies
+# 1. Clone and install
+git clone <repository>
+cd seychelles-compass-explore
 npm install
 
-# Set up environment variables (see .env.example)
+# 2. Set up environment variables
 cp .env.example .env.local
+# Edit .env.local with your API keys (see Environment Variables section)
 
-# Start development server
+# 3. Apply database migrations
+npx supabase db push
+
+# 4. Seed demo data (optional)
+npm run seed:payments
+
+# 5. Start development server
 npm run dev
+```
 
-# For Supabase local development
-supabase start
+### Environment Variables
+Create a `.env.local` file with the following variables:
+
+```env
+# Required
+VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key_here
+VITE_SITE_URL=http://localhost:5173
+
+# Optional (configure via Admin Settings)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+OPENAI_API_KEY=your_openai_api_key
+RESEND_API_KEY=your_resend_api_key
+
+# Optional (configure via Payment Provider Manager)
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+
+# For seeding (optional)
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
 ## Project Structure

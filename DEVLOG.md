@@ -2,7 +2,36 @@
 
 ## Recent Updates
 
-### 🎨 Visual Design Enhancement (Latest - 2025-01-13)
+### 💳 Payments Subsystem Enhancement (Latest - 2025-01-13)
+**Status**: ✅ Completed  
+**Description**: Enhanced payments subsystem with Visa/Mastercard as default, demo seeding, and improved admin management.
+
+**Key Changes**:
+- **Default Payment Provider**: Visa/Mastercard direct payments set as default (Stripe optional)
+- **Demo Seeding Script**: Added `admin/seed-payments.ts` with 3 sample transactions
+- **Admin Panel**: Enhanced Payment Provider Manager for easy provider switching
+- **Database**: Confirmed payments table with proper RLS policies
+- **Documentation**: Updated README.md with setup instructions and payments schema
+
+**Files Added/Modified**:
+- `admin/seed-payments.ts` - Demo payments seeding script
+- `package.json` - Added `npm run seed:payments` command
+- `README.md` - Updated with payments subsystem info and setup instructions
+- `DEVLOG.md` - This update
+
+**Demo Data Seeded**:
+- 2 demo users (John Smith - Paradise Tours, Marie Dubois - Coral Restaurant)
+- 3 sample payments (paid, pending, failed) with different providers
+- App settings for payment provider configuration
+
+**Ownership**: 
+- **Payments System**: Lovable (original implementation)
+- **Visa/Mastercard Default**: Cursor (refactored to prioritize direct payments)
+- **Demo Seeding**: Cursor (added comprehensive demo data)
+
+---
+
+### 🎨 Visual Design Enhancement (2025-01-13)
 **Status**: ✅ Completed  
 **Description**: Implemented beautiful Seychelles-inspired visual design with high-quality imagery and tropical color scheme.
 

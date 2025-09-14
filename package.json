@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "seed": "tsx admin/seed.ts"
+    "seed": "tsx admin/seed.ts",
+    "seed:payments": "tsx admin/seed-payments.ts"
   },
   "dependencies": {
     "@google/maps": "^1.1.3",

@@ -527,9 +527,10 @@ To modify the search bar styling, update these classes in:
 - `src/components/SearchWithTypeahead.tsx` (input and button styling)
 
 **Responsive Behavior:**
-- Mobile: Maintains transparency and readability
-- Desktop: Scales appropriately with hero content
+- Mobile: Clean, light design with no overlays for optimal readability
+- Desktop/Tablet: Subtle semi-transparent overlay behind text for enhanced contrast
 - All screen sizes: Text remains readable against background
+- Search box: Completely transparent and floats cleanly above the hero image
 
 ## Troubleshooting
 

@@ -41,94 +41,96 @@ const Hero = () => {
       {/* Hero Content */}
       <div className="relative z-10 container mx-auto px-4 text-center text-white pt-4 md:pt-8">
         <div className="max-w-5xl mx-auto">
-          {/* Semi-transparent overlay behind text for better readability */}
-          <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 md:p-8 lg:p-12">
-            {heroLoading ? (
-              <div className="space-y-8">
-                <div className="animate-pulse">
-                  <div className="h-20 md:h-24 bg-white/20 rounded-lg w-4/5 mx-auto mb-8"></div>
-                  <div className="h-8 md:h-10 bg-white/15 rounded-lg w-3/5 mx-auto mb-12"></div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-8 animate-fade-in">
-                {/* Main Title with Gradient Text */}
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 md:mb-8 leading-tight">
-                  <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
-                    {heroSection ? heroSection.title : 'Explore Seychelles'}
-                  </span>
-                </h1>
-                
-                {/* Subtitle with Better Typography */}
-                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 mb-8 md:mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
-                  {heroSection ? heroSection.subtitle : 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
-                </p>
-              </div>
-            )}
+          {/* Hero Text with Desktop-Only Overlay */}
+          <div className="relative">
+            {/* Desktop-only semi-transparent overlay behind text */}
+            <div className="hidden md:block absolute inset-0 bg-black/30 rounded-2xl -m-6 md:-m-8 lg:-m-12"></div>
             
-            {/* Enhanced Search Bar */}
-            <div className="max-w-3xl mx-auto mb-16">
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary via-blue-500 to-cyan-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-1000"></div>
-                <div className="relative bg-transparent rounded-full p-3">
-                  <SearchWithTypeahead
-                    value={searchValue}
-                    onChange={setSearchValue}
-                    placeholder="What are you looking for in Seychelles?"
-                    className="bg-transparent text-white placeholder-white/70 focus:outline-none"
-                  />
+            <div className="relative p-6 md:p-8 lg:p-12">
+              {heroLoading ? (
+                <div className="space-y-8">
+                  <div className="animate-pulse">
+                    <div className="h-20 md:h-24 bg-white/20 rounded-lg w-4/5 mx-auto mb-8"></div>
+                    <div className="h-8 md:h-10 bg-white/15 rounded-lg w-3/5 mx-auto mb-12"></div>
+                  </div>
                 </div>
+              ) : (
+                <div className="space-y-8 animate-fade-in">
+                  {/* Main Title with Gradient Text */}
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 md:mb-8 leading-tight">
+                    <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
+                      {heroSection ? heroSection.title : 'Explore Seychelles'}
+                    </span>
+                  </h1>
+                  
+                  {/* Subtitle with Better Typography */}
+                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 mb-8 md:mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
+                    {heroSection ? heroSection.subtitle : 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Clean Search Bar - No shadows, borders, or backgrounds */}
+          <div className="max-w-3xl mx-auto mb-16 mt-8">
+            <div className="relative">
+              <SearchWithTypeahead
+                value={searchValue}
+                onChange={setSearchValue}
+                placeholder="What are you looking for in Seychelles?"
+                className="bg-transparent text-white placeholder-white/70 focus:outline-none"
+              />
+            </div>
+          </div>
+          
+          {/* Enhanced Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="group">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-primary/20 rounded-full">
+                    <Users className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-4xl font-bold text-white mb-2">
+                  {loading ? (
+                    <div className="animate-pulse bg-white/20 rounded h-10 w-16 mx-auto"></div>
+                  ) : (
+                    `${counters.businesses}+`
+                  )}
+                </div>
+                <p className="text-white/80 text-lg font-medium">Trusted Businesses</p>
               </div>
             </div>
             
-            {/* Enhanced Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              <div className="group">
-                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="p-3 bg-primary/20 rounded-full">
-                      <Users className="h-10 w-10 text-white" />
-                    </div>
+            <div className="group">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-accent/20 rounded-full">
+                    <MapPin className="h-10 w-10 text-white" />
                   </div>
-                  <div className="text-4xl font-bold text-white mb-2">
-                    {loading ? (
-                      <div className="animate-pulse bg-white/20 rounded h-10 w-16 mx-auto"></div>
-                    ) : (
-                      `${counters.businesses}+`
-                    )}
-                  </div>
-                  <p className="text-white/80 text-lg font-medium">Trusted Businesses</p>
                 </div>
+                <div className="text-4xl font-bold text-white mb-2">15+</div>
+                <p className="text-white/80 text-lg font-medium">Islands Covered</p>
               </div>
-              
-              <div className="group">
-                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="p-3 bg-accent/20 rounded-full">
-                      <MapPin className="h-10 w-10 text-white" />
-                    </div>
+            </div>
+            
+            <div className="group">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-yellow-500/20 rounded-full">
+                    <Star className="h-10 w-10 text-white" />
                   </div>
-                  <div className="text-4xl font-bold text-white mb-2">15+</div>
-                  <p className="text-white/80 text-lg font-medium">Islands Covered</p>
                 </div>
-              </div>
-              
-              <div className="group">
-                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:scale-105">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="p-3 bg-yellow-500/20 rounded-full">
-                      <Star className="h-10 w-10 text-white" />
-                    </div>
-                  </div>
-                  <div className="text-4xl font-bold text-white mb-2">
-                    {loading ? (
-                      <div className="animate-pulse bg-white/20 rounded h-10 w-16 mx-auto"></div>
-                    ) : (
-                      "New"
-                    )}
-                  </div>
-                  <p className="text-white/80 text-lg font-medium">Quality Rating</p>
+                <div className="text-4xl font-bold text-white mb-2">
+                  {loading ? (
+                    <div className="animate-pulse bg-white/20 rounded h-10 w-16 mx-auto"></div>
+                  ) : (
+                    "New"
+                  )}
                 </div>
+                <p className="text-white/80 text-lg font-medium">Quality Rating</p>
               </div>
             </div>
           </div>

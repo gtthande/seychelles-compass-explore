@@ -2,7 +2,36 @@
 
 ## Recent Updates
 
-### 🔧 Post-Crash Recovery & Hero Border Fix (Latest - 2025-01-13)
+### 🎨 Hero Section UI Enhancement (Latest - 2025-01-13)
+**Status**: ✅ Completed  
+**Description**: Improved Hero section with desktop-only text overlay and completely transparent search box for a clean, modern look.
+
+**Key Changes**:
+- **Clean Search Box**: Removed all shadows, borders, backgrounds, and gradient effects from search container
+- **Desktop-Only Text Overlay**: Added subtle `bg-black/30` overlay behind Hero text only on screens ≥768px (tablet/desktop)
+- **Mobile Light Design**: No overlay on mobile screens (<768px) for a lighter, cleaner feel
+- **Responsive Overlay**: Overlay uses `hidden md:block` to show only on desktop/tablet
+- **Clean Styling**: Search box now floats transparently above the hero image with no visual distractions
+- **Proper Spacing**: Added `mt-8` to search box for better visual separation from text
+
+**Files Modified**:
+- `src/components/Hero.tsx` - Restructured Hero layout with desktop-only overlay and clean search box
+- `DEVLOG.md` - This documentation update
+- `README.md` - Updated UI notes with new styling information
+
+**Technical Details**:
+- Hero text overlay: `hidden md:block absolute inset-0 bg-black/30 rounded-2xl`
+- Search box: Completely transparent with no container styling
+- Responsive behavior: Overlay appears only on desktop/tablet (≥768px)
+- Mobile experience: Clean, light design without overlays
+- Maintains all existing functionality and animations
+
+**Ownership**: 
+- **Hero UI Enhancement**: Cursor (desktop-only overlay and transparent search box implementation)
+
+---
+
+### 🔧 Post-Crash Recovery & Hero Border Fix (2025-01-13)
 **Status**: ✅ Completed  
 **Description**: Recovered from computer crash, verified all changes were saved, and fixed Hero section border issues for complete transparency.
 

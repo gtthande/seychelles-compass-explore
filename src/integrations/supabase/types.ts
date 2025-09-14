@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           business_name: string
@@ -304,6 +328,48 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json | null
+          payment_provider: string
+          provider_payment_id: string | null
+          provider_session_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          payment_provider?: string
+          provider_payment_id?: string | null
+          provider_session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          payment_provider?: string
+          provider_payment_id?: string | null
+          provider_session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           business_id: string
@@ -471,51 +537,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      app_settings: {
-        Row: {
-          id: string
-          key: string
-          value: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          key: string
-          value: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          key?: string
-          value?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      hero_section: {
-        Row: {
-          id: string
-          title: string
-          subtitle: string | null
-          image_url: string | null
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          title: string
-          subtitle?: string | null
-          image_url?: string | null
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          title?: string
-          subtitle?: string | null
-          image_url?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {

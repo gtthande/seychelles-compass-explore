@@ -15,9 +15,9 @@ const HeroSectionManager = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
-    title: heroSection?.title || '',
-    subtitle: heroSection?.subtitle || '',
-    image_url: heroSection?.image_url || ''
+    title: '',
+    subtitle: '',
+    image_url: ''
   });
 
   React.useEffect(() => {
@@ -112,8 +112,8 @@ const HeroSectionManager = () => {
 
       await updateHeroSection({
         title: formData.title.trim(),
-        subtitle: formData.subtitle.trim() || null,
-        image_url: formData.image_url.trim() || null
+        subtitle: formData.subtitle.trim(),
+        image_url: formData.image_url.trim()
       });
 
       toast({

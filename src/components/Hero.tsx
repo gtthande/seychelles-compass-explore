@@ -53,13 +53,13 @@ const Hero = () => {
               {/* Main Title with Gradient Text */}
               <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
                 <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
-                  {heroSection?.title || 'Explore Seychelles'}
+                  {heroSection ? heroSection.title : 'Explore Seychelles'}
                 </span>
               </h1>
               
               {/* Subtitle with Better Typography */}
               <p className="text-xl md:text-3xl mb-12 text-white/90 max-w-3xl mx-auto leading-relaxed font-light drop-shadow-lg">
-                {heroSection?.subtitle || 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
+                {heroSection ? heroSection.subtitle : 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
               </p>
             </div>
           )}
@@ -73,7 +73,6 @@ const Hero = () => {
                   value={searchValue}
                   onChange={setSearchValue}
                   placeholder="What are you looking for in Seychelles?"
-                  className="text-gray-800 placeholder:text-gray-500"
                 />
               </div>
             </div>

@@ -5,12 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image } from "lucide-react";
+import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard } from "lucide-react";
 import CategoryManager from "@/components/admin/CategoryManager";
 import AppointmentManager from "@/components/admin/AppointmentManager";
 import HeroSectionManager from "@/components/admin/HeroSectionManager";
 import DataSeeder from "@/components/admin/DataSeeder";
 import SettingsManager from "@/components/admin/SettingsManager";
+import PaymentDashboard from "@/components/admin/PaymentDashboard";
+import PaymentProviderManager from "@/components/admin/PaymentProviderManager";
 
 const AdminPanel = () => {
   const { user, loading: authLoading } = useAuth();
@@ -136,7 +138,7 @@ const AdminPanel = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="hero" className="flex items-center gap-2">
             <Image className="w-4 h-4" />
             Hero Section
@@ -148,6 +150,10 @@ const AdminPanel = () => {
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <FolderOpen className="w-4 h-4" />
             Categories
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Payments
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
@@ -173,6 +179,13 @@ const AdminPanel = () => {
 
         <TabsContent value="categories">
           <CategoryManager />
+        </TabsContent>
+
+        <TabsContent value="payments">
+          <div className="space-y-6">
+            <PaymentProviderManager />
+            <PaymentDashboard />
+          </div>
         </TabsContent>
 
         <TabsContent value="users">

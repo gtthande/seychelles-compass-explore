@@ -177,7 +177,7 @@ const SearchWithTypeahead = ({
   return (
     <div className="relative w-full">
       <div className="relative flex items-center gap-2">
-        <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300 z-10" />
+        <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/70 z-10" />
         <Input
           ref={inputRef}
           type="text"
@@ -186,9 +186,9 @@ const SearchWithTypeahead = ({
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          className="flex-1 bg-transparent border-none text-white placeholder:text-gray-200 focus:ring-0 text-lg pl-14 pr-4 h-14"
+          className="flex-1 bg-transparent border-none text-white placeholder:text-white/70 focus:ring-0 text-lg pl-14 pr-4 h-14"
         />
-        <Button size="lg" className="rounded-full bg-primary hover:bg-primary-dark shadow-glow">
+        <Button size="lg" className="rounded-full bg-teal-500 hover:bg-teal-600 text-white shadow-glow">
           <Search className="h-5 w-5" />
         </Button>
         {isLoading && (

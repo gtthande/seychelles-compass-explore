@@ -474,6 +474,18 @@ STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
+**Environment Setup Guide:**
+1. Copy `.env.example` to `.env.local`: `cp .env.example .env.local`
+2. Fill in your actual API keys in `.env.local`
+3. For production, set these as environment variables on your hosting platform
+4. Never commit `.env.local` or any file containing real API keys to version control
+
+**Required API Keys:**
+- **Google Maps API Key**: For interactive maps and geocoding services
+- **OpenAI API Key**: For AI-powered search and image analysis features
+- **Resend API Key**: For transactional email notifications
+- **Stripe Keys**: For payment processing (optional, can use direct Visa/Mastercard)
+
 ### Hero Section Configuration
 The Hero section is fully responsive and includes:
 - **Responsive Design**: Automatically adjusts padding and text sizes for mobile/desktop
@@ -481,6 +493,43 @@ The Hero section is fully responsive and includes:
 - **Admin Management**: Hero content can be edited via Admin Panel → Hero Section
 - **Background Image**: Uses `/public/assets/hero.jpg` (Seychelles-themed)
 - **Typography**: Scales from `text-4xl` on mobile to `text-8xl` on desktop
+
+## Styling / Hero Section
+
+### Transparent Search Bar Styling
+The Hero section features a transparent search bar that blends seamlessly with the background:
+
+**Search Container Styling:**
+```css
+/* Transparent container with subtle border */
+bg-transparent border-b border-white/40
+
+/* Text and placeholder styling */
+text-white placeholder-white/70 focus:outline-none
+```
+
+**Search Button:**
+```css
+/* Turquoise button for visibility */
+bg-teal-500 hover:bg-teal-600 text-white
+```
+
+**Key Design Principles:**
+- **Transparency**: Search input uses `bg-transparent` to blend with hero background
+- **Contrast**: White text (`text-white`) ensures readability against dark overlay
+- **Subtle Borders**: `border-white/40` provides gentle visual separation
+- **Call-to-Action**: Turquoise search button stands out for user interaction
+- **Focus States**: Clean focus appearance with `focus:outline-none`
+
+**Customization:**
+To modify the search bar styling, update these classes in:
+- `src/components/Hero.tsx` (search container)
+- `src/components/SearchWithTypeahead.tsx` (input and button styling)
+
+**Responsive Behavior:**
+- Mobile: Maintains transparency and readability
+- Desktop: Scales appropriately with hero content
+- All screen sizes: Text remains readable against background
 
 ## Project Structure
 

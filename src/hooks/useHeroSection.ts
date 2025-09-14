@@ -24,7 +24,8 @@ export const useHeroSection = () => {
           .in('key', ['HERO_TITLE', 'HERO_SUBTITLE', 'HERO_IMAGE_URL']);
 
         if (fetchError) {
-          throw fetchError;
+          console.warn('Could not fetch hero settings from app_settings, using defaults:', fetchError);
+          // Don't throw error, just use defaults
         }
 
         const settings: Record<string, string> = {};

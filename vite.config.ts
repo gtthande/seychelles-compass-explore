@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 5173,
+    strictPort: true, // fail instead of switching ports
   },
   plugins: [
     react(),

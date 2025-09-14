@@ -17,10 +17,10 @@ import {
   Package,
   Briefcase
 } from "lucide-react";
-import restaurantImage from "@/assets/category-restaurant.jpg";
-import hotelImage from "@/assets/category-hotels.jpg";
-import divingImage from "@/assets/category-diving.jpg";
-import retailImage from "@/assets/category-retail.jpg";
+// Seychelles-themed category images from public assets
+const getSeychellesImage = (category: string) => {
+  return `/assets/shortcuts/${category}.jpg`;
+};
 
 interface Category {
   id: string;
@@ -77,15 +77,8 @@ const getColorForCategory = (index: number) => {
 };
 
 const getImageForCategory = (slug: string) => {
-  const imageMap: Record<string, string> = {
-    food: restaurantImage,
-    accommodation: hotelImage,
-    tours: divingImage,
-    retail: retailImage,
-    'water-sports': divingImage,
-  };
-  
-  return imageMap[slug] || null;
+  // Use Seychelles-themed images for all categories
+  return getSeychellesImage(slug);
 };
 
 const CategoryGrid = () => {
@@ -230,26 +223,27 @@ const CategoryGrid = () => {
                 style={{ animationDelay: `${index * 0.1}s`, boxShadow: 'var(--card-shadow)' }}
                 onClick={() => handleCategoryClick(category)}
               >
-                {categoryImage && (
-                  <div className="relative h-32 overflow-hidden">
-                    <img 
-                      src={categoryImage} 
-                      alt={category.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div className={`absolute top-3 left-3 w-10 h-10 rounded-full bg-gradient-to-r ${colorGradient} flex items-center justify-center shadow-lg`}>
-                      <IconComponent className="h-5 w-5 text-white" />
-                    </div>
+                <div className="relative h-32 overflow-hidden">
+                  <img 
+                    src={categoryImage} 
+                    alt={category.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    onError={(e) => {
+                      // Fallback to gradient background if image fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <div className={`hidden w-full h-full bg-gradient-to-br ${colorGradient} flex items-center justify-center`}>
+                    <IconComponent className="h-12 w-12 text-white" />
                   </div>
-                )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <div className={`absolute top-3 left-3 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg`}>
+                    <IconComponent className="h-5 w-5 text-white" />
+                  </div>
+                </div>
                 
-                <CardContent className={`${categoryImage ? 'p-4' : 'p-6'} text-center`}>
-                  {!categoryImage && (
-                    <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${colorGradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                      <IconComponent className="h-8 w-8 text-white" />
-                    </div>
-                  )}
+                <CardContent className="p-4 text-center">
                   
                   <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                     {category.name}

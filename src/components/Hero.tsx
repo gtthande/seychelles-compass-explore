@@ -1,10 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Users, Star } from "lucide-react";
+import { Search, MapPin, Users, Star, ArrowDown } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
 import { useHeroSection } from "@/hooks/useHeroSection";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import { useState } from "react";
-// Hero image is now persistently stored in public/assets/hero.jpg
 
 const Hero = () => {
   const { counters, loading } = useLiveCounters();
@@ -13,99 +12,135 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Seychelles Beach Background */}
+      {/* Persistent Seychelles Background Image */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ 
-          backgroundImage: heroSection?.image_url 
-            ? `url(${heroSection.image_url})` 
-            : `url(/assets/hero.jpg)`
+          backgroundImage: `url(/assets/hero.jpg)`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
         }}
       />
       
-      {/* Tropical overlay for readability */}
-      <div className="absolute inset-0" style={{ background: 'var(--hero-overlay)' }} />
+      {/* Beautiful Gradient Overlay */}
+      <div 
+        className="absolute inset-0 opacity-90"
+        style={{ 
+          background: 'linear-gradient(135deg, rgba(6, 78, 59, 0.8) 0%, rgba(15, 23, 42, 0.7) 50%, rgba(30, 64, 175, 0.6) 100%)'
+        }}
+      />
+      
+      {/* Floating Elements for Visual Appeal */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl animate-float" style={{ animationDelay: '0s' }}></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-primary/20 rounded-full blur-lg animate-float" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-40 left-1/4 w-12 h-12 bg-accent/30 rounded-full blur-md animate-float" style={{ animationDelay: '4s' }}></div>
+      </div>
       
       {/* Hero Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center text-foreground">
-        <div className="max-w-4xl mx-auto animate-fade-in">
+      <div className="relative z-10 container mx-auto px-4 text-center text-white">
+        <div className="max-w-5xl mx-auto">
           {heroLoading ? (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="animate-pulse">
-                <div className="h-16 md:h-20 bg-muted rounded w-3/4 mx-auto mb-6"></div>
-                <div className="h-6 md:h-8 bg-muted rounded w-1/2 mx-auto mb-8"></div>
+                <div className="h-20 md:h-24 bg-white/20 rounded-lg w-4/5 mx-auto mb-8"></div>
+                <div className="h-8 md:h-10 bg-white/15 rounded-lg w-3/5 mx-auto mb-12"></div>
               </div>
             </div>
           ) : (
-            <>
-              <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-                {heroSection?.title || 'Welcome to iCompass Seychelles'}
+            <div className="space-y-8 animate-fade-in">
+              {/* Main Title with Gradient Text */}
+              <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
+                <span className="block bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent drop-shadow-2xl">
+                  {heroSection?.title || 'Explore Seychelles'}
+                </span>
               </h1>
               
-              <p className="text-xl md:text-2xl mb-8 text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                {heroSection?.subtitle || 'Find trusted businesses, discover local services, and explore everything Seychelles has to offer'}
+              {/* Subtitle with Better Typography */}
+              <p className="text-xl md:text-3xl mb-12 text-white/90 max-w-3xl mx-auto leading-relaxed font-light drop-shadow-lg">
+                {heroSection?.subtitle || 'Discover trusted businesses, local services, and everything the beautiful islands of Seychelles have to offer'}
               </p>
-            </>
+            </div>
           )}
           
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-12">
-            <div className="relative bg-card/95 backdrop-blur-sm border border-border/50 rounded-full p-2" style={{ boxShadow: 'var(--card-shadow)' }}>
-              <SearchWithTypeahead
-                value={searchValue}
-                onChange={setSearchValue}
-                placeholder="Discover Seychelles businesses & services..."
-              />
+          {/* Enhanced Search Bar */}
+          <div className="max-w-3xl mx-auto mb-16">
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary via-blue-500 to-cyan-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-1000"></div>
+              <div className="relative bg-white/95 backdrop-blur-md border border-white/20 rounded-full p-3 shadow-2xl">
+                <SearchWithTypeahead
+                  value={searchValue}
+                  onChange={setSearchValue}
+                  placeholder="What are you looking for in Seychelles?"
+                  className="text-gray-800 placeholder:text-gray-500"
+                />
+              </div>
             </div>
           </div>
           
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto animate-slide-up">
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Users className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold text-foreground">
+          {/* Enhanced Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-slide-up">
+            <div className="group">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-primary/20 rounded-full">
+                    <Users className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-4xl font-bold text-white mb-2">
                   {loading ? (
-                    <div className="animate-pulse bg-muted rounded w-12 h-8 mx-auto" />
+                    <div className="animate-pulse bg-white/20 rounded w-16 h-10 mx-auto" />
                   ) : (
                     `${counters.businesses}+`
                   )}
-                </span>
+                </div>
+                <p className="text-white/80 text-lg font-medium">Trusted Businesses</p>
               </div>
-              <p className="text-muted-foreground">Trusted Businesses</p>
             </div>
             
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <MapPin className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold text-foreground">15+</span>
+            <div className="group">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-accent/20 rounded-full">
+                    <MapPin className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-4xl font-bold text-white mb-2">15+</div>
+                <p className="text-white/80 text-lg font-medium">Islands Covered</p>
               </div>
-              <p className="text-muted-foreground">Islands Covered</p>
             </div>
             
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Star className="h-8 w-8 text-primary mr-2" />
-                <span className="text-3xl font-bold text-foreground">
+            <div className="group">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-yellow-500/20 rounded-full">
+                    <Star className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-4xl font-bold text-white mb-2">
                   {loading ? (
-                    <div className="animate-pulse bg-muted rounded w-12 h-8 mx-auto" />
+                    <div className="animate-pulse bg-white/20 rounded w-16 h-10 mx-auto" />
                   ) : counters.reviews > 0 ? (
                     "4.8"
                   ) : (
                     "New"
                   )}
-                </span>
+                </div>
+                <p className="text-white/80 text-lg font-medium">Quality Rating</p>
               </div>
-              <p className="text-muted-foreground">Quality Rating</p>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Tropical scroll indicator */}
-      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-float">
-        <div className="w-6 h-10 border-2 border-card/60 backdrop-blur-sm rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-primary rounded-full mt-2 animate-pulse"></div>
+      {/* Enhanced Scroll Indicator */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-float">
+        <div className="flex flex-col items-center space-y-2 text-white/70 hover:text-white transition-colors cursor-pointer">
+          <span className="text-sm font-medium">Scroll to explore</span>
+          <div className="w-6 h-10 border-2 border-white/40 backdrop-blur-sm rounded-full flex justify-center p-1">
+            <ArrowDown className="w-3 h-3 animate-bounce" />
+          </div>
         </div>
       </div>
     </section>

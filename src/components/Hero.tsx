@@ -11,7 +11,7 @@ const Hero = () => {
   const [searchValue, setSearchValue] = useState("");
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-20">
       {/* Persistent Seychelles Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -39,7 +39,7 @@ const Hero = () => {
       </div>
       
       {/* Hero Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center text-white">
+      <div className="relative z-10 container mx-auto px-4 text-center text-white pt-8">
         <div className="max-w-5xl mx-auto">
           {heroLoading ? (
             <div className="space-y-8">

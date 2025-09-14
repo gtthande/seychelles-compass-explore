@@ -70,12 +70,12 @@ const Hero = () => {
             <div className="max-w-3xl mx-auto mb-16">
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary via-blue-500 to-cyan-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-1000"></div>
-                <div className="relative bg-transparent border-b border-white/40 rounded-full p-3 shadow-2xl">
+                <div className="relative bg-transparent rounded-full p-3">
                   <SearchWithTypeahead
                     value={searchValue}
                     onChange={setSearchValue}
                     placeholder="What are you looking for in Seychelles?"
-                    className="bg-transparent border-b border-white/40 text-white placeholder-white/70 focus:outline-none"
+                    className="bg-transparent text-white placeholder-white/70 focus:outline-none"
                   />
                 </div>
               </div>

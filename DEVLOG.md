@@ -2,7 +2,37 @@
 
 ## Recent Updates
 
-### 🔧 Dev Server & Environment Setup Fix (Latest - 2025-01-13)
+### 🔧 Post-Crash Recovery & Hero Border Fix (Latest - 2025-01-13)
+**Status**: ✅ Completed  
+**Description**: Recovered from computer crash, verified all changes were saved, and fixed Hero section border issues for complete transparency.
+
+**Key Changes**:
+- **Crash Recovery**: Verified all previous changes (transparent Hero, payments subsystem, docs) were properly saved in Git
+- **Hero Border Fix**: Removed remaining `border-b border-white/40` from search container for complete transparency
+- **Clean Styling**: Search box now has no borders, only transparent background with white text
+- **Server Recovery**: Killed stuck Node.js processes and restarted dev server cleanly on port 5173
+- **Dependencies**: Verified `npm install` completed successfully with all packages up to date
+- **Documentation**: Added troubleshooting steps for server crashes and recovery procedures
+
+**Files Modified**:
+- `src/components/Hero.tsx` - Removed border styling for complete transparency
+- `DEVLOG.md` - This recovery documentation update
+- `README.md` - Added troubleshooting section for server crashes
+
+**Technical Details**:
+- Hero search container now uses only `bg-transparent` with no border styling
+- Search input maintains `border-none` for clean appearance
+- Dev server starts cleanly after killing stuck processes
+- All previous work (payments subsystem, environment setup) confirmed intact
+- Ready for seamless development on different computers
+
+**Ownership**: 
+- **Crash Recovery**: Cursor (verified Git state and recovered all changes)
+- **Hero Border Fix**: Cursor (removed remaining border styling for complete transparency)
+
+---
+
+### 🔧 Dev Server & Environment Setup Fix (2025-01-13)
 **Status**: ✅ Completed  
 **Description**: Fixed localhost:5173 connection issues, ensured proper dev server startup, and completed environment configuration.
 

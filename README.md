@@ -531,6 +531,62 @@ To modify the search bar styling, update these classes in:
 - Desktop: Scales appropriately with hero content
 - All screen sizes: Text remains readable against background
 
+## Troubleshooting
+
+### Server Crashes & Recovery
+
+If you experience server crashes or connection issues:
+
+**1. Kill Stuck Processes:**
+```bash
+# Windows
+taskkill /F /IM node.exe
+
+# macOS/Linux
+pkill -f node
+```
+
+**2. Check Port Usage:**
+```bash
+# Windows
+netstat -ano | findstr :5173
+
+# macOS/Linux
+lsof -i :5173
+```
+
+**3. Clean Restart:**
+```bash
+# Install dependencies
+npm install
+
+# Start fresh dev server
+npm run dev
+```
+
+**4. Verify Environment:**
+- Ensure `.env.local` exists with required variables
+- Check that `VITE_SITE_URL=http://localhost:5173` matches your port
+- Verify all API keys are properly configured
+
+**5. Git Recovery:**
+```bash
+# Check current status
+git status
+
+# Verify latest commits
+git log --oneline -5
+
+# Pull latest changes if needed
+git pull origin main
+```
+
+**Common Issues:**
+- **Blank Screen**: Usually caused by missing environment variables or port conflicts
+- **Connection Refused**: Kill existing Node processes and restart dev server
+- **Build Errors**: Run `npm install` to ensure dependencies are up to date
+- **Styling Issues**: Check that Tailwind classes are properly applied and not overridden
+
 ## Project Structure
 
 ```

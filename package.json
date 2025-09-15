@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "seed": "tsx admin/seed.ts",
-    "seed:payments": "tsx admin/seed-payments.ts"
+    "seed:payments": "tsx admin/seed-payments.ts",
+    "seed:demo": "tsx admin/seed-demo-data.ts",
+    "deploy": "npm run build && vercel --prod",
+    "deploy:preview": "npm run build && vercel"
   },
   "dependencies": {
     "@google/maps": "^1.1.3",

@@ -42,6 +42,13 @@ A comprehensive business directory platform for the beautiful islands of Seychel
 - 10 demo payments with mixed statuses (completed, pending, failed)
 - Demo images directory: `/public/assets/demo/`
 
+### 💳 Mock Payment Testing
+- Created `/payments/test` route for payment testing
+- Mock payment flows for Visa/Mastercard and Stripe
+- 80% success rate simulation for realistic testing
+- Payment history tracking and status display
+- Integration with demo businesses for testing
+
 ## 🗄️ Database Schema
 
 ### Core Tables
@@ -249,6 +256,24 @@ supabase db reset
 
 # Seed sample data (optional)
 npm run seed
+
+# Seed demo data for testing
+npm run seed:demo
+```
+
+### Testing Payment System
+```bash
+# Start development server
+npm run dev
+
+# Visit payment test page
+# Navigate to http://localhost:5173/payments/test
+
+# Test mock payments with demo businesses
+# - Select a demo business
+# - Enter customer email and amount
+# - Choose payment provider (Visa/Mastercard or Stripe)
+# - Process mock payment (80% success rate)
 ```
 
 ## 🔧 Configuration

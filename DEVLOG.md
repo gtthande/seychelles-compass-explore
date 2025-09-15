@@ -1,378 +1,275 @@
-# iCompass Seychelles - Development Log
-
-## Recent Updates
-
-### 🔧 Hero Section Fix & JSX Syntax Correction (Latest - 2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Fixed critical JSX syntax error, removed overlay for clean background display, and verified build stability.
-
-**Key Changes**:
-- **JSX Syntax Fix**: Corrected missing closing tag error at line 139 that was causing build failures
-- **Overlay Removal**: Removed desktop-only dark overlay (`bg-black/30`) to show background image clearly
-- **Clean Structure**: Simplified Hero layout with proper nesting and consistent closing tags
-- **Build Verification**: Confirmed `npm run build` completes successfully without errors
-- **Responsive Design**: Maintained clean, responsive layout with proper text centering
-- **Scroll Indicator**: Verified scroll indicator at bottom still functions correctly
-
-**Files Modified**:
-- `src/components/Hero.tsx` - Fixed JSX structure and removed overlay styling
-- `DEVLOG.md` - This documentation update
-- `README.md` - Added Hero Section Fix troubleshooting notes
-
-**Technical Details**:
-- Fixed JSX closing tag mismatch that was causing "Expected corresponding JSX closing tag for <section>" error
-- Removed `hidden md:block absolute inset-0 bg-black/30 rounded-2xl` overlay styling
-- Simplified Hero text container to clean `p-6 md:p-8 lg:p-12` padding
-- Maintained all existing functionality: search bar, stats cards, scroll indicator
-- Build now completes successfully in ~22 seconds without syntax errors
-
-**Ownership**: 
-- **JSX Syntax Fix**: Cursor (corrected critical build-breaking syntax error)
-- **Overlay Removal**: Cursor (cleaned up Hero section for better background visibility)
-
----
-
-### 🎨 Hero Section UI Enhancement (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Improved Hero section with desktop-only text overlay and completely transparent search box for a clean, modern look.
-
-**Key Changes**:
-- **Clean Search Box**: Removed all shadows, borders, backgrounds, and gradient effects from search container
-- **Desktop-Only Text Overlay**: Added subtle `bg-black/30` overlay behind Hero text only on screens ≥768px (tablet/desktop)
-- **Mobile Light Design**: No overlay on mobile screens (<768px) for a lighter, cleaner feel
-- **Responsive Overlay**: Overlay uses `hidden md:block` to show only on desktop/tablet
-- **Clean Styling**: Search box now floats transparently above the hero image with no visual distractions
-- **Proper Spacing**: Added `mt-8` to search box for better visual separation from text
-
-**Files Modified**:
-- `src/components/Hero.tsx` - Restructured Hero layout with desktop-only overlay and clean search box
-- `DEVLOG.md` - This documentation update
-- `README.md` - Updated UI notes with new styling information
-
-**Technical Details**:
-- Hero text overlay: `hidden md:block absolute inset-0 bg-black/30 rounded-2xl`
-- Search box: Completely transparent with no container styling
-- Responsive behavior: Overlay appears only on desktop/tablet (≥768px)
-- Mobile experience: Clean, light design without overlays
-- Maintains all existing functionality and animations
-
-**Ownership**: 
-- **Hero UI Enhancement**: Cursor (desktop-only overlay and transparent search box implementation)
-
----
-
-### 🔧 Post-Crash Recovery & Hero Border Fix (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Recovered from computer crash, verified all changes were saved, and fixed Hero section border issues for complete transparency.
-
-**Key Changes**:
-- **Crash Recovery**: Verified all previous changes (transparent Hero, payments subsystem, docs) were properly saved in Git
-- **Hero Border Fix**: Removed remaining `border-b border-white/40` from search container for complete transparency
-- **Clean Styling**: Search box now has no borders, only transparent background with white text
-- **Server Recovery**: Killed stuck Node.js processes and restarted dev server cleanly on port 5173
-- **Dependencies**: Verified `npm install` completed successfully with all packages up to date
-- **Documentation**: Added troubleshooting steps for server crashes and recovery procedures
-
-**Files Modified**:
-- `src/components/Hero.tsx` - Removed border styling for complete transparency
-- `DEVLOG.md` - This recovery documentation update
-- `README.md` - Added troubleshooting section for server crashes
-
-**Technical Details**:
-- Hero search container now uses only `bg-transparent` with no border styling
-- Search input maintains `border-none` for clean appearance
-- Dev server starts cleanly after killing stuck processes
-- All previous work (payments subsystem, environment setup) confirmed intact
-- Ready for seamless development on different computers
-
-**Ownership**: 
-- **Crash Recovery**: Cursor (verified Git state and recovered all changes)
-- **Hero Border Fix**: Cursor (removed remaining border styling for complete transparency)
-
----
-
-### 🔧 Dev Server & Environment Setup Fix (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Fixed localhost:5173 connection issues, ensured proper dev server startup, and completed environment configuration.
-
-**Key Changes**:
-- **Dev Server Fix**: Killed existing processes and started fresh dev server on port 5173
-- **Environment Setup**: Created comprehensive `.env.local` and `.env.example` files
-- **Dependencies**: Verified `npm install` completed successfully with all packages up to date
-- **Port Verification**: Confirmed server running on `http://localhost:5173` with proper binding
-- **Hero Styling**: Verified transparent search bar styling is working correctly
-- **Documentation**: Updated DEVLOG.md and README.md with setup instructions
-
-**Files Modified**:
-- `.env.local` - Created with all required environment variables
-- `.env.example` - Comprehensive template with setup instructions
-- `DEVLOG.md` - This documentation update
-- `README.md` - Enhanced environment setup documentation
-
-**Technical Details**:
-- Dev server now starts cleanly on port 5173 without connection refused errors
-- All environment variables properly configured for development
-- Hero section transparent styling confirmed working
-- Build process verified to work correctly
-- Ready for seamless development workflow
-
-**Ownership**: 
-- **Dev Server Fix**: Cursor (resolved connection issues and startup problems)
-- **Environment Setup**: Cursor (comprehensive .env configuration)
-
----
-
-### 🎨 Hero Search Bar Styling Fix (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Removed solid white background from Hero search bar and implemented transparent styling with proper contrast.
-
-**Key Changes**:
-- **Transparent Search Input**: Removed `bg-white/95` and `border border-white/20` from search container
-- **Transparent Styling**: Applied `bg-transparent border-b border-white/40` for clean transparent look
-- **Text Contrast**: Updated text and placeholder colors to `text-white` and `placeholder-white/70`
-- **Turquoise Button**: Maintained visible `bg-teal-500 hover:bg-teal-600` search button
-- **Search Icon**: Updated to `text-white/70` for better visibility against hero background
-- **Focus States**: Added `focus:outline-none` for clean focus appearance
-
-**Files Modified**:
-- `src/components/Hero.tsx` - Updated search bar container styling
-- `src/components/SearchWithTypeahead.tsx` - Applied transparent styling and turquoise button
-- `.env.example` - Created comprehensive environment variables template
-- `DEVLOG.md` - This documentation update
-
-**Technical Details**:
-- Search bar now blends seamlessly with hero background
-- Text remains readable with proper white/transparent contrast
-- Turquoise search button provides clear call-to-action
-- Maintains all existing functionality and responsiveness
-- Semi-transparent overlay (`bg-black/40`) ensures hero titles stay readable
-
-**Ownership**: 
-- **Hero Styling**: Cursor (transparent search bar implementation)
-- **Environment Setup**: Cursor (comprehensive .env.example template)
-
----
-
-### 🎨 Hero Section Enhancement (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Enhanced Hero section with responsive design, better text readability, and mobile optimization.
-
-**Key Changes**:
-- **Responsive Padding**: Added `pt-24 md:pt-32` for mobile and desktop navbar clearance
-- **Semi-transparent Overlay**: Added `bg-black/40 backdrop-blur-sm` for better text readability
-- **Responsive Typography**: Implemented `text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl` for title scaling
-- **Mobile Optimization**: Improved spacing and sizing for mobile devices
-- **Visual Enhancement**: Maintained beautiful Seychelles background with better text contrast
-
-**Files Modified**:
-- `src/components/Hero.tsx` - Complete responsive redesign with overlay and better typography
-- `DEVLOG.md` - This documentation update
-
-**Technical Details**:
-- Hero section now properly clears fixed navbar on all screen sizes
-- Text remains readable on bright background images with semi-transparent overlay
-- Responsive design scales beautifully from mobile to desktop
-- Maintains all existing functionality and visual appeal
-
-**Ownership**: 
-- **Hero Enhancement**: Cursor (responsive design and readability improvements)
-- **Mobile Optimization**: Cursor (comprehensive mobile-first approach)
-
----
-
-### 🔧 Port Configuration Fix (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Fixed blank screen issue and ensured consistent port 5173 usage.
-
-**Key Changes**:
-- **Environment Setup**: Created `.env.local` with all required `VITE_` prefixed variables
-- **Port Configuration**: Updated `vite.config.ts` with `strictPort: true` to force port 5173
-- **Error Handling**: Enhanced hooks with fallback mechanisms for database connectivity
-- **Server Management**: Implemented proper process cleanup and port conflict resolution
-
-**Files Modified**:
-- `.env.local` - Created with proper environment variables
-- `vite.config.ts` - Added `strictPort: true` for consistent port usage
-- `src/hooks/useLiveCounters.tsx` - Enhanced error handling and fallbacks
-- `src/hooks/useHeroSection.ts` - Improved error handling for missing settings
-
-**Technical Details**:
-- Dev server now consistently runs on `http://localhost:5173`
-- Prevents automatic port switching that caused confusion
-- Application loads properly with Hero section, Directory, and Admin panel
-- All components functional with proper error boundaries
-
-**Ownership**: 
-- **Port Configuration**: Cursor (fixed blank screen and port consistency)
-- **Environment Setup**: Cursor (created proper .env.local configuration)
-- **Error Handling**: Cursor (enhanced hooks with fallback mechanisms)
-
----
-
-### 💳 Payments Subsystem Enhancement (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Enhanced payments subsystem with Visa/Mastercard as default, demo seeding, and improved admin management.
-
-**Key Changes**:
-- **Default Payment Provider**: Visa/Mastercard direct payments set as default (Stripe optional)
-- **Demo Seeding Script**: Added `admin/seed-payments.ts` with 3 sample transactions
-- **Admin Panel**: Enhanced Payment Provider Manager for easy provider switching
-- **Database**: Confirmed payments table with proper RLS policies
-- **Documentation**: Updated README.md with setup instructions and payments schema
-
-**Files Added/Modified**:
-- `admin/seed-payments.ts` - Demo payments seeding script
-- `package.json` - Added `npm run seed:payments` command
-- `README.md` - Updated with payments subsystem info and setup instructions
-- `DEVLOG.md` - This update
-
-**Demo Data Seeded**:
-- 2 demo users (John Smith - Paradise Tours, Marie Dubois - Coral Restaurant)
-- 3 sample payments (paid, pending, failed) with different providers
-- App settings for payment provider configuration
-
-**Ownership**: 
-- **Payments System**: Lovable (original implementation)
-- **Visa/Mastercard Default**: Cursor (refactored to prioritize direct payments)
-- **Demo Seeding**: Cursor (added comprehensive demo data)
-
----
-
-### 🎨 Visual Design Enhancement (2025-01-13)
-**Status**: ✅ Completed  
-**Description**: Implemented beautiful Seychelles-inspired visual design with high-quality imagery and tropical color scheme.
-
-**Visual Changes**:
-- **Hero Section**: Stunning Seychelles beach background with tropical overlay for readability
-- **Color Scheme**: Updated to turquoise/teal ocean theme with coral accents throughout
-- **Category Cards**: Added beautiful Seychelles images for key categories (food, accommodation, tours, retail)
-- **Design System**: Comprehensive Seychelles-inspired design tokens and gradients
-
-**Images Added** (all ES6 imports):
-- `src/assets/hero-seychelles-beach.jpg` - Hero background (1920x1080, high quality)
-- `src/assets/category-diving.jpg` - Tourism/diving category image
-- `src/assets/category-restaurant.jpg` - Restaurant/food category image  
-- `src/assets/category-hotels.jpg` - Hotels/accommodation category image
-- `src/assets/category-retail.jpg` - Shopping/retail category image
-
-**Files Modified**:
-- `src/index.css` - Updated color system with Seychelles ocean theme
-- `src/components/Hero.tsx` - Enhanced with beach background and tropical styling
-- `src/components/CategoryGrid.tsx` - Added category images and improved card design
-- `src/components/admin/DataSeeder.tsx` - Fixed build errors (owner_id requirement)
-
-**Design Tokens Added**:
-- `--ocean-gradient`, `--tropical-gradient` - Seychelles-inspired gradients
-- `--hero-overlay` - Tropical overlay for text readability  
-- `--card-shadow`, `--tropical-glow` - Enhanced shadows and glowing effects
-- Primary: `hsl(186 85% 45%)` - Seychelles turquoise ocean color
-- Accent: `hsl(35 85% 85%)` - Coral/sand accent color
-
-**Note**: All images are properly imported as ES6 modules, optimized for responsive display, and include hover animations. Design maintains full functionality while providing a beautiful Seychelles-inspired aesthetic.
-
----
+# Development Log - Seychelles Business Directory
 
 ## Project Overview
-
-iCompass Seychelles is a comprehensive business directory and registration platform for the Seychelles islands. It allows businesses to register, showcase their services, and connect with customers through various channels including contact forms, social media, and location services.
+A comprehensive business directory platform for Seychelles featuring business listings, product catalogs, appointment booking, payment processing, and admin management.
 
 ## Implemented Features
 
-### 1. Business Registration & Appointment System
-
-**Purpose**: Allows businesses to request registration through an appointment booking system.
-
-**Components Involved**:
-- `src/components/business/BusinessRegistration.tsx` - Main registration form
-- `src/pages/BusinessPortal.tsx` - Business portal entry point
-
-**Supabase Tables**:
-- `appointments` - Stores appointment requests from businesses
-  - Fields: business_name, contact_person, phone, whatsapp, email, website, social URLs, preferred_date/time, notes, status
-
-**Logic & Validation**:
-- Zod schema validation for all form fields
-- Required fields: business_name, contact_person, phone, email, preferred_date, preferred_time
-- URL validation for website and social media links
-- Date validation (no past dates allowed)
-- Phone number formatting and validation
-
-**RLS Policies**:
-- `Anyone can create appointment requests` - Allows public appointment creation
-- `Admins can view all appointments` - Admin access for review
-- `Admins can update appointments` - Admin can change status
-
-**Custom Logic**:
-- Time slot selection (9 AM - 5 PM in 30-minute intervals)
-- Business location input (address, GPS coordinates, island selection)
-- PDF form download functionality
-
-### 2. Business Directory & Categorization
-
-**Purpose**: Public directory of active businesses with filtering and search capabilities.
-
-**Components Involved**:
-- `src/pages/Directory.tsx` - Main directory page
-- `src/components/CategoryGrid.tsx` - Category overview component
-- `src/components/SearchWithTypeahead.tsx` - Advanced search
-- `src/components/ImageSearch.tsx` - AI-powered image search
-
-**Supabase Tables**:
-- `businesses` - Main business data
-  - Fields: name, description, category, status, contact info, social links, location data, ratings
-- `categories` - Business categories
-  - Fields: name, slug, description, is_active
-
-**Logic & Validation**:
-- Category-based grouping with subcategories:
-  - Healthcare → Government/Private (based on verification status)
-  - Hospitality → Licensed Hotels/Guesthouses & B&Bs
-  - Education → Government Schools/Private Institutions
-  - Financial Services → Banks/Other Financial Services
-- Alphabetical sorting within subcategories
-- Multiple filter options: category, island, WhatsApp availability, featured status
-- Full-text search across name, description, category, address, services
-
-**RLS Policies**:
-- `Anyone can view active businesses` - Public directory access
-- `Business owners can manage their businesses` - Owner access
-- `Admins can manage all businesses` - Admin oversight
-
-### 3. Authentication System
-
-**Purpose**: User authentication with password recovery capabilities.
-
-**Components Involved**:
-- `src/pages/Auth.tsx` - Sign in/sign up forms
+### 1. User Authentication & Profiles
+**UI Components:**
+- `src/pages/Auth.tsx` - Login/signup page
 - `src/pages/AuthCallback.tsx` - OAuth callback handler
-- `src/pages/PasswordReset.tsx` - Password reset form
-- `src/hooks/useAuth.ts` - Authentication state management
-- `src/hooks/useBusinessAuth.ts` - Business-specific auth logic
+- `src/hooks/useAuth.ts` - Authentication hook
+- `src/hooks/useBusinessAuth.ts` - Business owner authentication
 
-**Supabase Tables**:
-- `profiles` - User profile data
-  - Fields: user_id, full_name, phone, is_admin, is_business_owner, avatar_url, business_name
+**Supabase Tables:**
+- `profiles` - User profile data (extends auth.users)
 
-**Logic & Validation**:
-- Email/password authentication
-- Email-based password recovery
-- Auto-redirect for authenticated users
-- Profile creation on user signup (trigger-based)
+**Custom Logic:**
+- Automatic profile creation via trigger `handle_new_user()`
+- Admin flag management in user metadata
 
-**RLS Policies**:
-- `Users can view their own profile only` - Profile privacy
-- `Users can update their own profile` - Self-management
-- `Users can insert their own profile` - Profile creation
-- `Admins can view all profiles` - Admin access
-- `Business owners can view customer basic info for their reviews` - Review context
+**RLS Policies:**
+- Users can only view/edit their own profiles
+- Admins can view all profiles
+- Business owners can view customer profiles for their reviews
 
-### 4. Google Maps Integration
+### 2. Business Listings
+**UI Components:**
+- `src/components/business/BusinessRegistration.tsx` - Business registration form
+- `src/components/business/BusinessDashboard.tsx` - Business owner dashboard
+- `src/components/business/BusinessOnboarding.tsx` - Onboarding flow
+- `src/components/FeaturedListings.tsx` - Homepage featured businesses
+- `src/pages/Directory.tsx` - Business directory listing
 
-**Purpose**: Location services for businesses and customers.
+**Supabase Tables:**
+- `businesses` - Core business data with status, verification, ratings
+- `categories` - Business categorization system
 
-**Components Involved**:
-- `src/components/GoogleMap.tsx` - Interactive Google Maps
+**Custom Logic:**
+- Business status workflow: pending → active → verified
+- Automatic rating calculation via trigger `update_business_rating()`
+- Google Maps integration for location services
+
+**RLS Policies:**
+- Public can view active businesses only
+- Business owners can manage their own businesses
+- Admins can manage all businesses
+
+### 3. Product Catalog
+**UI Components:**
+- `src/components/business/ProductManager.tsx` - Product management
+- `src/components/business/ProductList.tsx` - Product listing
+- `src/pages/Products.tsx` - Public product catalog
+
+**Supabase Tables:**
+- `products` - Product inventory with pricing, stock, images
+
+**Custom Logic:**
+- Product publication date management via trigger
+- Automatic status workflow integration
+- Multi-image upload support
+
+**RLS Policies:**
+- Public can view active products from active businesses only
+- Business owners can manage their own products
+
+### 4. Appointment Booking
+**UI Components:**
+- `src/components/admin/AppointmentManager.tsx` - Admin appointment management
+
+**Supabase Tables:**
+- `appointments` - Appointment requests with contact details
+
+**Custom Logic:**
+- Email notifications via Resend API
+- Business email automation via edge function `send-business-email`
+
+**RLS Policies:**
+- Anyone can create appointment requests
+- Admins can view and manage all appointments
+
+### 5. Category Management
+**UI Components:**
+- `src/components/CategoryGrid.tsx` - Category display with images
+- `src/components/admin/CategoryManager.tsx` - Admin category management
+
+**Supabase Tables:**
+- `categories` - Category definitions with slugs and descriptions
+
+**Custom Logic:**
+- Dynamic category counting for businesses and products
+- Image mapping system for Seychelles-themed visuals
+
+**RLS Policies:**
+- Public can view active categories
+- Admins can manage all categories
+
+### 6. Admin Panel
+**UI Components:**
+- `src/pages/AdminPanel.tsx` - Main admin dashboard
+- `src/components/admin/SettingsManager.tsx` - System settings
+- `src/components/admin/DataSeeder.tsx` - Database seeding tools
+- `src/components/admin/HeroSectionManager.tsx` - Homepage content management
+
+**Supabase Tables:**
+- `app_settings` - System configuration
+- `audit_logs` - Activity tracking
+
+**Custom Logic:**
+- Admin privilege checking via `is_admin()` function
+- Audit trail via `audit_trigger()` on sensitive tables
+
+**RLS Policies:**
+- Admin-only access to management interfaces
+- Audit logs visible to admins only
+
+### 7. Google Maps Integration
+**UI Components:**
+- `src/components/GoogleMap.tsx` - Interactive map component
 - `src/components/business/BusinessLocationMap.tsx` - Business location display
+
+**Custom Logic:**
+- Edge function `geocode-address` for address validation
+- Dynamic API key management via settings
+- Responsive map rendering
+
+**Supabase Storage:**
+- Maps integration with business coordinates
+
+### 8. File Upload & Storage
+**UI Components:**
+- Business logo uploads
+- Product image galleries
+- PDF catalog uploads
+
+**Supabase Storage Buckets:**
+- `business-logos` (public)
+- `business-covers` (public) 
+- `product-images` (public)
+- `product-catalogues` (private)
+- `business-documents` (public)
+
+**Custom Logic:**
+- Automatic file organization by business/product
+- Image optimization and resizing
+- PDF preview and download
+
+### 9. Payment Processing (Stripe + Visa/Mastercard)
+**UI Components:**
+- `src/components/admin/PaymentDashboard.tsx` - Payment monitoring
+- `src/components/admin/PaymentProviderManager.tsx` - Provider configuration
+
+**Supabase Tables:**
+- `payments` - Transaction records with provider details
+
+**Custom Logic:**
+- Edge functions:
+  - `create-payment-session` - Stripe checkout creation
+  - `payment-webhook` - Payment status updates
+- Multi-provider support (Stripe, Visa, Mastercard)
+- Currency handling (SCR, USD, EUR)
+
+**RLS Policies:**
+- Users can view their own payments
+- Admins can view all payments
+- System can create/update payment records
+
+### 10. AI-Enhanced Search
+**UI Components:**
+- `src/components/SearchWithTypeahead.tsx` - Intelligent search with suggestions
+- `src/components/ImageSearch.tsx` - Visual search functionality
+
+**Custom Logic:**
+- Edge function `ai-search` - OpenAI-powered semantic search
+- Edge function `image-search` - Visual product matching
+- Fallback to traditional database search
+
+### 11. Live Statistics
+**UI Components:**
+- `src/components/LiveCounters.tsx` - Real-time counters
+- `src/components/Hero.tsx` - Homepage statistics display
+
+**Custom Logic:**
+- Database function `get_live_counters()` for accurate counts
+- Real-time subscriptions for live updates
+- Fallback handling for offline scenarios
+
+### 12. Seychelles Visual Theme
+**UI Components:**
+- Custom Seychelles-themed photography for categories
+- Island-inspired color palette and gradients
+- Responsive design for tropical aesthetic
+
+**Assets:**
+- High-quality photographic images for each category
+- Consistent aspect ratios and sizing
+- Mobile-optimized layouts
+
+**Lovable-Generated Code:**
+- All image generation and theme implementation
+- Category image mapping and optimization
+- Responsive grid layouts
+
+## Database Schema Summary
+
+### Core Tables
+- `profiles` - User management and admin flags
+- `businesses` - Business directory with verification workflow
+- `products` - Product catalog with inventory management
+- `categories` - Classification system for businesses/products
+
+### Operational Tables  
+- `appointments` - Booking requests and contact management
+- `payments` - Transaction processing and provider integration
+- `reviews` - Rating and feedback system
+- `bookings` - Service reservation system
+
+### System Tables
+- `app_settings` - Configuration management
+- `audit_logs` - Activity tracking and compliance
+
+## Edge Functions
+- `ai-search` - Semantic search with OpenAI
+- `image-search` - Visual product matching
+- `geocode-address` - Location validation
+- `send-business-email` - Automated notifications
+- `create-payment-session` - Stripe integration
+- `payment-webhook` - Payment processing
+- `get-setting` - Configuration retrieval
+- `update-settings` - Configuration updates
+
+## Key Features for External Development
+
+### Safe to Edit Manually:
+- UI components in `src/components/`
+- Page layouts in `src/pages/`
+- Styling in `src/index.css` and `tailwind.config.ts`
+- Hook implementations in `src/hooks/`
+
+### Requires Careful Handling:
+- Supabase migrations (use migration tool)
+- RLS policies (test thoroughly)
+- Edge functions (deploy considerations)
+- Authentication flows (security implications)
+
+### Generated by Lovable:
+- Initial project structure
+- Supabase integration setup
+- UI component library (shadcn/ui)
+- Theme system and design tokens
+- Category image generation and mapping
+- Responsive layout implementations
+
+## Development Notes
+
+### Recent Updates:
+- Implemented photographic category images for enhanced visual appeal
+- Optimized Seychelles theme with island-inspired photography
+- Enhanced responsive design for mobile users
+- Improved image caching and loading performance
+
+### Known Considerations:
+- Payment provider configuration requires admin setup
+- Google Maps requires valid API key configuration
+- AI search features require OpenAI API key
+- Email notifications require Resend API setup
+
+### Performance Optimizations:
+- Image lazy loading and caching
+- Real-time subscription management
+- Efficient query patterns with proper indexing
+- Fallback handling for offline scenarios
 - `src/types/google-maps.d.ts` - TypeScript definitions
 
 **Edge Functions**:

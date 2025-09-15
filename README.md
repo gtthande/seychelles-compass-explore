@@ -1,503 +1,368 @@
-# iCompass Seychelles - Business Directory Platform
+# Seychelles Business Directory
 
-A comprehensive business directory and registration platform for the Seychelles islands, built with React, TypeScript, and Supabase.
+A comprehensive business directory platform for the beautiful islands of Seychelles, featuring business listings, product catalogs, appointment booking, and integrated payment processing.
 
-## Features Overview
+## 🌴 Features
 
-### ✅ Implemented Features
+- **Business Directory** - Complete business listings with verification system
+- **Product Catalog** - Searchable product inventory with images and pricing
+- **Appointment Booking** - Streamlined appointment request system
+- **Payment Processing** - Stripe + Visa/Mastercard integration
+- **Admin Panel** - Complete management dashboard
+- **AI-Enhanced Search** - Intelligent search with OpenAI integration
+- **Google Maps Integration** - Interactive location services
+- **Real-time Statistics** - Live counters and analytics
+- **Mobile Responsive** - Optimized for all devices
+- **Seychelles Theme** - Island-inspired design with authentic photography
 
-- **Business Registration System**: Appointment-based business onboarding with form validation
-- **Public Business Directory**: Categorized listings with search, filtering, and location services
-- **Authentication & User Management**: Email/password auth with profile management and password recovery
-- **Google Maps Integration**: Interactive maps with business locations and geocoding
-- **File Storage & PDF Handling**: Document storage with downloadable registration forms
-- **Admin Panel**: Business approval, user management, and system analytics
-- **AI-Powered Search**: Image search and natural language business discovery
-- **Review & Rating System**: Customer feedback with automatic rating calculations
-- **Product/Service Showcase**: Business offerings with inventory management
-- **Booking System**: Service appointment scheduling
-- **Real-time Features**: Live counters, search suggestions, and status updates
-- **Payments Subsystem**: Visa/Mastercard direct payments with optional Stripe integration
-- **Responsive Hero Section**: Beautiful Seychelles-themed hero with mobile-optimized design
-
-### 🏗️ Architecture
-
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: Tailwind CSS + shadcn/ui components
-- **Backend**: Supabase (PostgreSQL + Edge Functions)
-- **Authentication**: Supabase Auth with RLS
-- **File Storage**: Supabase Storage with public/private buckets
-- **External APIs**: Google Maps, OpenAI, Resend (email)
-
-## Database Overview
-
-The application uses Supabase PostgreSQL with comprehensive Row Level Security (RLS) policies. See [Database Schema Documentation](docs/schema.md) for detailed information and [RLS Policies Documentation](docs/rls.md) for security details.
-
-**Core Tables:**
-- `businesses` - Main business entities
-- `profiles` - User profiles with role management
-- `products` - Business offerings
-- `reviews` - Customer feedback
-- `appointments` - Registration requests
-- `categories` - Business categories
-- `payments` - Payment transactions and processing
-- `app_settings` - System configuration and API keys
-
-## Database Schema
+## 🗄️ Database Schema
 
 ### Core Tables
 
-#### `businesses`
-Main business entity storage
-```sql
-- id (uuid, PK)
-- owner_id (uuid, FK to profiles)
-- name (text, required)
-- description (text)
-- category (business_category enum)
-- status (business_status enum: pending/active/inactive)
-- phone, whatsapp, email (text)
-- website, facebook_url, instagram_url, linkedin_url, youtube_url (text)
-- address, island (text)
-- latitude, longitude (numeric)
-- logo_url, cover_image_url (text)
-- gallery_images (text array)
-- services (text array)
-- opening_hours (jsonb)
-- average_rating (numeric), total_reviews (integer)
-- featured (boolean), verified (boolean)
-- created_at, updated_at (timestamptz)
-```
-
 #### `profiles`
-User profile and role management
 ```sql
-- id (uuid, PK)
-- user_id (uuid, FK to auth.users)
-- full_name, phone (text)
-- business_name (text)
-- avatar_url (text)
-- is_admin, is_business_owner (boolean)
-- created_at, updated_at (timestamptz)
+- id (uuid, PK) - References auth.users
+- user_id (uuid) - Supabase auth user ID  
+- full_name (text) - User display name
+- phone (text) - Contact number
+- is_admin (boolean) - Admin privileges
+- is_business_owner (boolean) - Business owner flag
+- business_name (text) - Associated business
+- avatar_url (text) - Profile picture
 ```
 
-#### `appointments`
-Business registration requests
+#### `businesses` 
 ```sql
 - id (uuid, PK)
-- business_name, contact_person (text, required)
-- phone, whatsapp, email (text)
-- website, linkedin_url, facebook_url, youtube_url, instagram_url (text)
-- preferred_date (timestamptz), preferred_time (text)
-- notes (text)
-- status (text, default: 'pending')
-- created_at, updated_at (timestamptz)
-```
-
-#### `categories`
-Business category definitions
-```sql
-- id (uuid, PK)
-- name, slug (text, required)
-- description (text)
-- is_active (boolean)
-- created_at, updated_at (timestamptz)
+- owner_id (uuid) - References profiles.id
+- name (text) - Business name
+- description (text) - Business description
+- category (enum) - Business category
+- status (enum) - pending|active|inactive|rejected
+- verified (boolean) - Admin verification status
+- featured (boolean) - Homepage featuring
+- address (text) - Physical address
+- island (text) - Seychelles island location
+- latitude/longitude (numeric) - GPS coordinates
+- phone/whatsapp/email/website (text) - Contact info
+- social media URLs - Facebook, Instagram, LinkedIn, YouTube
+- logo_url/cover_image_url (text) - Branding images
+- gallery_images (text[]) - Photo gallery
+- services (text[]) - Service offerings
+- opening_hours (jsonb) - Operating schedule
+- average_rating (numeric) - Calculated rating
+- total_reviews (integer) - Review count
 ```
 
 #### `products`
-Business offerings
 ```sql
 - id (uuid, PK)
-- business_id (uuid, FK to businesses)
-- name (text, required)
-- description, category, unit, sku (text)
-- price (numeric), currency (text, default: 'SCR')
-- images (text array)
-- catalogue_url (text)
-- in_stock (boolean), stock_quantity (integer)
-- featured (boolean)
-- status (listing_status enum: draft/active/inactive)
-- tags (text array)
-- published_at, created_at, updated_at (timestamptz)
+- business_id (uuid) - References businesses.id
+- name (text) - Product name
+- description (text) - Product details
+- category (text) - Product category
+- price (numeric) - Product price
+- currency (text) - Price currency (SCR/USD/EUR)
+- unit (text) - Pricing unit
+- sku (text) - Stock keeping unit
+- stock_quantity (integer) - Available quantity
+- in_stock (boolean) - Availability flag
+- status (enum) - draft|active|inactive
+- featured (boolean) - Promotion flag
+- images (text[]) - Product photos
+- catalogue_url (text) - PDF catalog link
+- tags (text[]) - Search tags
+- published_at (timestamp) - Publication date
 ```
 
-#### `reviews`
-Customer feedback system
+#### `categories`
 ```sql
 - id (uuid, PK)
-- business_id (uuid, FK to businesses)
-- user_id (uuid, FK to profiles)
-- rating (integer, 1-5)
-- comment (text)
-- helpful_count (integer)
-- created_at, updated_at (timestamptz)
+- name (text) - Category display name
+- slug (text) - URL-friendly identifier
+- description (text) - Category description
+- is_active (boolean) - Visibility flag
 ```
 
-#### `bookings`
-Service booking system
+### Operational Tables
+
+#### `appointments`
 ```sql
 - id (uuid, PK)
-- business_id (uuid, FK to businesses)
-- user_id (uuid, FK to profiles)
-- service_type (text, required)
-- check_in_date, check_out_date (date)
-- guests (integer)
-- total_price (numeric), currency (text)
-- booking_details (jsonb)
-- status (text, default: 'pending')
-- created_at, updated_at (timestamptz)
+- business_name (text) - Target business
+- contact_person (text) - Requestor name
+- phone/email/whatsapp (text) - Contact methods
+- preferred_date (date) - Requested date
+- preferred_time (text) - Requested time
+- notes (text) - Additional details
+- status (text) - pending|confirmed|cancelled
+- social media URLs - Professional profiles
 ```
 
 #### `payments`
-Payment transactions and processing
 ```sql
 - id (uuid, PK)
-- user_id (uuid, FK to profiles)
-- amount (numeric, required)
-- currency (text, default: 'USD')
-- status (text, default: 'pending')
-- payment_provider (text, default: 'visa_mastercard')
-- provider_payment_id (text)
-- provider_session_id (text)
-- metadata (jsonb, default: '{}')
-- created_at, updated_at (timestamptz)
+- user_id (uuid) - Customer reference
+- amount (numeric) - Transaction amount
+- currency (text) - Transaction currency
+- status (text) - pending|completed|failed|cancelled
+- payment_provider (text) - visa_mastercard|stripe
+- provider_payment_id (text) - External payment ID
+- provider_session_id (text) - Session reference
+- metadata (jsonb) - Additional payment data
 ```
 
-#### `app_settings`
-System configuration and API keys
+#### `reviews`
 ```sql
 - id (uuid, PK)
-- key (text, unique, required)
-- value (text, required)
-- created_at, updated_at (timestamptz)
+- business_id (uuid) - References businesses.id
+- user_id (uuid) - References profiles.user_id
+- rating (integer) - 1-5 star rating
+- comment (text) - Review text
+- helpful_count (integer) - Usefulness votes
+```
+
+#### `bookings`
+```sql
+- id (uuid, PK)
+- business_id (uuid) - Service provider
+- user_id (uuid) - Customer
+- service_type (text) - Booking category
+- check_in_date/check_out_date (date) - Service dates
+- guests (integer) - Party size
+- total_price (numeric) - Booking cost
+- currency (text) - Price currency
+- status (text) - Booking status
+- booking_details (jsonb) - Service specifics
+```
+
+### System Tables
+
+#### `app_settings`
+```sql
+- id (uuid, PK)
+- key (text) - Setting identifier
+- value (text) - Setting value
 ```
 
 #### `audit_logs`
-System activity tracking
 ```sql
 - id (uuid, PK)
-- table_name (text, required)
-- record_id (uuid, required)
-- action (text, required)
-- user_id (uuid)
-- old_values, new_values (jsonb)
-- created_at (timestamptz)
+- table_name (text) - Affected table
+- record_id (uuid) - Affected record
+- action (text) - INSERT|UPDATE|DELETE
+- user_id (uuid) - Action performer
+- old_values/new_values (jsonb) - Change details
 ```
 
-### Database Functions
+## 💳 Payment Processing
 
-#### Security Functions
-- `is_admin()` - Check if current user has admin privileges
-- `can_view_review_profile(target_user_id)` - Privacy-aware profile access for business owners
-
-#### Automation Functions
-- `handle_new_user()` - Auto-create profile on user signup
-- `update_updated_at_column()` - Auto-update timestamps
-- `update_product_published_at()` - Manage product publication dates
-- `update_business_rating()` - Recalculate business ratings on review changes
-- `audit_trigger()` - Log all table changes
-
-#### Analytics Functions
-- `get_live_counters()` - Real-time dashboard statistics
-
-### Storage Buckets
-
-- `business-logos` (public) - Business logo images
-- `business-covers` (public) - Business cover/hero images  
-- `product-images` (public) - Product and service images
-- `product-catalogues` (private) - Product catalogs and documents
-- `business-documents` (public) - Registration forms and certificates
-
-### Row Level Security (RLS) Policies
-
-All tables implement comprehensive RLS policies:
-
-**Public Access**:
-- Active businesses and products (directory browsing)
-- Categories and reviews (public information)
-
-**Authenticated User Access**:
-- Own profile and bookings (personal data)
-- Business creation and management (ownership)
-- Review and rating submission (engagement)
-
-**Business Owner Access**:
-- Own business and product management
-- Customer review context (limited profile access)
-- Booking management for their services
-
-**Admin Access**:
-- Full system access (all tables)
-- Audit logs and analytics
-- User and business moderation
-
-## Edge Functions
-
-### `ai-search`
-Natural language business search using OpenAI
-- Input: Search query text
-- Output: Categorized results with relevance scoring
-- Requires: `OPENAI_API_KEY`
-
-### `image-search` 
-AI-powered image analysis for business discovery
-- Input: Uploaded image
-- Output: Detected categories and business suggestions
-- Requires: `OPENAI_API_KEY`
-
-### `geocode-address`
-Address to coordinates conversion for Google Maps
-- Input: Address string and island
-- Output: Latitude/longitude coordinates
-- Fallback: Island-specific center coordinates
-
-### `send-business-email`
-Transactional email notifications
-- Input: Email template and recipient data
-- Output: Email delivery confirmation
-- Requires: `RESEND_API_KEY`
-
-## Development Guidelines
-
-### Safe to Edit (Lovable Auto-Generated)
-✅ **UI Components**: All files in `src/components/ui/` are shadcn/ui components and can be safely customized
-✅ **Page Components**: Layout and styling can be modified
-✅ **Form Validation**: Zod schemas can be updated for business requirements
-✅ **Styling**: Tailwind classes and custom CSS
-✅ **Static Assets**: Images, PDFs, and other static files
-
-### Edit with Caution
-⚠️ **Database Types**: `src/integrations/supabase/types.ts` is auto-generated from database schema
-⚠️ **Migration Files**: `supabase/migrations/` should only be modified through proper migration tools
-⚠️ **Auth Hooks**: Core authentication logic should maintain session management integrity
-⚠️ **RLS Policies**: Security policies should be tested thoroughly before changes
-
-### Do Not Modify
-🚫 **Generated Files**: Package.json, lock files, and build configurations
-🚫 **Supabase Config**: Project IDs and API keys (use environment variables)
-🚫 **Core Integrations**: Base Supabase client configuration
-
-### Adding New Features
-
-1. **Database Changes**: Use Supabase migrations for schema updates
-2. **New Components**: Follow existing patterns and TypeScript interfaces
-3. **API Integrations**: Create edge functions for external service calls
-4. **File Storage**: Configure appropriate RLS policies for new buckets
-5. **Authentication**: Extend existing hooks rather than creating new auth logic
-
-### Environment Setup for Cursor/IDE Development
-
-1. **Clone and Install**:
-   ```bash
-   git clone <repository>
-   npm install
-   ```
-
-2. **Environment Variables**:
-   ```env
-   VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
-   VITE_SUPABASE_ANON_KEY=<anon_key>
-   ```
-
-3. **Supabase Local Development**:
-   ```bash
-   supabase start
-   supabase db reset
-   ```
-
-4. **Development Server**:
-   ```bash
-   npm run dev
-   ```
-
-### Testing Strategy
-
-- **Form Validation**: All Zod schemas include comprehensive validation
-- **Error Boundaries**: React error boundaries catch and display user-friendly errors
-- **RLS Testing**: Database policies tested with different user roles
-- **Mobile Responsiveness**: All components tested on mobile devices
-- **Cross-browser Compatibility**: Tested on Chrome, Firefox, Safari, and mobile browsers
-
-### Performance Considerations
-
-- **Database Indexing**: Key columns indexed for search performance
-- **Image Optimization**: Responsive images with lazy loading
-- **Caching**: React Query for API response caching
-- **Bundle Size**: Code splitting and tree shaking implemented
-- **Real-time Updates**: Selective subscriptions to minimize bandwidth
-
-## Deployment
-
-The application is configured for automatic deployment through Lovable's infrastructure:
-
-- **Frontend**: Static site generation with Vite
-- **Backend**: Serverless edge functions
-- **Database**: Managed PostgreSQL with automatic backups
-- **Storage**: CDN-distributed file storage
-- **Monitoring**: Built-in error tracking and performance monitoring
-
-For manual deployment to other platforms, see the deployment guides in `/docs/deployment/`.
-
-## Contributing
-
-When contributing to this project:
-
-1. Follow the existing code structure and patterns
-2. Use TypeScript strictly (no `any` types)
-3. Implement proper error handling and validation
-4. Test all database changes with appropriate RLS policies
-5. Update documentation for new features
-6. Follow the component and naming conventions established
-
-## Support & Documentation
-
-- **Full Development Log**: See `DEVLOG.md` for detailed feature implementation notes
-- **API Documentation**: Edge function documentation in `/supabase/functions/`
-- **Component Library**: UI component examples in Storybook (if available)
-- **Database Schema**: Visual schema diagrams in `/docs/database/`
-
-For questions about specific implementations, refer to the detailed component documentation and database function comments.
-
-## Storage & Assets
-
-### Supabase Storage Buckets
-
-#### Public Buckets
-- **`business-logos`**: Business logo images (public access)
-- **`business-covers`**: Business cover images (public access)
-- **`product-images`**: Product gallery images (public access)
-- **`business-documents`**: Business documentation (public access)
-
-#### Private Buckets
-- **`product-catalogues`**: Private product catalogs (restricted access)
-
-### Storage Policies
-- **Business owners**: Can upload to their business folders
-- **Public access**: All business and product images are publicly viewable
-- **Secure uploads**: Authentication required for file uploads
-- **File organization**: Organized by business ID and content type
-
-### File Upload Guidelines
-- **Supported formats**: JPEG, PNG, WebP for images; PDF for documents
-- **Size limits**: Enforced at application level
-- **Organization**: Files organized by business and content type
-- **Security**: RLS policies ensure proper access control
-
-## Deployment
-
-### Platform Deployment
-This project is designed for deployment on [Lovable](https://lovable.dev/), which provides:
-- **Automatic Deployment**: Push to deploy via Git integration
-- **Custom Domain Support**: Connect your own domain name
-- **Built-in CI/CD**: Automated testing and deployment pipeline
-- **Supabase Integration**: Seamless backend connectivity
-
-### Manual Deployment Options
-For alternative deployment platforms:
-
-1. **Build the project**
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy the `dist` folder** to your hosting provider
-
-3. **Configure environment variables** on your hosting platform
-
-### Production Considerations
-- **Environment Variables**: Ensure all required environment variables are set
-- **Supabase Configuration**: Update authentication URLs for production domain
-- **API Keys**: Secure all API keys and secrets in production environment
-- **Performance**: Enable gzip compression and CDN for optimal performance
-
----
-
-## Support & Contributing
-
-For questions, issues, or contributions, please refer to the project documentation or contact the development team.
-
-**Built with ❤️ for the Seychelles business community**
-
----
-
-## Tech Stack & Quick Start
-
-### Core Technologies
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: Tailwind CSS + shadcn/ui components
-- **Backend**: Supabase (PostgreSQL + Edge Functions)
-- **State Management**: TanStack React Query
-- **Forms**: React Hook Form + Zod validation
-- **Maps**: Google Maps API
-- **AI**: OpenAI API (GPT-4 Vision, GPT-4o-mini)
-
-### Quick Start
+### Stripe Integration
 ```bash
-# 1. Clone and install
-git clone <repository>
-cd seychelles-compass-explore
-npm install
-
-# 2. Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your API keys (see Environment Variables section)
-
-# 3. Apply database migrations
-npx supabase db push
-
-# 4. Seed demo data (optional)
-npm run seed:payments
-
-# 5. Start development server
-npm run dev
+# Enable Stripe in admin panel
+# Configure webhook endpoints
+# Set up product pricing
+# Test payment flows
 ```
+
+### Visa/Mastercard Support
+- Direct card processing
+- Secure tokenization
+- Multi-currency support (SCR, USD, EUR)
+- PCI compliance
+
+### Payment Flow
+1. User initiates payment
+2. `create-payment-session` edge function called
+3. Secure payment page displayed  
+4. Payment processed by provider
+5. `payment-webhook` updates status
+6. User receives confirmation
+
+## 🚀 Local Development
+
+### Prerequisites
+- Node.js 18+
+- Supabase CLI
+- Stripe account (for payments)
+- Google Maps API key
+- OpenAI API key (for AI search)
 
 ### Environment Variables
-Create a `.env.local` file with the following variables:
+Create `.env` file in project root:
 
-```env
-# Required
+```bash
+# Supabase Configuration
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key_here
-VITE_SITE_URL=http://localhost:5173
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-# Optional (configure via Admin Settings)
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-OPENAI_API_KEY=your_openai_api_key
-RESEND_API_KEY=your_resend_api_key
-
-# Optional (configure via Payment Provider Manager)
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
-STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
-
-# For seeding (optional)
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# API Keys (configured in Supabase Edge Functions)
+OPENAI_API_KEY=sk-... # For AI search features
+RESEND_API_KEY=re_... # For email notifications  
+GOOGLE_MAPS_API_KEY=AIza... # For maps integration
+STRIPE_SECRET_KEY=sk_test_... # For payment processing
 ```
 
-**Environment Setup Guide:**
-1. Copy `.env.example` to `.env.local`: `cp .env.example .env.local`
-2. Fill in your actual API keys in `.env.local`
-3. For production, set these as environment variables on your hosting platform
-4. Never commit `.env.local` or any file containing real API keys to version control
+### Installation & Setup
+```bash
+# Install dependencies
+npm install
 
-**Required API Keys:**
-- **Google Maps API Key**: For interactive maps and geocoding services
-- **OpenAI API Key**: For AI-powered search and image analysis features
-- **Resend API Key**: For transactional email notifications
-- **Stripe Keys**: For payment processing (optional, can use direct Visa/Mastercard)
+# Start development server
+npm run dev
 
-### Hero Section Configuration
-The Hero section is fully responsive and includes:
-- **Responsive Design**: Automatically adjusts padding and text sizes for mobile/desktop
-- **Semi-transparent Overlay**: Ensures text readability on bright background images
-- **Admin Management**: Hero content can be edited via Admin Panel → Hero Section
-- **Background Image**: Uses `/public/assets/hero.jpg` (Seychelles-themed)
-- **Typography**: Scales from `text-4xl` on mobile to `text-8xl` on desktop
+# Deploy Supabase functions (if needed)
+supabase functions deploy
+```
 
-## Styling / Hero Section
+### Database Setup
+```bash
+# Run migrations
+supabase db reset
 
-### Transparent Search Bar Styling
-The Hero section features a transparent search bar that blends seamlessly with the background:
+# Seed sample data (optional)
+npm run seed
+```
+
+## 🔧 Configuration
+
+### Admin Setup
+1. Create admin user account
+2. Run admin creation script:
+```bash
+node admin/create-admin.ts
+```
+
+### Google Maps Setup
+1. Get API key from Google Cloud Console
+2. Add to app settings via admin panel
+3. Enable required APIs (Maps, Geocoding)
+
+### Payment Setup
+1. Configure Stripe webhook endpoints
+2. Set up payment providers in admin panel
+3. Test payment flows in development
+
+## 📁 Project Structure
+
+### Safe to Edit (Cursor/IDE Compatible)
+```
+src/
+├── components/          # React components
+├── pages/              # Page layouts  
+├── hooks/              # Custom React hooks
+├── lib/                # Utility functions
+├── index.css           # Global styles
+└── tailwind.config.ts  # Theme configuration
+```
+
+### Requires Care (Supabase Managed)
+```
+supabase/
+├── migrations/         # Database schema changes
+├── functions/          # Edge functions
+└── config.toml        # Supabase configuration
+```
+
+### Generated by Lovable
+- Initial project structure and scaffolding
+- UI component library (shadcn/ui) integration
+- Supabase client setup and configuration
+- Authentication flows and user management
+- Theme system with design tokens
+- Category image generation and optimization
+- Responsive layout implementations
+- Payment integration boilerplate
+
+## 🔒 Security Features
+
+### Row Level Security (RLS)
+- All tables have appropriate RLS policies
+- User data isolation
+- Admin privilege enforcement
+- Business owner data protection
+
+### Authentication
+- Supabase Auth integration
+- Email/password and OAuth support
+- Secure session management
+- Role-based access control
+
+### Data Protection
+- Encrypted sensitive data
+- Audit logging for compliance
+- Secure file uploads
+- Payment data tokenization
+
+## 🎨 Theming & Customization
+
+### Design System
+- Seychelles-inspired color palette
+- Island-themed photography
+- Responsive breakpoints
+- Consistent spacing and typography
+
+### Customization
+- Edit `src/index.css` for global styles
+- Modify `tailwind.config.ts` for theme tokens
+- Update category images in `src/assets/`
+- Customize components in `src/components/`
+
+## 🔍 AI Features
+
+### Intelligent Search
+- OpenAI-powered semantic search
+- Natural language query processing
+- Fallback to traditional search
+- Image-based product matching
+
+### Setup Requirements
+- OpenAI API key configuration
+- Edge function deployment
+- Search index optimization
+
+## 📱 Mobile Optimization
+
+- Responsive design for all screen sizes
+- Touch-friendly interface elements
+- Optimized image loading
+- Mobile-specific navigation patterns
+
+## 🌟 Key Integrations
+
+- **Supabase** - Backend infrastructure
+- **Stripe** - Payment processing
+- **Google Maps** - Location services
+- **OpenAI** - AI-powered search
+- **Resend** - Email notifications
+- **Tailwind CSS** - Styling framework
+- **shadcn/ui** - Component library
+
+## 📈 Performance
+
+- Lazy loading for images and components
+- Efficient database queries with proper indexing
+- Real-time subscriptions for live data
+- Caching strategies for static content
+- Optimized bundle sizes
+
+## 🤝 Contributing
+
+### Development Workflow
+1. Create feature branch
+2. Implement changes in safe-to-edit areas
+3. Test thoroughly with RLS policies
+4. Submit pull request with documentation
+
+### Database Changes
+- Use Supabase migration tool
+- Test RLS policies extensively  
+- Document schema changes
+- Consider backward compatibility
+
+---
+
+Built with ❤️ for the beautiful islands of Seychelles 🌴
 
 **Search Container Styling:**
 ```css

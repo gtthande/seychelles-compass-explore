@@ -74,7 +74,6 @@ const Hero = () => {
                 value={searchValue}
                 onChange={setSearchValue}
                 placeholder="What are you looking for in Seychelles?"
-                className="bg-transparent text-white placeholder-white/70 focus:outline-none"
               />
             </div>
           </div>

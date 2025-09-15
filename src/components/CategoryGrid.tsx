@@ -17,10 +17,14 @@ import {
   Package,
   Briefcase
 } from "lucide-react";
-// Seychelles-themed category images from public assets
-const getSeychellesImage = (category: string) => {
-  return `/assets/shortcuts/${category}.jpg`;
-};
+// Import the generated category images
+import accommodationImg from '@/assets/category-accommodation.jpg';
+import foodImg from '@/assets/category-food.jpg';
+import toursImg from '@/assets/category-tours.jpg';
+import transportImg from '@/assets/category-transport.jpg';
+import retailImg from '@/assets/category-retail.jpg';
+import servicesImg from '@/assets/category-services.jpg';
+import entertainmentImg from '@/assets/category-entertainment.jpg';
 
 interface Category {
   id: string;
@@ -76,9 +80,19 @@ const getColorForCategory = (index: number) => {
   return colors[index % colors.length];
 };
 
-const getImageForCategory = (slug: string) => {
-  // Use Seychelles-themed images for all categories
-  return getSeychellesImage(slug);
+const getImageForCategory = (slug: string): string => {
+  const imageMap: Record<string, string> = {
+    accommodation: accommodationImg,
+    food: foodImg,
+    tours: toursImg,
+    transport: transportImg,
+    retail: retailImg,
+    services: servicesImg,
+    entertainment: entertainmentImg,
+    other: foodImg
+  };
+  
+  return imageMap[slug] || foodImg;
 };
 
 const CategoryGrid = () => {

@@ -29,17 +29,15 @@ export const useLiveCounters = () => {
       if (error) {
         console.error('RPC Error:', error);
         // Fallback to individual queries if RPC fails
-        const [businessesResult, productsResult, usersResult, reviewsResult] = await Promise.allSettled([
-          supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-          supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
-          supabase.from('profiles').select('id', { count: 'exact', head: true }),
-          supabase.from('reviews').select('id', { count: 'exact', head: true })
-        ]);
+        const businessesResult = await supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active');
+        const productsResult = await supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active');
+        const usersResult = await supabase.from('profiles').select('id', { count: 'exact', head: true });
+        const reviewsResult = await supabase.from('reviews').select('id', { count: 'exact', head: true });
 
-        const businesses = businessesResult.status === 'fulfilled' ? businessesResult.value.count || 0 : 0;
-        const products = productsResult.status === 'fulfilled' ? productsResult.value.count || 0 : 0;
-        const users = usersResult.status === 'fulfilled' ? usersResult.value.count || 0 : 0;
-        const reviews = reviewsResult.status === 'fulfilled' ? reviewsResult.value.count || 0 : 0;
+        const businesses = businessesResult.count || 0;
+        const products = productsResult.count || 0;
+        const users = usersResult.count || 0;
+        const reviews = reviewsResult.count || 0;
 
         setCounters({ businesses, products, users, reviews });
         return;

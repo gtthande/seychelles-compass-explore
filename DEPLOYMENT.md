@@ -19,10 +19,29 @@ VITE_SITE_URL=https://your-domain.vercel.app
 ### Optional Environment Variables (for enhanced features)
 ```
 OPENAI_API_KEY=sk-... # For AI search features
-RESEND_API_KEY=re_... # For email notifications
+RESEND_API_KEY=re_... # For reliable password reset emails (recommended)
 GOOGLE_MAPS_API_KEY=AIza... # For maps integration
 STRIPE_SECRET_KEY=sk_test_... # For payment processing
 ```
+
+### Password Reset Configuration
+
+The app supports multiple email delivery methods for password resets:
+
+1. **Resend (Recommended)**: Set `RESEND_API_KEY` for reliable email delivery
+2. **Supabase Default**: Falls back to Supabase's built-in email service
+3. **Development Preview**: Use `/dev/email-preview` for local testing
+
+#### Setting up Resend (Production)
+1. Sign up at [resend.com](https://resend.com)
+2. Get your API key from the dashboard
+3. Add `RESEND_API_KEY` to your Vercel environment variables
+4. The app will automatically use Resend for password reset emails
+
+#### Testing Password Reset
+- **Local**: Visit `/dev/email-preview` to see reset emails and copy links
+- **Production**: Check your email inbox for reset instructions
+- **Fallback**: If Resend fails, Supabase will handle email delivery automatically
 
 ### Deployment Steps
 

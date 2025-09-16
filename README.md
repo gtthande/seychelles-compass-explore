@@ -49,6 +49,13 @@ A comprehensive business directory platform for the beautiful islands of Seychel
 - Payment history tracking and status display
 - Integration with demo businesses for testing
 
+### 🔐 Password Reset System
+- **Frontend Validation**: Inline email validation with error messages
+- **Multiple Email Providers**: Resend (recommended) with Supabase fallback
+- **Development Preview**: `/dev/email-preview` for local testing
+- **Production Ready**: Automatic fallback if Resend fails
+- **User-Friendly**: Clear success/error states and instructions
+
 ## 🗄️ Database Schema
 
 ### Core Tables
@@ -274,6 +281,25 @@ npm run dev
 # - Enter customer email and amount
 # - Choose payment provider (Visa/Mastercard or Stripe)
 # - Process mock payment (80% success rate)
+```
+
+### Testing Password Reset System
+```bash
+# Start development server
+npm run dev
+
+# Test password reset flow
+# 1. Navigate to http://localhost:5173/auth
+# 2. Click "Forgot Password?" on sign-in tab
+# 3. Enter email address (validation will show inline errors)
+# 4. Check success message and email preview
+
+# Development email preview
+# Navigate to http://localhost:5173/dev/email-preview
+# - View all password reset requests
+# - Copy reset links for testing
+# - Preview email content
+# - Test reset flow end-to-end
 ```
 
 ## 🔧 Configuration

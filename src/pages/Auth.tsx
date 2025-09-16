@@ -17,6 +17,8 @@ const Auth = () => {
   const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -126,38 +128,99 @@ const Auth = () => {
     }
   };
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handlePasswordReset = async () => {
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address to reset your password.",
-        variant: "destructive",
-      });
+    // Clear previous errors
+    setEmailError("");
+    
+    // Validate email
+    if (!email.trim()) {
+      setEmailError("Please enter your email address");
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setEmailError("Please enter a valid email address");
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/reset-password`,
-      });
+      const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+      
+      // Try using the enhanced edge function first
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ email, siteUrl }),
+        });
 
-      if (error) {
-        toast({
-          title: "Reset failed",
-          description: error.message,
-          variant: "destructive",
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Password reset sent via:', result.method);
+        } else {
+          throw new Error('Edge function failed');
+        }
+      } catch (edgeFunctionError) {
+        console.log('Edge function failed, using direct Supabase:', edgeFunctionError);
+        // Fallback to direct Supabase call
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${siteUrl}/auth/callback`,
         });
-      } else {
-        toast({
-          title: "Reset email sent",
-          description: "Check your email for password reset instructions.",
-        });
+        
+        if (error) throw error;
       }
-    } catch (error) {
+
+      // If we reach here, the reset was successful
+      setResetEmailSent(true);
+      
+      // Store successful request for dev preview
+      if (import.meta.env.DEV) {
+        const resetLink = `${siteUrl}/auth/callback?token=dev-token&type=recovery`;
+        const request = {
+          id: Date.now().toString(),
+          email,
+          timestamp: new Date().toISOString(),
+          resetLink,
+          status: 'sent' as const
+        };
+        const existing = JSON.parse(localStorage.getItem('password-reset-requests') || '[]');
+        localStorage.setItem('password-reset-requests', JSON.stringify([request, ...existing.slice(0, 9)]));
+      }
+      
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Reset email sent!",
+        description: "Check your email for password reset instructions. If you don't see it, check your spam folder.",
+      });
+    } catch (error) {
+      console.error('Password reset error:', error);
+      
+      // Store failed request for dev preview
+      if (import.meta.env.DEV) {
+        const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+        const resetLink = `${siteUrl}/auth/callback?token=dev-token&type=recovery`;
+        const request = {
+          id: Date.now().toString(),
+          email,
+          timestamp: new Date().toISOString(),
+          resetLink,
+          status: 'failed' as const
+        };
+        const existing = JSON.parse(localStorage.getItem('password-reset-requests') || '[]');
+        localStorage.setItem('password-reset-requests', JSON.stringify([request, ...existing.slice(0, 9)]));
+      }
+      
+      toast({
+        title: "Reset failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -202,9 +265,16 @@ const Auth = () => {
                       type="email"
                       placeholder="your@email.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailError(""); // Clear error when user types
+                      }}
+                      className={emailError ? "border-red-500" : ""}
                       required
                     />
+                    {emailError && (
+                      <p className="text-sm text-red-500">{emailError}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
@@ -235,15 +305,31 @@ const Auth = () => {
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    className="w-full text-sm" 
-                    onClick={handlePasswordReset}
-                    disabled={loading}
-                  >
-                    Forgot Password?
-                  </Button>
+                  {resetEmailSent ? (
+                    <div className="text-center p-3 bg-green-50 border border-green-200 rounded-md">
+                      <p className="text-sm text-green-700">
+                        ✅ Reset email sent! Check your inbox.
+                      </p>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        className="text-xs mt-1" 
+                        onClick={() => setResetEmailSent(false)}
+                      >
+                        Send another email
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      className="w-full text-sm" 
+                      onClick={handlePasswordReset}
+                      disabled={loading}
+                    >
+                      {loading ? "Sending..." : "Forgot Password?"}
+                    </Button>
+                  )}
                 </form>
               </TabsContent>
               

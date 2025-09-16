@@ -18,6 +18,7 @@ import Products from "./pages/Products";
 import Documentation from "./pages/Documentation";
 import AdminPanel from "./pages/AdminPanel";
 import PaymentTest from "./pages/PaymentTest";
+import EmailPreview from "./pages/EmailPreview";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/admin/settings" element={<AdminPanel />} />
           <Route path="/payments/test" element={<PaymentTest />} />
+          <Route path="/dev/email-preview" element={<EmailPreview />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
           </Routes>

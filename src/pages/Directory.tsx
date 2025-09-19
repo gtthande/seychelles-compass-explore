@@ -142,6 +142,38 @@ const Directory = () => {
     });
   };
 
+  const fetchBusinesses = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('status', 'active')
+        .order('featured', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching businesses:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load businesses. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        setBusinesses(data || []);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchBusinesses();
   }, []);
@@ -216,38 +248,6 @@ const Directory = () => {
       // Fallback to address search
       const query = encodeURIComponent(business.name + ', ' + business.address + ', Seychelles');
       window.open(`https://maps.google.com/?q=${query}`);
-    }
-  };
-
-  const fetchBusinesses = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('status', 'active')
-        .order('featured', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching businesses:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load businesses. Please try again.",
-          variant: "destructive",
-        });
-      } else {
-        setBusinesses(data || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
     }
   };
 

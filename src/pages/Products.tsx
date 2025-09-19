@@ -79,7 +79,7 @@ const Products = () => {
         query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
       }
 
-      if (selectedCategory) {
+      if (selectedCategory && selectedCategory !== "__all__") {
         query = query.eq('category', selectedCategory);
       }
 
@@ -91,7 +91,7 @@ const Products = () => {
         query = query.lte('price', parseFloat(priceRange.max));
       }
 
-      if (selectedIsland) {
+      if (selectedIsland && selectedIsland !== "__all__") {
         query = query.eq('business.island', selectedIsland);
       }
 
@@ -382,7 +382,7 @@ const Products = () => {
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="__all__">All Categories</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.value} value={category.value}>
                     {category.label}
@@ -396,7 +396,7 @@ const Products = () => {
                 <SelectValue placeholder="All Islands" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Islands</SelectItem>
+                <SelectItem value="__all__">All Islands</SelectItem>
                 {islands.map((island) => (
                   <SelectItem key={island} value={island}>
                     {island}

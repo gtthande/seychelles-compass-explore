@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Building, Package, Plus, Edit, Trash2, MapPin, Phone, Mail, Globe } from "lucide-react";
+import { Building, Package, Plus, Edit, Trash2, MapPin, Phone, Mail, Globe, Navigation } from "lucide-react";
+import BusinessLocationMap from "@/components/business/BusinessLocationMap";
 import {
   Dialog,
   DialogContent,
@@ -71,7 +72,9 @@ const BusinessDashboard = () => {
     email: "",
     website: "",
     address: "",
-    island: ""
+    island: "",
+    latitude: null as number | null,
+    longitude: null as number | null
   });
 
   const [productForm, setProductForm] = useState({
@@ -108,6 +111,43 @@ const BusinessDashboard = () => {
       setCategories(categoryOptions);
     } catch (error) {
       console.error('Error fetching categories:', error);
+    }
+  };
+
+  const geocodeAddress = async (address: string) => {
+    if (!address.trim()) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('geocode-address', {
+        body: { address: address }
+      });
+
+      if (error) throw error;
+      
+      if (data && data.latitude && data.longitude) {
+        setBusinessForm(prev => ({
+          ...prev,
+          latitude: data.latitude,
+          longitude: data.longitude
+        }));
+        toast({
+          title: 'Location Found',
+          description: 'Coordinates have been automatically set for your address.',
+        });
+      } else {
+        toast({
+          title: 'Location Not Found',
+          description: 'Could not find coordinates for this address. You can set them manually.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error geocoding address:', error);
+      toast({
+        title: 'Geocoding Failed',
+        description: 'Could not get coordinates for this address.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -415,11 +455,49 @@ const BusinessDashboard = () => {
               </div>
               <div>
                 <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={businessForm.address}
-                  onChange={(e) => setBusinessForm({ ...businessForm, address: e.target.value })}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="address"
+                    value={businessForm.address}
+                    onChange={(e) => setBusinessForm({ ...businessForm, address: e.target.value })}
+                    placeholder="Enter your business address"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => geocodeAddress(businessForm.address)}
+                    disabled={!businessForm.address.trim()}
+                    className="flex items-center gap-1"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Get Location
+                  </Button>
+                </div>
+                {businessForm.latitude && businessForm.longitude && (
+                  <div className="mt-2 space-y-2">
+                    <div className="p-2 bg-muted rounded-md">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Navigation className="w-4 h-4" />
+                        <span>Location: {businessForm.latitude.toFixed(6)}, {businessForm.longitude.toFixed(6)}</span>
+                      </div>
+                    </div>
+                    <div className="h-32">
+                      <BusinessLocationMap
+                        business={{
+                          id: 'preview',
+                          name: businessForm.name || 'Business Location',
+                          address: businessForm.address,
+                          latitude: businessForm.latitude,
+                          longitude: businessForm.longitude,
+                          island: businessForm.island
+                        }}
+                        height="128px"
+                        showTitle={false}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>

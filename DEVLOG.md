@@ -712,6 +712,36 @@ All tables have RLS enabled with appropriate policies:
 
 **Status**: Production-ready password reset system with multiple email providers and comprehensive testing tools.
 
+### January 19, 2025 - Fixed Directory Page Select.Item Crashes ✅
+
+**Purpose**: Fixed critical crashes in directory and products pages caused by empty `value` props in `<SelectItem>` components.
+
+**Changes Made**:
+
+#### 🔧 SelectItem Value Props Fixed
+- **Directory.tsx**: Changed empty `value=""` to `value="__all__"` for "Browse All Types" and "All Locations" options
+- **Products.tsx**: Changed empty `value=""` to `value="__all__"` for "All Categories" and "All Islands" options
+- **Filtering Logic**: Updated filtering logic to handle `__all__` values properly
+- **Consistent Placeholders**: Added consistent placeholder support for all dropdowns
+
+#### 🛡️ Error Prevention
+- **Non-empty Values**: Ensured every `<SelectItem>` has a valid non-empty `value` prop
+- **Fallback Handling**: Added safe fallback for cases where no option is selected
+- **Radix Compatibility**: Updated all Radix `<Select />` components to prevent crashes
+
+**Files Modified**:
+- `src/pages/Directory.tsx` - Fixed category and island select dropdowns
+- `src/pages/Products.tsx` - Fixed category and island select dropdowns
+
+**Verification Steps**:
+- ✅ Directory page loads without errors (`/directory`)
+- ✅ Education category filter works correctly (`/directory?category=education`)
+- ✅ Products page loads without errors (`/products`)
+- ✅ All dropdown selections work properly
+- ✅ No more Select.Item crashes
+
+**Status**: Directory and products pages now load correctly with proper dropdown functionality.
+
 ## Known Issues & Bug Tracking
 
 ### High Priority

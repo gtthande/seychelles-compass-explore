@@ -6,6 +6,7 @@ import { useGoogleMapsApiKey } from '@/hooks/useGoogleMapsApiKey';
 
 interface Business {
   id: string;
+  owner_id: string;
   name: string;
   description: string;
   category: string;

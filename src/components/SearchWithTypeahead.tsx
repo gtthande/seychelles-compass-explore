@@ -169,6 +169,7 @@ const SearchWithTypeahead = ({
       retail: 'Retail Products',
       services: 'Services',
       entertainment: 'Entertainment',
+      education: 'Education',
       other: 'Other'
     };
     return categoryLabels[category] || category;

@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import LiveCounters from "@/components/LiveCounters";
@@ -28,6 +33,9 @@ import {
   Clock,
   Verified,
   Map,
+  Edit,
+  Save,
+  Trash2,
   List,
   Filter,
   ExternalLink,
@@ -37,6 +45,7 @@ import {
 
 interface Business {
   id: string;
+  owner_id: string;
   name: string;
   description: string;
   category: string;
@@ -73,12 +82,30 @@ interface CategoryGroup {
 
 const Directory = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedIsland, setSelectedIsland] = useState("");
+  const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    phone: "",
+    email: "",
+    website: "",
+    address: "",
+    island: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
+    facebook_url: "",
+    instagram_url: "",
+    linkedin_url: "",
+    youtube_url: ""
+  });
   const [hasWhatsApp, setHasWhatsApp] = useState(false);
   const [showFeatured, setShowFeatured] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
@@ -115,6 +142,7 @@ const Directory = () => {
           { value: "retail", label: "Retail Products" },
           { value: "services", label: "Services" },
           { value: "entertainment", label: "Entertainment" },
+          { value: "education", label: "Education" },
         ]);
       }
     };
@@ -174,6 +202,100 @@ const Directory = () => {
     }
   };
 
+  // Edit business functions
+  const handleEditBusiness = (business: Business) => {
+    setEditingBusiness(business);
+    setEditForm({
+      name: business.name || "",
+      description: business.description || "",
+      phone: business.phone || "",
+      email: business.email || "",
+      website: business.website || "",
+      address: business.address || "",
+      island: business.island || "",
+      latitude: business.latitude || null,
+      longitude: business.longitude || null,
+      facebook_url: business.facebook_url || "",
+      instagram_url: business.instagram_url || "",
+      linkedin_url: business.linkedin_url || "",
+      youtube_url: business.youtube_url || ""
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveBusiness = async () => {
+    if (!editingBusiness || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('businesses')
+        .update(editForm)
+        .eq('id', editingBusiness.id)
+        .eq('owner_id', user.id); // Ensure user can only edit their own business
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Business updated successfully.",
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingBusiness(null);
+      fetchBusinesses(); // Refresh the list
+    } catch (error: any) {
+      console.error('Error updating business:', error);
+      toast({
+        title: "Error",
+        description: `Failed to update business: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const geocodeAddress = async (address: string) => {
+    if (!address.trim()) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('geocode-address', {
+        body: { address: address, island: editForm.island }
+      });
+
+      if (error) throw error;
+      
+      if (data && data.latitude && data.longitude) {
+        setEditForm(prev => ({
+          ...prev,
+          latitude: data.latitude,
+          longitude: data.longitude
+        }));
+        toast({
+          title: 'Location Found',
+          description: 'Coordinates have been automatically set for your address.',
+        });
+      } else {
+        toast({
+          title: 'Location Not Found',
+          description: 'Could not find coordinates for this address. You can set them manually.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error geocoding address:', error);
+      toast({
+        title: 'Geocoding Failed',
+        description: 'Could not get coordinates for this address.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Check if user can edit a business
+  const canEditBusiness = (business: Business) => {
+    if (!user) return false;
+    return business.owner_id === user.id;
+  };
+
   useEffect(() => {
     fetchBusinesses();
   }, []);
@@ -203,6 +325,7 @@ const Directory = () => {
             business.description?.toLowerCase().includes(searchLower) ||
             business.category?.toLowerCase().includes(searchLower) ||
             business.address?.toLowerCase().includes(searchLower) ||
+            business.island?.toLowerCase().includes(searchLower) ||
             (business.services && Array.isArray(business.services) && business.services.some(service => service?.toLowerCase().includes(searchLower)))
           );
         } catch (error) {
@@ -212,11 +335,11 @@ const Directory = () => {
       });
     }
 
-    if (selectedCategory) {
+    if (selectedCategory && selectedCategory !== "__all__") {
       filtered = filtered.filter(business => business.category === selectedCategory);
     }
 
-    if (selectedIsland) {
+    if (selectedIsland && selectedIsland !== "__all__") {
       filtered = filtered.filter(business => business.island === selectedIsland);
     }
     
@@ -243,22 +366,25 @@ const Directory = () => {
         // Try Apple Maps first on iOS, Google Maps on Android
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (isIOS) {
-          window.open(`http://maps.apple.com/?q=${query}&ll=${coords}`);
+          // Apple Maps with directions
+          window.open(`http://maps.apple.com/?daddr=${coords}&dirflg=d`);
         } else {
-          window.open(`https://maps.google.com/?q=${coords}(${query})`);
+          // Google Maps with directions on Android
+          window.open(`https://maps.google.com/maps?daddr=${coords}&dirflg=d`);
         }
       } else {
-        // Desktop - use Google Maps
-        window.open(`https://maps.google.com/?q=${coords}(${query})`);
+        // Desktop - use Google Maps with directions
+        window.open(`https://maps.google.com/maps?daddr=${coords}&dirflg=d`);
       }
     } else {
-      // Fallback to address search
+      // Fallback to address search with directions
       const query = encodeURIComponent(business.name + ', ' + business.address + ', Seychelles');
-      window.open(`https://maps.google.com/?q=${query}`);
+      window.open(`https://maps.google.com/maps?daddr=${query}&dirflg=d`);
     }
   };
 
   const formatCategory = (category: string) => {
+    if (!category) return 'Unknown';
     const found = categories.find(c => c.value === category);
     return found ? found.label : category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
@@ -268,6 +394,7 @@ const Directory = () => {
     const grouped: { [category: string]: { [subcategory: string]: Business[] } } = {};
 
     businesses.forEach(business => {
+      if (!business || !business.category) return;
       const category = formatCategory(business.category);
       
       // Create proper subcategories based on business type
@@ -309,7 +436,7 @@ const Directory = () => {
       }));
   };
 
-  const groupedBusinesses = groupBusinessesByCategory(filteredBusinesses);
+  const groupedBusinesses = filteredBusinesses.length > 0 ? groupBusinessesByCategory(filteredBusinesses) : [];
 
   const BusinessListingCard = ({ business }: { business: Business }) => {
     const hasLocationData = business.latitude && business.longitude && business.address;
@@ -336,6 +463,17 @@ const Directory = () => {
                       <Badge className="text-xs bg-primary text-primary-foreground">
                         Featured
                       </Badge>
+                    )}
+                    {canEditBusiness(business) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditBusiness(business)}
+                        className="h-6 w-6 p-0 ml-auto"
+                        title="Edit business"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
                     )}
                   </div>
                   
@@ -516,6 +654,18 @@ const Directory = () => {
     </Accordion>
   );
 
+  // Add loading state check
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading businesses...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-light via-background to-secondary">
       <div className="container mx-auto px-4 py-8">
@@ -561,7 +711,7 @@ const Directory = () => {
                 <SelectValue placeholder="Browse by Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Browse All Types</SelectItem>
+                <SelectItem value="__all__">Browse All Types</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.value} value={category.value}>
                     {category.label}
@@ -575,7 +725,7 @@ const Directory = () => {
                 <SelectValue placeholder="Choose Location" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Locations</SelectItem>
+                <SelectItem value="__all__">All Locations</SelectItem>
                 {islands.map((island) => (
                   <SelectItem key={island} value={island}>
                     {island}
@@ -648,7 +798,7 @@ const Directory = () => {
             <GoogleMap 
               businesses={filteredBusinesses}
               selectedBusiness={selectedBusiness}
-              onBusinessSelect={setSelectedBusiness}
+              onBusinessSelect={(business) => setSelectedBusiness(business)}
             />
             {selectedBusiness && (
               <Card>
@@ -705,6 +855,207 @@ const Directory = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Business Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Business</DialogTitle>
+            <DialogDescription>
+              Update your business information. Changes will be reflected immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-description" className="text-right">
+                Description
+              </Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="col-span-3"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-phone" className="text-right">
+                Phone
+              </Label>
+              <Input
+                id="edit-phone"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-website" className="text-right">
+                Website
+              </Label>
+              <Input
+                id="edit-website"
+                type="url"
+                value={editForm.website}
+                onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-island" className="text-right">
+                Island
+              </Label>
+              <Select
+                value={editForm.island}
+                onValueChange={(value) => setEditForm({ ...editForm, island: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select island" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mahé">Mahé</SelectItem>
+                  <SelectItem value="Praslin">Praslin</SelectItem>
+                  <SelectItem value="La Digue">La Digue</SelectItem>
+                  <SelectItem value="Silhouette">Silhouette</SelectItem>
+                  <SelectItem value="Curieuse">Curieuse</SelectItem>
+                  <SelectItem value="Bird">Bird</SelectItem>
+                  <SelectItem value="Denis">Denis</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-address">Address</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="edit-address"
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  placeholder="Enter your business address"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => geocodeAddress(editForm.address)}
+                  disabled={!editForm.address.trim()}
+                  className="flex items-center gap-1"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Get Location
+                </Button>
+              </div>
+              {editForm.latitude && editForm.longitude && (
+                <div className="mt-2 space-y-2">
+                  <div className="p-2 bg-muted rounded-md">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Navigation className="w-4 h-4" />
+                      <span>Location: {editForm.latitude.toFixed(6)}, {editForm.longitude.toFixed(6)}</span>
+                    </div>
+                  </div>
+                  <div className="h-32">
+                    <BusinessLocationMap
+                      business={{
+                        id: 'preview',
+                        name: editForm.name || 'Business Location',
+                        address: editForm.address,
+                        latitude: editForm.latitude,
+                        longitude: editForm.longitude,
+                        island: editForm.island
+                      }}
+                      height="128px"
+                      showTitle={false}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-facebook" className="text-right">
+                Facebook
+              </Label>
+              <Input
+                id="edit-facebook"
+                type="url"
+                value={editForm.facebook_url}
+                onChange={(e) => setEditForm({ ...editForm, facebook_url: e.target.value })}
+                className="col-span-3"
+                placeholder="https://facebook.com/yourpage"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-instagram" className="text-right">
+                Instagram
+              </Label>
+              <Input
+                id="edit-instagram"
+                type="url"
+                value={editForm.instagram_url}
+                onChange={(e) => setEditForm({ ...editForm, instagram_url: e.target.value })}
+                className="col-span-3"
+                placeholder="https://instagram.com/yourprofile"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-linkedin" className="text-right">
+                LinkedIn
+              </Label>
+              <Input
+                id="edit-linkedin"
+                type="url"
+                value={editForm.linkedin_url}
+                onChange={(e) => setEditForm({ ...editForm, linkedin_url: e.target.value })}
+                className="col-span-3"
+                placeholder="https://linkedin.com/company/yourcompany"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-youtube" className="text-right">
+                YouTube
+              </Label>
+              <Input
+                id="edit-youtube"
+                type="url"
+                value={editForm.youtube_url}
+                onChange={(e) => setEditForm({ ...editForm, youtube_url: e.target.value })}
+                className="col-span-3"
+                placeholder="https://youtube.com/channel/yourchannel"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveBusiness}>
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

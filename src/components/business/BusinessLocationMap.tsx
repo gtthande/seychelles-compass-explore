@@ -52,6 +52,9 @@ const BusinessLocationMap = ({
 
   // Create OpenStreetMap tile URL for lightweight map display
   const osmTileUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${business.longitude-0.01},${business.latitude-0.01},${business.longitude+0.01},${business.latitude+0.01}&layer=mapnik&marker=${business.latitude},${business.longitude}`;
+  
+  // Alternative: Use a static map image as fallback
+  const staticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+ff0000(${business.longitude},${business.latitude})/${business.longitude},${business.latitude},15,0/300x200@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
 
   return (
     <Card className="overflow-hidden">
@@ -76,41 +79,27 @@ const BusinessLocationMap = ({
       
       <CardContent className="p-0">
         <div className="relative" style={{ height }}>
-          {/* Lightweight embedded map using OpenStreetMap */}
+          {/* Simple map placeholder with click to open */}
           <div 
-            className="w-full h-full bg-muted flex items-center justify-center cursor-pointer transition-all duration-200 hover:opacity-90 rounded-lg overflow-hidden"
+            className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-dashed border-blue-300 flex items-center justify-center cursor-pointer transition-all duration-200 hover:opacity-90 rounded-lg overflow-hidden"
             onClick={openInMaps}
           >
-            <iframe
-              src={osmTileUrl}
-              className="w-full h-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title={`Map showing location of ${business.name}`}
-              onError={(e) => {
-                // Fallback to a simple location indicator
-                const target = e.currentTarget;
-                const nextElement = target.nextElementSibling as HTMLElement;
-                target.style.display = 'none';
-                if (nextElement) {
-                  nextElement.style.display = 'flex';
-                }
-              }}
-            />
-            <div 
-              className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/5 items-center justify-center flex-col hidden absolute inset-0"
-            >
-              <MapPin className="w-8 h-8 text-primary mb-2" />
-              <span className="text-sm text-muted-foreground text-center px-4">
-                Click to view location
-              </span>
+            <div className="text-center p-4">
+              <MapPin className="w-12 h-12 text-blue-600 mx-auto mb-3" />
+              <h3 className="font-semibold text-blue-800 mb-2">View Location</h3>
+              <p className="text-sm text-blue-600 mb-3">
+                {business.latitude.toFixed(4)}, {business.longitude.toFixed(4)}
+              </p>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="mt-2"
-                onClick={openInMaps}
+                className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openInMaps();
+                }}
               >
-                View Location
+                Open in Maps
               </Button>
             </div>
           </div>

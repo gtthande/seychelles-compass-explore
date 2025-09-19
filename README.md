@@ -222,6 +222,29 @@ A comprehensive business directory platform for the beautiful islands of Seychel
 
 ## 🚀 Local Development
 
+### Running the Dev Server Safely
+
+**Windows Users:**
+Use the provided PowerShell script to automatically free port 5173 and start the development server:
+
+```powershell
+# Run the safe dev server script
+.\run-dev.ps1
+```
+
+This script will:
+- Check for any processes using port 5173
+- Kill conflicting processes automatically
+- Start the Vite development server
+- Provide clear status messages throughout the process
+
+**Linux/Mac Users:**
+Run the development server normally:
+
+```bash
+npm run dev
+```
+
 ### Prerequisites
 - Node.js 18+
 - Supabase CLI

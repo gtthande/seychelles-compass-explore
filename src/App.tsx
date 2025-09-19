@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MaintenanceBanner } from "@/components/MaintenanceBanner";
+import RouteGuard from "@/components/RouteGuard";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
@@ -14,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Directory from "./pages/Directory";
 import NotFound from "./pages/NotFound";
 import BusinessPortal from "./pages/BusinessPortal";
+import BusinessDashboard from "./pages/BusinessDashboard";
 import Products from "./pages/Products";
 import Documentation from "./pages/Documentation";
 import AdminPanel from "./pages/AdminPanel";
@@ -38,11 +40,11 @@ const App = () => (
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/directory" element={<Directory />} />
-          <Route path="/business" element={<BusinessPortal />} />
+          <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
           <Route path="/products" element={<Products />} />
           <Route path="/docs" element={<Documentation />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/admin/settings" element={<AdminPanel />} />
+          <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+          <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
           <Route path="/payments/test" element={<PaymentTest />} />
           <Route path="/dev/email-preview" element={<EmailPreview />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

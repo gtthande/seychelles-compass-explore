@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building } from "lucide-react";
+import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building, UserCog } from "lucide-react";
 import CategoryManager from "@/components/admin/CategoryManager";
 import AppointmentManager from "@/components/admin/AppointmentManager";
 import HeroSectionManager from "@/components/admin/HeroSectionManager";
@@ -14,6 +14,7 @@ import SettingsManager from "@/components/admin/SettingsManager";
 import PaymentDashboard from "@/components/admin/PaymentDashboard";
 import PaymentProviderManager from "@/components/admin/PaymentProviderManager";
 import BusinessManager from "@/components/admin/BusinessManager";
+import UserManager from "@/components/admin/UserManager";
 
 const AdminPanel = () => {
   const { user, loading: authLoading } = useAuth();
@@ -42,11 +43,11 @@ const AdminPanel = () => {
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('is_admin')
+          .select('role, is_admin')
           .eq('user_id', user.id)
           .single();
         
-        setIsAdmin(profile?.is_admin || false);
+        setIsAdmin(profile?.role === 'admin' || profile?.is_admin || false);
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
@@ -198,19 +199,7 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>
-                Manage user accounts, roles, and permissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                User management functionality coming soon...
-              </p>
-            </CardContent>
-          </Card>
+          <UserManager />
         </TabsContent>
 
         <TabsContent value="products">

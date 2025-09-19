@@ -56,7 +56,7 @@ const Auth = () => {
         email,
         password,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`,
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || 'http://localhost:5173'}/auth/callback`,
           data: {
             full_name: fullName,
             phone: phone,
@@ -150,7 +150,7 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+      const siteUrl = import.meta.env.VITE_SITE_URL || 'http://localhost:5173';
       
       // Try using the enhanced edge function first
       try {
@@ -205,7 +205,7 @@ const Auth = () => {
       
       // Store failed request for dev preview
       if (import.meta.env.DEV) {
-        const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+        const siteUrl = import.meta.env.VITE_SITE_URL || 'http://localhost:5173';
         const resetLink = `${siteUrl}/auth/callback?token=dev-token&type=recovery`;
         const request = {
           id: Date.now().toString(),

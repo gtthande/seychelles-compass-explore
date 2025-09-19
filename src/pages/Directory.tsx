@@ -230,12 +230,6 @@ const Directory = () => {
       filtered = filtered.filter(business => business.featured);
     }
 
-    console.log('Filtering results:', {
-      totalBusinesses: businesses.length,
-      searchTerm,
-      selectedCategory,
-      filteredCount: filtered.length
-    });
     setFilteredBusinesses(filtered);
   }, [businesses, searchTerm, selectedCategory, selectedIsland, hasWhatsApp, showFeatured]);
   

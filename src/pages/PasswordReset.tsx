@@ -18,13 +18,56 @@ const PasswordReset = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is already authenticated
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
+    // Handle password reset from email link
+    const handlePasswordReset = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting session:', error);
+        toast({
+          title: "Authentication Error",
+          description: "Please try the password reset link again.",
+          variant: "destructive",
+        });
+        return;
       }
-    });
-  }, [navigate]);
+
+      if (!data.session) {
+        // Try to get session from URL hash or query params
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        
+        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (setSessionError) {
+            console.error('Error setting session:', setSessionError);
+            toast({
+              title: "Session Error",
+              description: "Please try the password reset link again.",
+              variant: "destructive",
+            });
+            return;
+          }
+        } else {
+          toast({
+            title: "Invalid Link",
+            description: "Please use the password reset link from your email.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    };
+
+    handlePasswordReset();
+  }, [navigate, toast]);
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();

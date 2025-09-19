@@ -44,7 +44,7 @@ serve(async (req) => {
           type: 'recovery',
           email: email,
           options: {
-            redirectTo: `${siteUrl}/auth/callback`
+            redirectTo: `${siteUrl}/auth/reset-password`
           }
         })
 

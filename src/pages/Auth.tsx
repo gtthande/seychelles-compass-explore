@@ -173,7 +173,7 @@ const Auth = () => {
         console.log('Edge function failed, using direct Supabase:', edgeFunctionError);
         // Fallback to direct Supabase call
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${siteUrl}/auth/callback`,
+          redirectTo: `${siteUrl}/auth/reset-password`,
         });
         
         if (error) throw error;

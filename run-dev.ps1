@@ -20,12 +20,12 @@ try {
             Write-Host "🔪 Killing PID $pid on port 5173..." -ForegroundColor Yellow
             
             # Kill the process
-            $killResult = taskkill /PID $pid /F 2>&1
+            taskkill /PID $pid /F | Out-Null
             
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "✅ Successfully killed PID $pid on port 5173" -ForegroundColor Green
             } else {
-                Write-Host "❌ Failed to kill PID $pid: $killResult" -ForegroundColor Red
+                Write-Host "❌ Failed to kill PID $pid" -ForegroundColor Red
                 Write-Host "⚠️  Continuing anyway..." -ForegroundColor Yellow
             }
         } else {

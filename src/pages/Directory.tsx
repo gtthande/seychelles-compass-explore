@@ -196,13 +196,20 @@ const Directory = () => {
     // Full-text search across multiple fields
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(business => 
-        business.name.toLowerCase().includes(searchLower) ||
-        business.description?.toLowerCase().includes(searchLower) ||
-        business.category.toLowerCase().includes(searchLower) ||
-        business.address?.toLowerCase().includes(searchLower) ||
-        business.services?.some(service => service.toLowerCase().includes(searchLower))
-      );
+      filtered = filtered.filter(business => {
+        try {
+          return (
+            business.name?.toLowerCase().includes(searchLower) ||
+            business.description?.toLowerCase().includes(searchLower) ||
+            business.category?.toLowerCase().includes(searchLower) ||
+            business.address?.toLowerCase().includes(searchLower) ||
+            (business.services && Array.isArray(business.services) && business.services.some(service => service?.toLowerCase().includes(searchLower)))
+          );
+        } catch (error) {
+          console.error('Error filtering business:', business, error);
+          return false;
+        }
+      });
     }
 
     if (selectedCategory) {
@@ -223,6 +230,12 @@ const Directory = () => {
       filtered = filtered.filter(business => business.featured);
     }
 
+    console.log('Filtering results:', {
+      totalBusinesses: businesses.length,
+      searchTerm,
+      selectedCategory,
+      filteredCount: filtered.length
+    });
     setFilteredBusinesses(filtered);
   }, [businesses, searchTerm, selectedCategory, selectedIsland, hasWhatsApp, showFeatured]);
   

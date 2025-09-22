@@ -16,6 +16,61 @@ A comprehensive business directory platform for the beautiful islands of Seychel
 - **Seychelles Theme** - Island-inspired design with authentic photography
 - **Demo Data** - Pre-seeded businesses and payments for testing
 
+## 🗺️ Google Maps Integration
+
+### API Key Setup
+
+The application uses Google Maps for interactive location services and geocoding. Follow these steps to configure your API key:
+
+#### 1. Get a Google Maps API Key
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the following APIs:
+   - **Maps JavaScript API** (for interactive maps)
+   - **Geocoding API** (for address-to-coordinates conversion)
+4. Create credentials (API Key)
+5. Restrict the key to your domain for security
+
+#### 2. Configure Environment Variables
+
+**For Development:**
+```bash
+# Create .env file in project root
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
+```
+
+**For Supabase Edge Functions:**
+```bash
+# Set in Supabase dashboard or via CLI
+supabase secrets set GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
+```
+
+#### 3. Quick Setup Script
+Run the setup script to configure your environment:
+```bash
+tsx admin/setup-env.ts
+```
+
+#### 4. Restart Development Server
+After setting up the API key:
+```bash
+npm run dev
+```
+
+### Features Enabled
+- ✅ Interactive embedded maps in business listings
+- ✅ Address geocoding (automatic coordinate detection)
+- ✅ "Get Directions" functionality
+- ✅ Map-based business search
+- ✅ Location editing with real-time map updates
+
+### Testing Geocoding
+Test the geocoding functionality by:
+1. Going to the Directory page
+2. Editing a business (if you own one)
+3. Entering an address and clicking "Get Location"
+4. Verifying coordinates are automatically set
+
 ## 🚀 Recent Updates (January 15, 2025)
 
 ### ✅ Development Environment

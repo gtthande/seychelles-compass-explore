@@ -20,13 +20,27 @@ serve(async (req) => {
       );
     }
 
+    // Get Google Maps API key from environment variables
+    const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+    
+    if (!apiKey) {
+      console.error('Google Maps API key not configured in environment variables');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Google Maps API key not configured',
+          details: 'Please set GOOGLE_MAPS_API_KEY environment variable in Supabase'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Construct full address with Seychelles context
     const fullAddress = `${address}, ${island || ''}, Seychelles`.replace(/,\s*,/, ',');
     
     console.log('Geocoding address:', fullAddress);
 
-    // Use Google Geocoding API (free tier available)
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&region=sc`;
+    // Use Google Geocoding API with proper API key
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&region=sc&key=${apiKey}`;
     
     const response = await fetch(geocodeUrl);
     const data = await response.json();
@@ -45,6 +59,13 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } else {
+      // API error or no results - log and use fallback
+      if (data.status === 'ZERO_RESULTS') {
+        console.log('No geocoding results found, using island center');
+      } else {
+        console.error('Google Maps API error:', data.status, data.error_message);
+      }
+      
       // Fallback to Seychelles center coordinates if geocoding fails
       const seychellesCoords = {
         'Mahé': { lat: -4.6796, lng: 55.4920 },

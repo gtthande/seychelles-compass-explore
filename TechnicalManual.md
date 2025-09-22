@@ -1,7 +1,67 @@
 # Technical Manual - Seychelles Business Directory
 
 ## Overview
-This document provides technical details about the Seychelles Business Directory platform, including database schema, access control, and system architecture.
+This document provides technical details about the Seychelles Business Directory platform, including database schema, access control, system architecture, and Google Maps integration.
+
+## Google Maps API Integration
+
+### Architecture Overview
+The application uses Google Maps API for two main purposes:
+1. **Interactive Maps** - Embedded maps in business listings
+2. **Geocoding** - Converting addresses to coordinates
+
+### API Key Management
+The system uses a priority-based approach for API key loading:
+
+1. **Environment Variables** (Primary)
+   - `VITE_GOOGLE_MAPS_API_KEY` - For client-side maps
+   - `GOOGLE_MAPS_API_KEY` - For Supabase Edge Functions
+
+2. **Supabase Settings** (Fallback)
+   - Stored in `app_settings` table
+   - Accessible via `/api/get-setting/GOOGLE_MAPS_API_KEY`
+
+3. **Local Storage** (Last Resort)
+   - User-entered API key stored locally
+   - Used when other methods fail
+
+### Implementation Details
+
+#### Client-Side Integration
+```typescript
+// src/hooks/useGoogleMapsApiKey.ts
+const envApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+```
+
+#### Geocoding Service
+```typescript
+// src/lib/geocoding.ts
+export const geocodeAddress = async (address: string, island?: string) => {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const response = await fetch(
+    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`
+  );
+};
+```
+
+#### Supabase Edge Function
+```typescript
+// supabase/functions/geocode-address/index.ts
+const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+```
+
+### Error Handling
+The system includes comprehensive error handling for:
+- Missing API keys
+- Invalid API keys
+- Quota exceeded
+- Network errors
+- Invalid addresses
+
+### Security Considerations
+- API keys are restricted to specific domains
+- Environment variables are not committed to version control
+- Fallback mechanisms prevent service disruption
 
 ## Database Schema
 

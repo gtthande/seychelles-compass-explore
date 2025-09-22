@@ -12,25 +12,44 @@ export const useGoogleMapsApiKey = () => {
         setLoading(true);
         setError(null);
 
-        // Try to fetch from the get-setting edge function
-        const response = await fetch('/api/get-setting/GOOGLE_MAPS_API_KEY');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch API key');
+        // Priority 1: Environment variable (Vite uses import.meta.env)
+        const envApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (envApiKey) {
+          console.log('Using Google Maps API key from environment variables');
+          setApiKey(envApiKey);
+          setLoading(false);
+          return;
         }
 
-        const data = await response.json();
-        setApiKey(data.value || '');
+        // Priority 2: Try to fetch from the get-setting edge function
+        try {
+          const response = await fetch('/api/get-setting/GOOGLE_MAPS_API_KEY');
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.value) {
+              console.log('Using Google Maps API key from Supabase settings');
+              setApiKey(data.value);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (fetchError) {
+          console.warn('Failed to fetch API key from Supabase:', fetchError);
+        }
+
+        // Priority 3: Fallback to localStorage if available
+        const savedApiKey = localStorage.getItem('google_maps_api_key');
+        if (savedApiKey) {
+          console.log('Using Google Maps API key from localStorage');
+          setApiKey(savedApiKey);
+          setError(null);
+        } else {
+          setError('No Google Maps API key found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file.');
+        }
       } catch (err) {
         console.error('Error fetching Google Maps API key:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch API key');
-        
-        // Fallback to localStorage if available
-        const savedApiKey = localStorage.getItem('google_maps_api_key');
-        if (savedApiKey) {
-          setApiKey(savedApiKey);
-          setError(null);
-        }
       } finally {
         setLoading(false);
       }

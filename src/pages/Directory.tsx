@@ -18,6 +18,7 @@ import GoogleMap from "@/components/GoogleMap";
 import ImageSearch from "@/components/ImageSearch";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import BusinessLocationMap from "@/components/business/BusinessLocationMap";
+import { geocodeAddress } from "@/lib/geocoding";
 import { 
   MapPin, 
   Phone, 
@@ -253,38 +254,42 @@ const Directory = () => {
     }
   };
 
-  const geocodeAddress = async (address: string) => {
+  const handleGeocodeAddress = async (address: string) => {
     if (!address.trim()) return;
     
     try {
-      const { data, error } = await supabase.functions.invoke('geocode-address', {
-        body: { address: address, island: editForm.island }
-      });
-
-      if (error) throw error;
+      const result = await geocodeAddress(address, editForm.island);
       
-      if (data && data.latitude && data.longitude) {
-        setEditForm(prev => ({
-          ...prev,
-          latitude: data.latitude,
-          longitude: data.longitude
-        }));
+      if ('error' in result) {
         toast({
-          title: 'Location Found',
-          description: 'Coordinates have been automatically set for your address.',
-        });
-      } else {
-        toast({
-          title: 'Location Not Found',
-          description: 'Could not find coordinates for this address. You can set them manually.',
+          title: 'Geocoding Failed',
+          description: result.error,
           variant: 'destructive',
         });
+        
+        if (result.details) {
+          console.error('Geocoding error details:', result.details);
+        }
+        return;
       }
+      
+      // Success - update the form with coordinates
+      setEditForm(prev => ({
+        ...prev,
+        latitude: result.latitude,
+        longitude: result.longitude
+      }));
+      
+      toast({
+        title: 'Location Found',
+        description: `Coordinates set: ${result.latitude.toFixed(6)}, ${result.longitude.toFixed(6)}`,
+      });
+      
     } catch (error: any) {
-      console.error('Error geocoding address:', error);
+      console.error('Unexpected error during geocoding:', error);
       toast({
         title: 'Geocoding Failed',
-        description: 'Could not get coordinates for this address.',
+        description: 'An unexpected error occurred while geocoding the address.',
         variant: 'destructive',
       });
     }
@@ -600,6 +605,33 @@ const Directory = () => {
                     business={business} 
                     height="140px" 
                     showTitle={false}
+                    canEdit={canEditBusiness(business)}
+                    onLocationUpdate={(lat, lng) => {
+                      // Update business location
+                      const updatedBusiness = { ...business, latitude: lat, longitude: lng };
+                      setBusinesses(prev => prev.map(b => b.id === business.id ? updatedBusiness : b));
+                      setFilteredBusinesses(prev => prev.map(b => b.id === business.id ? updatedBusiness : b));
+                      
+                      // Update in database
+                      supabase
+                        .from('businesses')
+                        .update({ latitude: lat, longitude: lng })
+                        .eq('id', business.id)
+                        .then(({ error }) => {
+                          if (error) {
+                            toast({
+                              title: 'Update Failed',
+                              description: 'Could not update location coordinates.',
+                              variant: 'destructive',
+                            });
+                          } else {
+                            toast({
+                              title: 'Location Updated',
+                              description: 'Business location coordinates have been updated.',
+                            });
+                          }
+                        });
+                    }}
                   />
                   {/* Map directions link */}
                   <Button 
@@ -959,7 +991,7 @@ const Directory = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => geocodeAddress(editForm.address)}
+                  onClick={() => handleGeocodeAddress(editForm.address)}
                   disabled={!editForm.address.trim()}
                   className="flex items-center gap-1"
                 >

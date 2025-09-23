@@ -83,7 +83,7 @@ const SearchWithTypeahead = ({
         .from('businesses')
         .select('id, name, category, description')
         .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
         .limit(5);
 
       const { data: products, error: productError } = await supabase

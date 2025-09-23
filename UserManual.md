@@ -78,6 +78,10 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 ### January 19, 2025 - Enhanced Business Management & Navigation
 - **Business Editing**: Business owners can now edit their listings directly from the directory
 - **Google Maps Integration**: All maps now open with directions in Google Maps or Apple Maps
+- **Search Functionality**: Fixed search to properly find businesses like "Seychelles Maritime Academy"
+- **Watchdog System**: Automated development server management for better reliability
+- **Comprehensive Schema**: Complete database schema with proper role-based access control
+- **Enhanced Security**: Improved RLS policies and role-based permissions
 - **Fixed Dropdown Issues**: Resolved crashes when using category and location filters
 - **Enhanced Search**: Improved search functionality across all business fields
 - **Better Navigation**: Smoother filtering and browsing experience

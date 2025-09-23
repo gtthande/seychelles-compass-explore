@@ -19,6 +19,7 @@ interface SearchWithTypeaheadProps {
   value: string;
   onChange: (value: string) => void;
   onSelect?: (result: SearchResult) => void;
+  onSearch?: (searchTerm: string) => void;
   placeholder?: string;
 }
 
@@ -26,6 +27,7 @@ const SearchWithTypeahead = ({
   value, 
   onChange, 
   onSelect, 
+  onSearch,
   placeholder = "Search businesses and products..." 
 }: SearchWithTypeaheadProps) => {
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
@@ -160,6 +162,19 @@ const SearchWithTypeahead = ({
     setTimeout(() => setIsOpen(false), 200);
   };
 
+  const handleSearch = () => {
+    if (value.trim()) {
+      onSearch?.(value.trim());
+      setIsOpen(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   const formatCategory = (category: string) => {
     const categoryLabels: Record<string, string> = {
       food: 'Food & Beverages',
@@ -187,9 +202,14 @@ const SearchWithTypeahead = ({
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
+          onKeyPress={handleKeyPress}
           className="flex-1 bg-transparent border-none text-white placeholder:text-white/70 focus:ring-0 text-lg pl-14 pr-4 h-14"
         />
-        <Button size="lg" className="rounded-full bg-teal-500 hover:bg-teal-600 text-white shadow-glow">
+        <Button 
+          size="lg" 
+          className="rounded-full bg-teal-500 hover:bg-teal-600 text-white shadow-glow"
+          onClick={handleSearch}
+        >
           <Search className="h-5 w-5" />
         </Button>
         {isLoading && (

@@ -189,6 +189,8 @@ const Directory = () => {
           variant: "destructive",
         });
       } else {
+        console.log('Loaded businesses:', data?.length || 0);
+        console.log('Business names:', data?.map(b => b.name) || []);
         setBusinesses(data || []);
       }
     } catch (error) {
@@ -323,9 +325,10 @@ const Directory = () => {
     // Full-text search across multiple fields
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
+      console.log('Searching for:', searchTerm, 'in', businesses.length, 'businesses');
       filtered = filtered.filter(business => {
         try {
-          return (
+          const matches = (
             business.name?.toLowerCase().includes(searchLower) ||
             business.description?.toLowerCase().includes(searchLower) ||
             business.category?.toLowerCase().includes(searchLower) ||
@@ -333,11 +336,16 @@ const Directory = () => {
             business.island?.toLowerCase().includes(searchLower) ||
             (business.services && Array.isArray(business.services) && business.services.some(service => service?.toLowerCase().includes(searchLower)))
           );
+          if (matches) {
+            console.log('Found match:', business.name);
+          }
+          return matches;
         } catch (error) {
           console.error('Error filtering business:', business, error);
           return false;
         }
       });
+      console.log('Filtered results:', filtered.length);
     }
 
     if (selectedCategory && selectedCategory !== "__all__") {
@@ -733,6 +741,10 @@ const Directory = () => {
                         setViewMode('map');
                       }
                     }
+                  }}
+                  onSearch={(searchTerm) => {
+                    setSearchTerm(searchTerm);
+                    // The useEffect will automatically filter based on searchTerm
                   }}
                   placeholder="Find businesses, services, or products..."
                 />

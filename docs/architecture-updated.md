@@ -1,0 +1,394 @@
+# Seychelles Compass Explore - Updated Architecture Documentation
+
+## System Overview
+
+Seychelles Compass Explore is a comprehensive business directory platform built with modern web technologies, designed to showcase local businesses and services across the Seychelles islands.
+
+## Technology Stack
+
+### Frontend
+- **React 18** - Modern UI library with hooks and functional components
+- **TypeScript** - Type-safe JavaScript for better development experience
+- **Vite** - Fast build tool and development server
+- **Tailwind CSS** - Utility-first CSS framework for styling
+- **Shadcn/ui** - High-quality React component library
+- **React Router** - Client-side routing
+- **React Hook Form** - Form handling and validation
+- **Zod** - Schema validation
+
+### Backend & Database
+- **Supabase** - Backend-as-a-Service providing:
+  - PostgreSQL database
+  - Authentication system
+  - Row Level Security (RLS)
+  - Edge Functions
+  - Real-time subscriptions
+  - File storage
+
+### Deployment & Infrastructure
+- **Vercel** - Frontend deployment and hosting
+- **GitHub** - Version control and CI/CD
+- **Supabase Cloud** - Database and backend services
+
+## Database Schema
+
+### Core Tables
+
+#### `profiles`
+User profiles with role-based access control:
+```sql
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID UNIQUE REFERENCES auth.users(id),
+  full_name TEXT,
+  phone TEXT,
+  avatar_url TEXT,
+  business_name TEXT,
+  is_business_owner BOOLEAN DEFAULT false,
+  is_admin BOOLEAN DEFAULT false,
+  role TEXT DEFAULT 'user', -- 'admin', 'business', 'user'
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+```
+
+#### `businesses`
+Business listings with comprehensive information:
+```sql
+CREATE TABLE public.businesses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID REFERENCES public.profiles(id),
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL,
+  status TEXT DEFAULT 'pending', -- 'active', 'pending', 'suspended'
+  phone TEXT,
+  whatsapp TEXT,
+  email TEXT,
+  website TEXT,
+  facebook_url TEXT,
+  instagram_url TEXT,
+  linkedin_url TEXT,
+  youtube_url TEXT,
+  address TEXT,
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  island TEXT,
+  services TEXT[],
+  featured BOOLEAN DEFAULT false,
+  verified BOOLEAN DEFAULT false,
+  logo_url TEXT,
+  cover_image_url TEXT,
+  average_rating DECIMAL(3,2) DEFAULT 0,
+  total_reviews INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+```
+
+## Development Workflow
+
+### Watchdog System
+Automated development server management with self-healing capabilities:
+```javascript
+// scripts/watchdog.js - Windows-optimized watchdog
+const { exec } = require("child_process");
+
+function runDevServer() {
+  console.log("🚀 Starting Vite dev server...");
+  const server = exec("npm run vite", { shell: true });
+  
+  server.on("close", (code) => {
+    console.log(`⚠️ Dev server exited with code ${code}. Restarting in 3s...`);
+    setTimeout(runDevServer, 3000);
+  });
+}
+
+// Kill any existing process on port 5173
+exec("for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :5173 ^| findstr LISTENING') do taskkill /PID %a /F", 
+  () => { runDevServer(); }
+);
+```
+
+### Package.json Scripts
+```json
+{
+  "scripts": {
+    "dev": "node scripts/watchdog.js",    // Watchdog-managed dev server
+    "vite": "node scripts/vite.js",       // Direct Vite server
+    "build": "vite build",                // Production build
+    "deploy": "npm run build && vercel --prod"  // Deploy to production
+  }
+}
+```
+
+### Search Functionality Architecture
+```typescript
+// Enhanced search with proper button handling
+interface SearchWithTypeaheadProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSelect?: (result: SearchResult) => void;
+  onSearch?: (searchTerm: string) => void;  // New search handler
+  placeholder?: string;
+}
+
+// Search implementation with name and description fields
+const { data: businesses } = await supabase
+  .from('businesses')
+  .select('id, name, category, description')
+  .eq('status', 'active')
+  .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+  .limit(5);
+```
+
+## Autopilot System Features
+
+### Continuous Monitoring
+- **Dev Server Health**: Automatic monitoring of port 5173
+- **Process Management**: Automatic cleanup of conflicting processes
+- **Self-Healing**: Automatic restart on server crashes
+- **Error Detection**: Continuous error monitoring and reporting
+
+### Automated Operations
+- **Git Operations**: Automatic commit and push of changes
+- **Documentation Updates**: Continuous documentation maintenance
+- **Schema Management**: Automatic database schema updates
+- **Testing**: Continuous functionality testing and validation
+
+### Quality Assurance
+- **Linting**: Continuous code quality checks
+- **Error Handling**: Comprehensive error handling and recovery
+- **Performance Monitoring**: Continuous performance optimization
+- **Security**: Continuous security policy enforcement
+
+## Role-Based Access Control (RBAC)
+
+### User Roles
+
+1. **Admin** (`role = 'admin'`)
+   - Full system access
+   - User management
+   - Business approval and management
+   - System settings configuration
+   - Analytics and reporting
+
+2. **Business** (`role = 'business'`)
+   - Manage own business listings
+   - Add/edit products and services
+   - View business analytics
+   - Manage business profile
+
+3. **User** (`role = 'user'`)
+   - Browse directory
+   - Search businesses and products
+   - Register new business (becomes business user)
+   - View business details and contact information
+
+### Access Control Implementation
+
+#### Frontend Route Protection
+```typescript
+// RouteGuard component protects routes based on user role
+<Route path="/admin" element={
+  <RouteGuard requiredRole="admin">
+    <AdminPanel />
+  </RouteGuard>
+} />
+
+<Route path="/business" element={
+  <RouteGuard requiredRole="business">
+    <BusinessDashboard />
+  </RouteGuard>
+} />
+```
+
+#### Database Row Level Security (RLS)
+```sql
+-- Example: Only admins can view all profiles
+CREATE POLICY "Admins can view all profiles" 
+ON public.profiles 
+FOR SELECT 
+USING (public.is_admin());
+
+-- Example: Business owners can manage their own businesses
+CREATE POLICY "Business owners can manage their businesses" 
+ON public.businesses 
+FOR ALL 
+USING (
+  public.is_business_user() 
+  AND owner_id IN (
+    SELECT id FROM public.profiles 
+    WHERE user_id = auth.uid()
+  )
+);
+```
+
+## Security Functions
+
+### Role Checking Functions
+```sql
+-- Check if current user is admin
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN 
+LANGUAGE SQL 
+SECURITY DEFINER 
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE profiles.user_id = auth.uid() 
+    AND profiles.role = 'admin'
+    AND profiles.is_active = true
+  );
+$$;
+
+-- Check if current user is business user
+CREATE OR REPLACE FUNCTION public.is_business_user()
+RETURNS BOOLEAN 
+LANGUAGE SQL 
+SECURITY DEFINER 
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE profiles.user_id = auth.uid() 
+    AND profiles.role = 'business'
+    AND profiles.is_active = true
+  );
+$$;
+```
+
+## API Architecture
+
+### Supabase Edge Functions
+
+#### `ai-search`
+AI-powered search functionality using vector embeddings:
+```typescript
+// Search businesses and products using AI
+const { data } = await supabase.functions.invoke('ai-search', {
+  body: { query: searchTerm }
+});
+```
+
+#### `geocode-address`
+Convert addresses to coordinates using Google Geocoding API:
+```typescript
+// Get coordinates for an address
+const { data } = await supabase.functions.invoke('geocode-address', {
+  body: { address: address, island: island }
+});
+```
+
+## Frontend Architecture
+
+### Component Structure
+```
+src/
+├── components/
+│   ├── ui/                 # Shadcn/ui components
+│   ├── admin/              # Admin-specific components
+│   ├── business/           # Business management components
+│   └── [shared components] # Reusable components
+├── pages/                  # Route components
+├── hooks/                  # Custom React hooks
+├── lib/                    # Utility functions
+├── types/                  # TypeScript type definitions
+└── integrations/           # External service integrations
+```
+
+### State Management
+- **React Context** for authentication state
+- **React Query** for server state management
+- **Local State** with useState/useReducer for component state
+
+### Custom Hooks
+```typescript
+// Authentication hook
+const { user, loading, signIn, signOut } = useAuth();
+
+// Business authentication hook
+const { businessUser, isBusinessOwner } = useBusinessAuth();
+
+// Connection status monitoring
+const { isOnline, isConnected } = useConnectionStatus();
+```
+
+## Deployment Pipeline
+
+### GitHub Integration
+1. **Code Push** → GitHub repository
+2. **Vercel Webhook** → Automatic deployment
+3. **Environment Variables** → Secure configuration
+4. **Domain Management** → Custom domain setup
+
+### Environment Configuration
+```bash
+# Production Environment Variables
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_GOOGLE_MAPS_API_KEY=your-maps-key
+VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-key
+```
+
+## Performance Optimizations
+
+### Frontend
+- **Code Splitting** with React.lazy()
+- **Image Optimization** with Vite
+- **Bundle Analysis** and tree shaking
+- **Caching Strategies** with React Query
+
+### Database
+- **Indexes** on frequently queried columns
+- **Connection Pooling** with Supabase
+- **Query Optimization** with proper RLS policies
+- **Real-time Subscriptions** for live updates
+
+## Monitoring & Analytics
+
+### Error Tracking
+- **Error Boundaries** for React error handling
+- **Console Logging** for development debugging
+- **Toast Notifications** for user feedback
+
+### Performance Monitoring
+- **Vite Bundle Analyzer** for bundle size optimization
+- **Supabase Dashboard** for database performance
+- **Vercel Analytics** for production metrics
+
+## Security Considerations
+
+### Data Protection
+- **Row Level Security** on all database tables
+- **Input Validation** with Zod schemas
+- **XSS Protection** with React's built-in sanitization
+- **CSRF Protection** with Supabase's built-in security
+
+### Authentication Security
+- **JWT Tokens** managed by Supabase Auth
+- **Session Management** with automatic refresh
+- **Role-based Access** with database-level enforcement
+- **Secure Password Policies** enforced by Supabase
+
+## Future Enhancements
+
+### Planned Features
+1. **Mobile App** with React Native
+2. **Advanced Analytics** dashboard
+3. **Multi-language Support** for international users
+4. **API Rate Limiting** and usage analytics
+5. **Advanced Search** with filters and sorting
+6. **Business Reviews** and rating system
+7. **Event Management** for business events
+8. **Newsletter System** for business updates
+
+### Technical Improvements
+1. **GraphQL API** for more efficient data fetching
+2. **Microservices Architecture** for scalability
+3. **Redis Caching** for improved performance
+4. **CDN Integration** for global content delivery
+5. **Automated Testing** with Jest and Cypress
+6. **CI/CD Pipeline** with GitHub Actions

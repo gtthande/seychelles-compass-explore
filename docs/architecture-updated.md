@@ -318,20 +318,97 @@ const { isOnline, isConnected } = useConnectionStatus();
 
 ## Deployment Pipeline
 
+### GitHub Actions CI/CD
+Automated deployment pipeline with comprehensive testing and deployment:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linter
+      run: npm run lint
+      
+    - name: Run tests
+      run: npm test -- --coverage --watchAll=false
+      
+    - name: Build project
+      run: npm run build
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+        VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}
+        
+    - name: Deploy to Vercel
+      if: github.ref == 'refs/heads/main'
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        vercel-args: '--prod'
+        working-directory: ./
+        scope: ${{ secrets.VERCEL_SCOPE }}
+```
+
 ### GitHub Integration
 1. **Code Push** → GitHub repository
-2. **Vercel Webhook** → Automatic deployment
-3. **Environment Variables** → Secure configuration
-4. **Domain Management** → Custom domain setup
+2. **GitHub Actions** → Automated CI/CD pipeline
+3. **Testing & Linting** → Quality assurance
+4. **Build Process** → Production build
+5. **Vercel Deployment** → Automatic deployment
+6. **Environment Variables** → Secure configuration
+7. **Domain Management** → Custom domain setup
 
 ### Environment Configuration
 ```bash
-# Production Environment Variables
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_GOOGLE_MAPS_API_KEY=your-maps-key
-VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-key
+# Production Environment Variables (GitHub Secrets)
+VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+VITE_SITE_URL=https://seychelles-compass-explore.vercel.app
+
+# Vercel Configuration (GitHub Secrets)
+VERCEL_TOKEN=your-vercel-token
+VERCEL_ORG_ID=your-vercel-org-id
+VERCEL_PROJECT_ID=your-vercel-project-id
+VERCEL_SCOPE=your-vercel-scope
 ```
+
+### CI/CD Pipeline Steps
+1. **Code Checkout** → Clone repository
+2. **Node.js Setup** → Install Node.js 18 with npm caching
+3. **Dependencies** → Install with `npm ci`
+4. **Linting** → Run ESLint for code quality
+5. **Testing** → Run test suite with coverage
+6. **Building** → Create production build
+7. **Deployment** → Deploy to Vercel production
+8. **Monitoring** → Track deployment status
 
 ## Performance Optimizations
 

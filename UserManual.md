@@ -86,11 +86,41 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 - **Enhanced Search**: Improved search functionality across all business fields
 - **Better Navigation**: Smoother filtering and browsing experience
 - **Role-Based Access**: Admin, business, and user roles with appropriate permissions
+- **CI/CD Pipeline**: Automated GitHub Actions workflow for testing, building, and deployment
+- **Vercel Integration**: Automatic deployment to production on every push to main branch
 
 ### Key Improvements
 - **Business Management**: Edit business information, coordinates, and social media links
 - **Map Directions**: Click any business location to get directions via your preferred map app
 - **Stable Filtering**: Category and location dropdowns now work reliably
+
+## Automated Deployment System
+
+### CI/CD Pipeline
+The Seychelles Business Directory now features a fully automated deployment system:
+
+#### 🔄 Automated Workflow
+- **Code Push** → Automatic deployment triggered
+- **Quality Checks** → Linting and testing before deployment
+- **Build Process** → Production build with optimized assets
+- **Vercel Deployment** → Automatic deployment to production
+- **Health Monitoring** → Continuous monitoring of deployment status
+
+#### 🛠️ Development Workflow
+1. **Local Development** → Use `npm run dev` with watchdog system
+2. **Code Changes** → Make changes to the codebase
+3. **Git Push** → Push changes to GitHub main branch
+4. **Automatic Testing** → GitHub Actions runs tests and linting
+5. **Automatic Build** → Production build created automatically
+6. **Automatic Deployment** → Deployed to Vercel production
+7. **Live Updates** → Changes are live on production immediately
+
+#### 🔧 Technical Features
+- **GitHub Actions**: Automated CI/CD pipeline
+- **Vercel Integration**: Seamless deployment to production
+- **Environment Management**: Secure environment variable handling
+- **Quality Assurance**: Automated testing and linting
+- **Performance Optimization**: Optimized builds for production
 - **Consistent Interface**: All dropdowns have proper placeholder text
 - **Error Prevention**: Eliminated crashes when selecting filter options
 - **Better Performance**: Faster loading and smoother interactions

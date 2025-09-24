@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const { exec, spawn } = require('child_process');
-const os = require('os');
+import { exec, spawn } from 'child_process';
+import os from 'os';
 
 const platform = os.platform();
 const isWindows = platform === 'win32';
@@ -11,37 +11,38 @@ const isLinux = platform === 'linux';
 console.log('🔧 Port Reset Script - Cross Platform');
 console.log(`📱 Detected platform: ${platform}`);
 
-function killPort5173() {
+function killPort(port) {
   return new Promise((resolve, reject) => {
     let command;
     
     if (isWindows) {
-      // Windows command to kill processes on port 5173
-      command = 'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :5173 ^| findstr LISTENING\') do taskkill /PID %a /F';
+      // Windows PowerShell command to kill processes on specific port
+      command = `powershell -Command "try { Get-Process -Id (Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue).OwningProcess | Stop-Process -Force; Write-Host 'Killed processes on port ${port}' } catch { Write-Host 'No processes found on port ${port}' }"`;
     } else if (isMac || isLinux) {
-      // Unix command to kill processes on port 5173
-      command = 'lsof -ti:5173 | xargs kill -9';
+      // Unix command to kill processes on specific port
+      command = `lsof -ti:${port} | xargs kill -9 || true`;
     } else {
       reject(new Error(`Unsupported platform: ${platform}`));
       return;
     }
 
-    console.log(`🚀 Running command: ${command}`);
+    console.log(`🚀 Checking port ${port}...`);
     
     exec(command, (error, stdout, stderr) => {
       if (error) {
         // It's okay if no processes are found to kill
         if (error.message.includes('No such process') || 
             error.message.includes('not found') ||
-            error.message.includes('No tasks are running')) {
-          console.log('✅ No processes found on port 5173');
+            error.message.includes('No tasks are running') ||
+            error.message.includes('No processes found')) {
+          console.log(`✅ No processes found on port ${port}`);
           resolve();
         } else {
-          console.log(`⚠️ Warning: ${error.message}`);
+          console.log(`⚠️ Warning for port ${port}: ${error.message}`);
           resolve(); // Continue anyway
         }
       } else {
-        console.log('✅ Successfully killed processes on port 5173');
+        console.log(`✅ Successfully killed processes on port ${port}`);
         if (stdout) console.log(stdout);
         resolve();
       }
@@ -82,10 +83,15 @@ function startDevServer() {
 
 async function main() {
   try {
-    console.log('🔄 Resetting port 5173 and starting fresh dev server...');
+    console.log('🔄 Resetting ports 5173 and 5174, starting fresh dev server...');
     
-    // Kill any processes on port 5173
-    await killPort5173();
+    // Kill any processes on both ports
+    await killPort(5173);
+    await killPort(5174);
+    
+    // Wait a moment for processes to fully terminate
+    console.log('⏳ Waiting for processes to terminate...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Start the dev server
     await startDevServer();

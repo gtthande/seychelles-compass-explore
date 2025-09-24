@@ -279,13 +279,26 @@ export default defineConfig({
 
 **Features:**
 - Detects OS platform (Windows, Mac, Linux)
-- Kills processes on port 5173 (legacy conflicts)
+- Kills processes on both ports 5173 and 5174 (legacy and current conflicts)
 - Automatically starts fresh dev server on port 5174
 - Error handling and user feedback
+- ES module compatible
 
 **Platform Commands:**
-- **Windows**: `for /f "tokens=5" %a in ('netstat -ano ^| findstr :5173 ^| findstr LISTENING') do taskkill /PID %a /F`
-- **Mac/Linux**: `lsof -ti:5173 | xargs kill -9`
+- **Windows**: `powershell -Command "Get-Process -Id (Get-NetTCPConnection -LocalPort 5173/5174).OwningProcess | Stop-Process -Force"`
+- **Mac/Linux**: `lsof -ti:5173/5174 | xargs kill -9 || true`
+
+**Usage:**
+```bash
+npm run dev:reset
+```
+
+**What it does:**
+1. Detects your operating system
+2. Kills any Node.js/Vite processes on ports 5173 and 5174
+3. Waits 2 seconds for processes to fully terminate
+4. Starts a fresh development server on port 5174
+5. Provides detailed console feedback
 
 ### Custom Port Usage
 ```bash
@@ -378,11 +391,24 @@ npm run test:coverage # Generate coverage report
 
 ## Troubleshooting
 
+### Port Conflicts
+**Problem**: `Error: Port 5173/5174 is already in use`
+
+**Solution**: Use the cross-platform reset script
+```bash
+npm run dev:reset
+```
+
+**Manual Resolution**:
+- **Windows**: `taskkill /F /IM node.exe`
+- **Linux/Mac**: `pkill -f node`
+
 ### Common Issues
 1. **Search not working**: Check database connection and RLS policies
 2. **Maps not loading**: Verify Google Maps API key and quotas
 3. **Authentication errors**: Check Supabase configuration
 4. **Performance issues**: Review database indexes and query optimization
+5. **Port conflicts**: Use `npm run dev:reset` to auto-resolve
 
 ### Debug Tools
 - Browser developer tools

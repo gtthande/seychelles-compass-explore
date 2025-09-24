@@ -119,9 +119,30 @@ Test the geocoding functionality by:
 
 ### 🔧 Development Scripts
 - `npm run dev` - Start development server on port 5174
-- `npm run dev:reset` - Kill stuck processes and start fresh server
+- `npm run dev:reset` - **Auto-kill stuck Node/Vite processes on ports 5173/5174 and restart cleanly**
 - `npm run dev:watchdog` - Start with auto-restart watchdog system
 - Custom port: `npm run dev -- --port 3000`
+
+### 🚨 Port Conflict Resolution
+If you encounter port conflicts, use the cross-platform reset script:
+
+**Windows (PowerShell):**
+```bash
+npm run dev:reset
+# Automatically kills processes on ports 5173 and 5174, then starts fresh
+```
+
+**Linux/Mac:**
+```bash
+npm run dev:reset
+# Uses lsof to kill processes on ports 5173 and 5174, then starts fresh
+```
+
+**Manual Port Override:**
+```bash
+# Use a different port if needed
+npm run dev -- --port 3000
+```
 
 ## 🚀 Previous Updates (January 15, 2025)
 

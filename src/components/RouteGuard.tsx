@@ -36,7 +36,7 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('role, is_active, is_admin')
+          .select('role, is_admin, is_business_owner')
           .eq('user_id', user.id)
           .single();
 
@@ -45,8 +45,17 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
           setUserRole('user');
           setIsActive(true);
         } else {
-          setUserRole(profile?.role || 'user');
-          setIsActive(profile?.is_active !== false); // Default to true if null/undefined
+          // Determine role based on existing schema
+          let role = 'user';
+          if (profile?.is_admin) {
+            role = 'admin';
+          } else if (profile?.is_business_owner) {
+            role = 'business';
+          } else if (profile?.role) {
+            role = profile.role;
+          }
+          setUserRole(role);
+          setIsActive(true); // Default to active
         }
       } catch (error) {
         console.error('Error checking user role:', error);

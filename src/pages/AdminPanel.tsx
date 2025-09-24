@@ -17,11 +17,10 @@ import BusinessManager from "@/components/admin/BusinessManager";
 import UserManager from "@/components/admin/UserManager";
 
 const AdminPanel = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   
   // Determine default tab based on URL
   const getDefaultTab = () => {
@@ -34,30 +33,10 @@ const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState(getDefaultTab());
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (!user || authLoading) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, is_admin')
-          .eq('user_id', user.id)
-          .single();
-        
-        setIsAdmin(profile?.role === 'admin' || profile?.is_admin || false);
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAdminStatus();
-  }, [user, authLoading]);
+    if (!authLoading) {
+      setLoading(false);
+    }
+  }, [authLoading]);
 
   // Update active tab when URL changes
   useEffect(() => {

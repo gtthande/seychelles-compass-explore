@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { exec } = require("child_process");
+import { exec } from "child_process";
 
 function runDevServer() {
   console.log("🚀 Starting Vite dev server...");

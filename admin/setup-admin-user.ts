@@ -1,114 +1,117 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://bwlmlniotyrjttglbjrl.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3bG1sbmlvdHlyanR0Z2xianJsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjcwMzcwMSwiZXhwIjoyMDcyMjc5NzAxfQ.G7ADJ1L0sJIdJHulPhy6VK6CfJr-o3x0MOZlSauAnbk';
+const supabaseUrl = 'https://bwlmlniotyrjttglbjrl.supabase.co';
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3bG1sbmlvdHlyanR0Z2xianJsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjcwMzcwMSwiZXhwIjoyMDcyMjc5NzAxfQ.G7ADJ1L0sJIdJHulPhy6VK6CfJr-o3x0MOZlSauAnbk';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function setupAdminUser() {
+  console.log('🔐 Setting up admin user...');
+  
   try {
-    console.log('Setting up admin user for gtthande@gmail.com...');
-    
-    // First, check if the user exists in auth.users
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
-      console.error('Error fetching auth users:', authError);
-      return;
-    }
-    
-    const adminUser = authUsers.users.find(user => user.email === 'gtthande@gmail.com');
-    
-    if (!adminUser) {
-      console.log('Admin user not found in auth. Creating new admin user...');
-      
-      // Create the admin user
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-        email: 'gtthande@gmail.com',
-        password: 'Admin123!',
-        email_confirm: true,
-        user_metadata: {
-          full_name: 'George Thande',
-          role: 'admin'
-        }
-      });
-      
-      if (createError) {
-        console.error('Error creating admin user:', createError);
-        return;
-      }
-      
-      console.log('Admin user created successfully:', newUser.user?.id);
-    } else {
-      console.log('Admin user found:', adminUser.id);
-    }
-    
-    // Now ensure the user has admin role in the profiles table
-    const userId = adminUser?.id || (await supabase.auth.admin.listUsers()).data.users.find(u => u.email === 'gtthande@gmail.com')?.id;
-    
-    if (!userId) {
-      console.error('Could not find user ID');
-      return;
-    }
-    
-    // Check if profile exists
-    const { data: existingProfile, error: profileError } = await supabase
+    // First, let's see what users exist
+    const { data: existingProfiles, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .limit(10);
     
-    if (profileError && profileError.code !== 'PGRST116') {
-      console.error('Error checking profile:', profileError);
+    if (fetchError) {
+      console.error('❌ Error fetching profiles:', fetchError);
       return;
     }
     
-    if (!existingProfile) {
-      // Create profile
-      const { data: newProfile, error: createProfileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: userId,
-          full_name: 'George Thande',
-          is_admin: true,
-          is_business_owner: false
-        })
-        .select()
-        .single();
-      
-      if (createProfileError) {
-        console.error('Error creating profile:', createProfileError);
-        return;
-      }
-      
-      console.log('Admin profile created successfully:', newProfile);
-    } else {
+    console.log('📊 Existing profiles:');
+    existingProfiles?.forEach((profile, index) => {
+      console.log(`${index + 1}. ${profile.full_name || 'No name'} (${profile.email || 'No email'}) - Role: ${profile.role}, Admin: ${profile.is_admin}, Business: ${profile.is_business_owner}`);
+    });
+    
+    // Look for gtthande@gmail.com or create admin profile
+    const adminEmail = 'gtthande@gmail.com';
+    const { data: adminProfile, error: adminError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', adminEmail)
+      .single();
+    
+    if (adminError && adminError.code !== 'PGRST116') {
+      console.error('❌ Error checking for admin profile:', adminError);
+      return;
+    }
+    
+    if (adminProfile) {
       // Update existing profile to admin
-      const { data: updatedProfile, error: updateError } = await supabase
+      console.log('✅ Found existing profile for gtthande@gmail.com');
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({
           is_admin: true,
-          is_business_owner: false
+          is_business_owner: true,
+          role: 'admin',
+          updated_at: new Date().toISOString()
         })
-        .eq('user_id', userId)
+        .eq('id', adminProfile.id);
+      
+      if (updateError) {
+        console.error('❌ Error updating admin profile:', updateError);
+      } else {
+        console.log('✅ Updated profile to admin role');
+      }
+    } else {
+      // Create new admin profile
+      console.log('🔧 Creating new admin profile...');
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: '550e8400-e29b-41d4-a716-446655440001', // Fixed UUID for admin
+          email: adminEmail,
+          full_name: 'Admin User',
+          phone: '',
+          business_name: 'Seychelles Compass Admin',
+          is_business_owner: true,
+          is_admin: true,
+          role: 'admin'
+        })
         .select()
         .single();
       
-      if (updateError) {
-        console.error('Error updating profile:', updateError);
-        return;
+      if (createError) {
+        console.error('❌ Error creating admin profile:', createError);
+      } else {
+        console.log('✅ Created admin profile:', newProfile);
       }
-      
-      console.log('Admin profile updated successfully:', updatedProfile);
     }
     
-    console.log('✅ Admin user setup completed successfully!');
-    console.log('Email: gtthande@gmail.com');
-    console.log('Password: Admin123!');
-    console.log('Role: admin');
+    // Verify admin setup
+    const { data: finalProfile, error: verifyError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', adminEmail)
+      .single();
     
-  } catch (error: any) {
-    console.error('Error setting up admin user:', error.message || error);
+    if (verifyError) {
+      console.error('❌ Error verifying admin profile:', verifyError);
+    } else {
+      console.log('\n🎯 Admin User Setup Complete:');
+      console.log('============================');
+      console.log(`Email: ${finalProfile.email}`);
+      console.log(`Name: ${finalProfile.full_name}`);
+      console.log(`Role: ${finalProfile.role}`);
+      console.log(`Is Admin: ${finalProfile.is_admin}`);
+      console.log(`Is Business Owner: ${finalProfile.is_business_owner}`);
+      console.log(`User ID: ${finalProfile.user_id}`);
+      console.log('\n📝 IMPORTANT: You need to create this user in Supabase Auth:');
+      console.log('1. Go to your Supabase dashboard');
+      console.log('2. Navigate to Authentication > Users');
+      console.log('3. Click "Add user"');
+      console.log('4. Use these details:');
+      console.log(`   - Email: ${adminEmail}`);
+      console.log('   - Password: Admin123!');
+      console.log(`   - User ID: ${finalProfile.user_id}`);
+      console.log('5. Make sure to use the exact User ID above');
+    }
+    
+  } catch (error) {
+    console.error('❌ Setup failed:', error);
   }
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { spawn } = require('child_process');
+import { spawn } from 'child_process';
 
 // Start Vite directly
 const vite = spawn('npx', ['vite'], {

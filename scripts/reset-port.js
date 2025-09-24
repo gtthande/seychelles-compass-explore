@@ -8,8 +8,12 @@ const isWindows = platform === 'win32';
 const isMac = platform === 'darwin';
 const isLinux = platform === 'linux';
 
+// Get target port from command line arguments or default to 5173
+const targetPort = process.argv[2] ? parseInt(process.argv[2]) : 5173;
+
 console.log('🔧 Port Reset Script - Cross Platform');
 console.log(`📱 Detected platform: ${platform}`);
+console.log(`🎯 Target port: ${targetPort}`);
 
 function killPort(port) {
   return new Promise((resolve, reject) => {
@@ -50,11 +54,14 @@ function killPort(port) {
   });
 }
 
-function startDevServer() {
+function startDevServer(port) {
   return new Promise((resolve, reject) => {
-    console.log('🚀 Starting development server on port 5174...');
+    console.log(`🚀 Starting development server on port ${port}...`);
     
-    const devServer = spawn('npm', ['run', 'dev'], {
+    // If custom port is specified, override vite config
+    const devArgs = port !== 5173 ? ['run', 'dev', '--', '--port', port.toString()] : ['run', 'dev'];
+    
+    const devServer = spawn('npm', devArgs, {
       stdio: 'inherit',
       shell: true,
       cwd: process.cwd()
@@ -75,7 +82,7 @@ function startDevServer() {
 
     // Give the server a moment to start
     setTimeout(() => {
-      console.log('✅ Development server should be running on http://localhost:5174');
+      console.log(`✅ Development server should be running on http://localhost:${port}`);
       resolve();
     }, 3000);
   });
@@ -83,20 +90,19 @@ function startDevServer() {
 
 async function main() {
   try {
-    console.log('🔄 Resetting ports 5173 and 5174, starting fresh dev server...');
+    console.log(`🔄 Resetting port ${targetPort}, starting fresh dev server...`);
     
-    // Kill any processes on both ports
-    await killPort(5173);
-    await killPort(5174);
+    // Kill any processes on the target port
+    await killPort(targetPort);
     
     // Wait a moment for processes to fully terminate
     console.log('⏳ Waiting for processes to terminate...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Start the dev server
-    await startDevServer();
+    // Start the dev server on the target port
+    await startDevServer(targetPort);
     
-    console.log('🎉 Port reset complete! Dev server running on port 5174');
+    console.log(`🎉 Port reset complete! Dev server running on port ${targetPort}`);
     
   } catch (error) {
     console.error('❌ Port reset failed:', error);

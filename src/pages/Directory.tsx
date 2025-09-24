@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,6 +86,7 @@ interface CategoryGroup {
 const Directory = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -743,13 +745,9 @@ const Directory = () => {
                   value={searchTerm}
                   onChange={setSearchTerm}
                   onSelect={(result) => {
-                    // Navigate to specific business or enhance search
+                    // Navigate to specific business detail page
                     if (result.type === 'business') {
-                      const business = businesses.find(b => b.id === result.id);
-                      if (business) {
-                        setSelectedBusiness(business);
-                        setViewMode('map');
-                      }
+                      navigate(`/business/${result.id}`);
                     }
                   }}
                   onSearch={(searchTerm) => {

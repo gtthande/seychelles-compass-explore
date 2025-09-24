@@ -53,7 +53,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
         .from('businesses')
         .select('id, name, category, description, address, island')
         .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_text.ilike.%${searchTerm}%`)
         .order('name')
         .limit(10);
 

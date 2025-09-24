@@ -17,6 +17,7 @@ import LiveCounters from "@/components/LiveCounters";
 import GoogleMap from "@/components/GoogleMap";
 import ImageSearch from "@/components/ImageSearch";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
+import BusinessSearch from "@/components/BusinessSearch";
 import BusinessLocationMap from "@/components/business/BusinessLocationMap";
 import { geocodeAddress } from "@/lib/geocoding";
 import { 
@@ -723,6 +724,15 @@ const Directory = () => {
 
         {/* Search and Filters */}
         <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card mb-8">
+          {/* Business Search */}
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold mb-3">Quick Business Search</h2>
+            <BusinessSearch 
+              placeholder="Type a business name to find it quickly..."
+              className="max-w-2xl"
+            />
+          </div>
+
           {/* Image Search */}
           <ImageSearch onSearchResults={handleImageSearchResults} />
           

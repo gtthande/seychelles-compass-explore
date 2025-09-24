@@ -19,6 +19,7 @@ import BusinessDashboard from "./pages/BusinessDashboard";
 import Products from "./pages/Products";
 import Documentation from "./pages/Documentation";
 import AdminPanel from "./pages/AdminPanel";
+import BusinessDetail from "./pages/BusinessDetail";
 import PaymentTest from "./pages/PaymentTest";
 import EmailPreview from "./pages/EmailPreview";
 
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/directory" element={<Directory />} />
+          <Route path="/business/:id" element={<BusinessDetail />} />
           <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
           <Route path="/products" element={<Products />} />
           <Route path="/docs" element={<Documentation />} />

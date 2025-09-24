@@ -5,16 +5,54 @@ A comprehensive business directory platform for the beautiful islands of Seychel
 ## 🌴 Features
 
 - **Business Directory** - Complete business listings with verification system
+- **Business Search & Details** - Advanced search with detailed business pages
 - **Product Catalog** - Searchable product inventory with images and pricing
 - **Appointment Booking** - Streamlined appointment request system
 - **Payment Processing** - Visa/Mastercard (default) + Stripe (optional) + PayPal (optional)
 - **Admin Panel** - Complete management dashboard
 - **AI-Enhanced Search** - Intelligent search with OpenAI integration
-- **Google Maps Integration** - Interactive location services
+- **Google Maps Integration** - Interactive location services with static maps
 - **Real-time Statistics** - Live counters and analytics
 - **Mobile Responsive** - Optimized for all devices
 - **Seychelles Theme** - Island-inspired design with authentic photography
 - **Demo Data** - Pre-seeded businesses and payments for testing
+
+## 🔍 Business Search & Details
+
+### Global Business Search
+The platform features a powerful business search system that allows users to quickly find any business by name:
+
+- **Live Autocomplete** - Real-time search suggestions as you type
+- **Instant Navigation** - Click any result to go directly to the business detail page
+- **Global Access** - Search available on homepage and directory page
+- **Smart Matching** - Searches business names, descriptions, and categories
+
+### Business Detail Pages
+Each business has a comprehensive detail page (`/business/[id]`) featuring:
+
+- **Complete Business Information** - Name, description, category, contact details
+- **Interactive Maps** - Google Maps integration with directions
+- **Contact Actions** - Direct calling, WhatsApp, email, and website links
+- **Social Media Links** - Facebook, Instagram, LinkedIn, YouTube integration
+- **Location Services** - Address, island, and GPS coordinates
+- **Opening Hours** - Business operating schedule
+- **Verification Badges** - Verified and featured business indicators
+
+### Search Implementation
+```typescript
+// BusinessSearch component provides:
+- Debounced search (300ms delay)
+- Keyboard navigation (arrow keys, enter, escape)
+- Real-time results from Supabase
+- Click-to-navigate functionality
+- Responsive design with Tailwind CSS
+```
+
+### Example Usage
+1. Type "maritime" in the search box
+2. See "Seychelles Maritime Academy" in dropdown
+3. Click to navigate to `/business/[id]`
+4. View complete business details with map and contact info
 
 ## 🗺️ Google Maps Integration
 
@@ -71,12 +109,26 @@ Test the geocoding functionality by:
 3. Entering an address and clicking "Get Location"
 4. Verifying coordinates are automatically set
 
-## 🚀 Recent Updates (January 15, 2025)
+## 🚀 Recent Updates (January 19, 2025)
+
+### ✅ Port Management & Development Server
+- **Default Port Changed**: Development server now runs on port **5174** (was 5173)
+- **Cross-Platform Reset Script**: Added `npm run dev:reset` for Windows, Mac, and Linux
+- **Port Conflict Resolution**: Automatic detection and killing of stuck processes
+- **Enhanced Development Experience**: Reliable server startup with fallback options
+
+### 🔧 Development Scripts
+- `npm run dev` - Start development server on port 5174
+- `npm run dev:reset` - Kill stuck processes and start fresh server
+- `npm run dev:watchdog` - Start with auto-restart watchdog system
+- Custom port: `npm run dev -- --port 3000`
+
+## 🚀 Previous Updates (January 15, 2025)
 
 ### ✅ Development Environment
 - Fixed all build/JSX errors
 - Cleaned up Hero section (reduced overlay, improved text contrast)
-- Verified development server runs on http://localhost:5173
+- Verified development server runs on http://localhost:5174
 - All dependencies installed and working
 
 ### 💳 Payment System
@@ -352,7 +404,7 @@ npm run seed:demo
 npm run dev
 
 # Visit payment test page
-# Navigate to http://localhost:5173/payments/test
+# Navigate to http://localhost:5174/payments/test
 
 # Test mock payments with demo businesses
 # - Select a demo business
@@ -367,13 +419,13 @@ npm run dev
 npm run dev
 
 # Test password reset flow
-# 1. Navigate to http://localhost:5173/auth
+# 1. Navigate to http://localhost:5174/auth
 # 2. Click "Forgot Password?" on sign-in tab
 # 3. Enter email address (validation will show inline errors)
 # 4. Check success message and email preview
 
 # Development email preview
-# Navigate to http://localhost:5173/dev/email-preview
+# Navigate to http://localhost:5174/dev/email-preview
 # - View all password reset requests
 # - Copy reset links for testing
 # - Preview email content
@@ -588,7 +640,7 @@ npm run dev
 
 **4. Verify Environment:**
 - Ensure `.env.local` exists with required variables
-- Check that `VITE_SITE_URL=http://localhost:5173` matches your port
+- Check that `VITE_SITE_URL=http://localhost:5174` matches your port
 - Verify all API keys are properly configured
 
 **5. Git Recovery:**

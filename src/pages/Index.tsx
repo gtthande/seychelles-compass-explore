@@ -5,6 +5,7 @@ import FeaturedListings from "@/components/FeaturedListings";
 import Footer from "@/components/Footer";
 import LiveCounters from "@/components/LiveCounters";
 import SearchFilter from "@/components/SearchFilter";
+import BusinessSearch from "@/components/BusinessSearch";
 
 const Index = () => {
   return (
@@ -23,9 +24,17 @@ const Index = () => {
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
               Find Local Businesses & Products
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
               Discover trusted businesses and quality products throughout Seychelles
             </p>
+            
+            {/* Global Business Search */}
+            <div className="max-w-2xl mx-auto mb-8">
+              <BusinessSearch 
+                placeholder="Search for any business by name..."
+                className="w-full"
+              />
+            </div>
           </div>
           <SearchFilter onFiltersChange={() => {}} />
         </div>

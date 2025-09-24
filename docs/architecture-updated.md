@@ -389,7 +389,7 @@ jobs:
 # Production Environment Variables (GitHub Secrets)
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+VITE_GOOGLE_MAPS_API_KEY=AIzaSyByNrxUDO-dODXwTaT6RINSbAfASZ-eGfY
 VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
 VITE_SITE_URL=https://seychelles-compass-explore.vercel.app
 

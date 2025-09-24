@@ -26,7 +26,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 #### Google Maps API
 ```
-VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
+VITE_GOOGLE_MAPS_API_KEY=AIzaSyByNrxUDO-dODXwTaT6RINSbAfASZ-eGfY
 ```
 
 #### Stripe Configuration

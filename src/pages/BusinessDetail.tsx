@@ -119,10 +119,19 @@ const BusinessDetail: React.FC = () => {
   const getStaticMapUrl = () => {
     if (!business?.latitude || !business?.longitude) return null;
     
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) return null;
 
     return `https://maps.googleapis.com/maps/api/staticmap?center=${business.latitude},${business.longitude}&zoom=15&size=600x300&markers=color:red%7C${business.latitude},${business.longitude}&key=${apiKey}`;
+  };
+
+  const getEmbedMapUrl = () => {
+    if (!business?.latitude || !business?.longitude) return null;
+    
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return null;
+
+    return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${business.latitude},${business.longitude}&zoom=15`;
   };
 
   const handleGetDirections = () => {
@@ -372,12 +381,17 @@ const BusinessDetail: React.FC = () => {
                   Get Directions
                 </Button>
 
-                {getStaticMapUrl() && (
+                {getEmbedMapUrl() && (
                   <div className="mt-4">
-                    <img 
-                      src={getStaticMapUrl()!}
-                      alt={`Map showing ${business.name}`}
-                      className="w-full h-48 object-cover rounded-lg border"
+                    <iframe
+                      src={getEmbedMapUrl()!}
+                      width="100%"
+                      height="300"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="rounded-lg"
                     />
                   </div>
                 )}

@@ -81,9 +81,9 @@ const SearchWithTypeahead = ({
       // Fallback to basic search if AI search fails or returns no results
       const { data: businesses, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, category, description')
+        .select('id, name, category, category_text, description')
         .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_text.ilike.%${searchTerm}%`)
         .limit(5);
 
       const { data: products, error: productError } = await supabase
@@ -106,7 +106,7 @@ const SearchWithTypeahead = ({
         id: b.id,
         name: b.name,
         type: 'business' as const,
-        category: b.category,
+        category: b.category_text || b.category,
         description: b.description
       }));
 

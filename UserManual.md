@@ -6,10 +6,12 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 ## Features
 
 ### 🔍 Business Discovery
-- **Search & Filter**: Find businesses by name, category, location, or services
-- **Category Browsing**: Explore businesses by type (Food, Accommodation, Tours, etc.)
+- **Smart Search**: Find businesses by name, description, or category with real-time suggestions
+- **Category Browsing**: Explore businesses by type with live counts (Food (5), Accommodation (3), etc.)
 - **Location-based Search**: Filter by specific islands (Mahé, Praslin, La Digue, etc.)
 - **Map Integration**: View business locations on interactive maps
+- **Instant Results**: Search results appear as you type with no delays
+- **Toast Notifications**: Get feedback on search success and results count
 
 ### 🏢 Business Categories
 - **Food & Beverages**: Restaurants, cafes, bars
@@ -32,15 +34,19 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 
 ### Finding Businesses
 
-#### 1. Search by Name
+#### 1. Smart Search
 - Use the search bar at the top of the page
-- Type the business name or keywords
-- Results will show matching businesses
+- Type the business name, description, or keywords
+- Results appear instantly as you type (no "AI searching..." delays)
+- Get toast notifications showing how many businesses were found
+- Click on any result to go directly to that business detail page
 
 #### 2. Browse by Category
 - Click on category tiles on the homepage
 - Or use the category dropdown in the directory
-- Each category shows relevant businesses
+- Each category shows the count of businesses (e.g., "Education (1)")
+- Categories are loaded dynamically from actual business data
+- Clicking a category immediately filters and shows results
 
 #### 3. Filter by Location
 - Use the location dropdown to select an island
@@ -75,8 +81,13 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 
 ## Recent Updates
 
-### January 19, 2025 - Enhanced Business Management & Navigation
-- **Business Editing**: Business owners can now edit their listings directly from the directory
+### January 19, 2025 - Interactive Google Maps & Automated Deployment
+- **Interactive Maps**: Business detail pages now feature fully interactive Google Maps with embedded iframes
+- **Enhanced Search**: Fixed search functionality to properly navigate to business detail pages
+- **Search Timeout Fix**: Resolved "AI searching..." infinite loading issue with proper timeout handling
+- **Maps Display Fix**: Fixed missing Google Maps display with proper API key validation and error handling
+- **Automated Deployment**: Complete CI/CD pipeline with GitHub Actions and Vercel integration
+- **Business Editing**: Business owners can edit their listings directly from the directory
 - **Google Maps Integration**: All maps now open with directions in Google Maps or Apple Maps
 - **Search Functionality**: Fixed search to properly find businesses like "Seychelles Maritime Academy"
 - **Watchdog System**: Automated development server management for better reliability
@@ -116,11 +127,13 @@ The Seychelles Business Directory now features a fully automated deployment syst
 7. **Live Updates** → Changes are live on production immediately
 
 #### 🔧 Technical Features
-- **GitHub Actions**: Automated CI/CD pipeline
-- **Vercel Integration**: Seamless deployment to production
-- **Environment Management**: Secure environment variable handling
-- **Quality Assurance**: Automated testing and linting
-- **Performance Optimization**: Optimized builds for production
+- **GitHub Actions**: Automated CI/CD pipeline with quality gates
+- **Vercel Integration**: Seamless deployment to production with automatic builds
+- **Environment Management**: Secure environment variable handling for all services
+- **Quality Assurance**: Automated testing, linting, and build verification
+- **Performance Optimization**: Optimized builds for production with caching
+- **Interactive Maps**: Embedded Google Maps with full interactivity
+- **Search Enhancement**: Improved search navigation and result handling
 - **Consistent Interface**: All dropdowns have proper placeholder text
 - **Error Prevention**: Eliminated crashes when selecting filter options
 - **Better Performance**: Faster loading and smoother interactions
@@ -159,6 +172,30 @@ The Seychelles Business Directory now features a fully automated deployment syst
 - **Account Control**: Activate or deactivate user accounts
 - **Business Oversight**: Monitor and manage all business listings
 - **System Settings**: Configure platform-wide settings and features
+- **Dev Sync Panel**: Manage code synchronization and database migrations
+
+#### Dev Sync Panel
+The Dev Sync Panel provides powerful tools for managing your development workflow:
+
+**Access**: Navigate to `/admin` and click the "Dev Sync" tab (admin role required)
+
+**Features**:
+- **Pull from GitHub** (Blue button): Fetch latest changes from the main branch
+- **Push to GitHub** (Green button): Stage, commit, and push your changes
+- **Sync UI** (Black button): Synchronize UI components (placeholder)
+- **Push DB Migrations** (Purple button): Deploy database changes to production
+
+**Setup Requirements**:
+1. Add `ALLOW_SYNC=1` to your `.env` file
+2. Install dependencies: `npm install express cors concurrently`
+3. Start sync server: `npm run dev:sync` or `npm run dev:full`
+
+**Security**: The Dev Sync Panel is only available when:
+- You have admin role (`role = 'admin'`)
+- `ALLOW_SYNC=1` is set in environment variables
+- The sync server is running on port 3001
+
+**Real-time Logs**: All sync operations show live output in the logs panel, including success messages, errors, and command output.
 
 ## Support
 

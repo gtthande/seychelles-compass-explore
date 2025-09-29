@@ -2,6 +2,99 @@
 
 ## Recent Updates
 
+### January 19, 2025 - Interactive Google Maps Integration & CI/CD Pipeline ✅
+
+**Purpose**: Enhanced business detail pages with interactive Google Maps integration and implemented complete CI/CD pipeline for automated deployment.
+
+**Changes Made**:
+
+#### 🗺️ Interactive Google Maps Integration
+- **Embedded Maps**: Replaced static map images with interactive Google Maps iframe
+- **API Key Support**: Added support for both VITE_GOOGLE_MAPS_API_KEY and NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+- **Enhanced Display**: Improved map styling with proper accessibility and responsive design
+- **Search Navigation**: Fixed search functionality to properly navigate to business detail pages
+- **Category Search**: Updated SearchWithTypeahead to use category_text for better search results
+
+#### 🚀 Complete CI/CD Pipeline Implementation
+- **GitHub Actions**: Automated CI/CD workflow in `.github/workflows/deploy.yml`
+- **Quality Gates**: Automated linting, testing, and building before deployment
+- **Vercel Integration**: Automatic deployment using `amondnet/vercel-action@v25`
+- **Environment Management**: Secure handling of all production environment variables
+- **Node.js 18**: Optimized build environment with npm caching
+
+#### 🔧 Environment Configuration
+- **Updated Template**: Enhanced `env.example` with all required environment variables
+- **GitHub Secrets**: Complete configuration for automated deployment
+- **Vercel Integration**: Proper Vercel token and project configuration
+- **Email Service**: Added Resend API key configuration
+- **Stripe Integration**: Complete payment processing configuration
+
+**Files Added**:
+- `.github/workflows/deploy.yml` - Complete CI/CD pipeline
+- `env.example` - Updated environment configuration template
+
+**Files Modified**:
+- `src/pages/BusinessDetail.tsx` - Interactive Google Maps integration
+- `src/components/SearchWithTypeahead.tsx` - Enhanced search functionality
+- `src/pages/Directory.tsx` - Fixed search navigation
+- `ChangeLog.md` - Documented latest features
+
+**GitHub Secrets Required**:
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `VITE_GOOGLE_MAPS_API_KEY` - Google Maps API key
+- `VITE_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
+- `VITE_SITE_URL` - Production site URL
+- `RESEND_API_KEY` - Email service API key
+- `VERCEL_TOKEN` - Vercel deployment token
+- `VERCEL_ORG_ID` - Vercel organization ID
+- `VERCEL_PROJECT_ID` - Vercel project ID
+
+**Verification Steps**:
+- ✅ Interactive Google Maps display on business detail pages
+- ✅ Search navigation properly routes to business detail pages
+- ✅ GitHub Actions workflow configured and tested
+- ✅ Environment variables properly configured
+- ✅ Automated testing and linting working
+- ✅ Build process automated and verified
+- ✅ Vercel deployment integration working
+
+**Status**: Complete interactive map integration with automated CI/CD pipeline for seamless deployment.
+
+### January 19, 2025 - Search Functionality & Maps Display Fixes ✅
+
+**Purpose**: Fixed search functionality that was getting stuck on "AI searching..." and resolved missing Google Maps display issues.
+
+**Changes Made**:
+
+#### 🔍 Search Functionality Fixes
+- **AI Search Timeout**: Added 3-second timeout for AI search to prevent infinite loading
+- **Fallback Mechanism**: Improved fallback to basic search when AI search fails or times out
+- **Error Handling**: Enhanced error handling with proper console logging
+- **Loading States**: Fixed loading states to properly show/hide "AI searching..." indicator
+- **Search Performance**: Optimized search performance with better timeout handling
+
+#### 🗺️ Google Maps Display Fixes
+- **API Key Handling**: Added proper API key validation and error messages
+- **Fallback Display**: Added informative fallback when Google Maps API key is missing
+- **Environment Configuration**: Updated env.example with working Google Maps API key
+- **Error Messages**: Added user-friendly error messages for missing API configuration
+- **Map Integration**: Enhanced map display with proper error handling
+
+**Files Modified**:
+- `src/components/SearchWithTypeahead.tsx` - Fixed AI search timeout and fallback
+- `src/pages/BusinessDetail.tsx` - Enhanced Google Maps display with error handling
+- `env.example` - Updated with working Google Maps API key
+
+**Verification Steps**:
+- ✅ Search no longer gets stuck on "AI searching..." 
+- ✅ Search properly falls back to basic search when AI search fails
+- ✅ Google Maps display shows proper error message when API key is missing
+- ✅ Environment configuration is properly documented
+- ✅ All search functionality works reliably
+
+**Status**: Complete search and maps functionality with proper error handling and fallbacks.
+
 ### January 19, 2025 - Complete CI/CD Pipeline Implementation ✅
 
 **Purpose**: Implemented fully automated CI/CD pipeline with GitHub Actions and Vercel deployment for seamless development-to-production workflow.

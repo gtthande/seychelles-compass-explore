@@ -321,6 +321,107 @@ const { isOnline, isConnected } = useConnectionStatus();
 ### GitHub Actions CI/CD
 Automated deployment pipeline with comprehensive testing and deployment:
 
+#### Interactive Google Maps Integration
+Enhanced business detail pages with fully interactive Google Maps:
+```typescript
+// BusinessDetail component with embedded maps
+const getEmbedMapUrl = () => {
+  if (!business?.latitude || !business?.longitude) return null;
+  
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return null;
+
+  return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${business.latitude},${business.longitude}&zoom=15`;
+};
+
+// Embedded iframe with full interactivity
+<iframe
+  src={getEmbedMapUrl()!}
+  width="100%"
+  height="300"
+  style={{ border: 0 }}
+  allowFullScreen
+  loading="lazy"
+  referrerPolicy="no-referrer-when-downgrade"
+  className="rounded-lg"
+/>
+```
+
+#### Enhanced Search Navigation
+Fixed search functionality to properly navigate to business detail pages:
+```typescript
+// SearchWithTypeahead with proper navigation and timeout handling
+const fetchSuggestions = async (searchTerm: string) => {
+  setIsLoading(true);
+  try {
+    // Try AI-enhanced search with timeout
+    const aiSearchPromise = supabase.functions.invoke('ai-search', {
+      body: { query: searchTerm }
+    });
+
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('AI search timeout')), 3000)
+    );
+
+    try {
+      const { data: aiResults, error: aiError } = await Promise.race([
+        aiSearchPromise,
+        timeoutPromise
+      ]) as any;
+
+      if (!aiError && aiResults?.success && aiResults.results?.length > 0) {
+        // Handle AI results
+        return;
+      }
+    } catch (aiError) {
+      console.log('AI search failed or timed out, falling back to basic search:', aiError);
+    }
+
+    // Fallback to basic search
+    const { data: businesses } = await supabase
+      .from('businesses')
+      .select('id, name, category, description, address, island')
+      .eq('status', 'active')
+      .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_text.ilike.%${searchTerm}%`)
+      .order('name')
+      .limit(10);
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+#### Google Maps Integration with Error Handling
+Enhanced business detail pages with proper error handling:
+```typescript
+// BusinessDetail component with API key validation
+const getEmbedMapUrl = () => {
+  if (!business?.latitude || !business?.longitude) return null;
+  
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    console.warn('Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file');
+    return null;
+  }
+
+  return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${business.latitude},${business.longitude}&zoom=15`;
+};
+
+// Fallback display for missing API key
+{getEmbedMapUrl() ? (
+  <iframe src={getEmbedMapUrl()!} width="100%" height="300" />
+) : (
+  <div className="mt-4 p-4 bg-muted rounded-lg text-center">
+    <p className="text-sm text-muted-foreground mb-2">
+      Map not available - Google Maps API key required
+    </p>
+    <p className="text-xs text-muted-foreground">
+      Please configure VITE_GOOGLE_MAPS_API_KEY in your environment
+    </p>
+  </div>
+)}
+```
+
 ```yaml
 # .github/workflows/deploy.yml
 name: Deploy to Vercel
@@ -389,9 +490,10 @@ jobs:
 # Production Environment Variables (GitHub Secrets)
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-VITE_GOOGLE_MAPS_API_KEY=AIzaSyByNrxUDO-dODXwTaT6RINSbAfASZ-eGfY
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
 VITE_SITE_URL=https://seychelles-compass-explore.vercel.app
+RESEND_API_KEY=your-resend-api-key-here
 
 # Vercel Configuration (GitHub Secrets)
 VERCEL_TOKEN=your-vercel-token

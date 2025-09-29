@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, Building2, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface SearchResult {
   id: string;
@@ -35,6 +36,7 @@ const SearchWithTypeahead = ({
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -57,85 +59,47 @@ const SearchWithTypeahead = ({
 
     setIsLoading(true);
     try {
-      // First try AI-enhanced search
-      const { data: aiResults, error: aiError } = await supabase.functions.invoke('ai-search', {
-        body: { query: searchTerm }
-      });
-
-      if (!aiError && aiResults?.success && aiResults.results?.length > 0) {
-        const formattedResults: SearchResult[] = aiResults.results.map((result: any) => ({
-          id: result.id,
-          name: result.name,
-          type: result.type,
-          category: result.category,
-          description: result.description,
-          business_name: result.business_name,
-          aiEnhanced: true
-        }));
-        setSuggestions(formattedResults);
-        setIsOpen(true);
-        setIsLoading(false);
-        return;
-      }
-
-      // Fallback to basic search if AI search fails or returns no results
+      // Query Supabase directly for businesses
       const { data: businesses, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, category, category_text, description')
-        .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_text.ilike.%${searchTerm}%`)
-        .limit(5);
-
-      const { data: products, error: productError } = await supabase
-        .from('products')
-        .select(`
-          id, 
-          name, 
-          category, 
-          description,
-          business:businesses(name)
-        `)
+        .select('id, name, category, description')
         .eq('status', 'active')
         .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
-        .limit(5);
+        .limit(8);
 
-      if (businessError) console.error('Business search error:', businessError);
-      if (productError) console.error('Product search error:', productError);
+      if (businessError) {
+        console.error('Business search error:', businessError);
+        setSuggestions([]);
+        setIsOpen(false);
+        return;
+      }
 
       const businessResults: SearchResult[] = (businesses || []).map(b => ({
         id: b.id,
         name: b.name,
         type: 'business' as const,
-        category: b.category_text || b.category,
+        category: b.category,
         description: b.description
       }));
 
-      const productResults: SearchResult[] = (products || []).map(p => ({
-        id: p.id,
-        name: p.name,
-        type: 'product' as const,
-        category: p.category,
-        description: p.description,
-        business_name: p.business?.name
-      }));
-
-      const allResults = [...businessResults, ...productResults]
-        .sort((a, b) => {
-          // Prioritize exact name matches
-          const aExactMatch = a.name.toLowerCase().includes(searchTerm.toLowerCase());
-          const bExactMatch = b.name.toLowerCase().includes(searchTerm.toLowerCase());
-          if (aExactMatch && !bExactMatch) return -1;
-          if (!aExactMatch && bExactMatch) return 1;
-          return 0;
-        })
-        .slice(0, 8);
-
-      setSuggestions(allResults);
-      setIsOpen(allResults.length > 0);
+      setSuggestions(businessResults);
+      setIsOpen(businessResults.length > 0);
+      
+      if (businessResults.length > 0) {
+        toast({
+          title: "Search Results",
+          description: `Found ${businessResults.length} business${businessResults.length === 1 ? '' : 'es'} for "${searchTerm}"`,
+        });
+      }
     } catch (error) {
       console.error('Error fetching suggestions:', error);
       setSuggestions([]);
       setIsOpen(false);
+      toast({
+        title: "Search Error",
+        description: "Failed to search businesses. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -288,7 +252,7 @@ const SearchWithTypeahead = ({
                 <Search className="h-6 w-6 text-muted-foreground" />
               </div>
               <div className="space-y-1">
-                <p className="font-medium text-sm">No local results found</p>
+                <p className="font-medium text-sm">No businesses found for "{value}"</p>
                 <p className="text-xs text-muted-foreground">
                   Try different keywords or check spelling
                 </p>

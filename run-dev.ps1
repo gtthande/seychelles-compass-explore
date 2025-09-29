@@ -13,19 +13,19 @@ try {
     
     if ($netstatOutput) {
         # Extract PID from netstat output
-        $pid = ($netstatOutput -split '\s+')[-1]
+        $processId = ($netstatOutput -split '\s+')[-1]
         
-        if ($pid -and $pid -match '^\d+$') {
-            Write-Host "⚠️  Found process with PID $pid using port 5173" -ForegroundColor Red
-            Write-Host "🔪 Killing PID $pid on port 5173..." -ForegroundColor Yellow
+        if ($processId -and $processId -match '^\d+$') {
+            Write-Host "⚠️  Found process with PID $processId using port 5173" -ForegroundColor Red
+            Write-Host "🔪 Killing PID $processId on port 5173..." -ForegroundColor Yellow
             
             # Kill the process
-            taskkill /PID $pid /F | Out-Null
+            taskkill /PID $processId /F | Out-Null
             
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "✅ Successfully killed PID $pid on port 5173" -ForegroundColor Green
+                Write-Host "✅ Successfully killed PID $processId on port 5173" -ForegroundColor Green
             } else {
-                Write-Host "❌ Failed to kill PID $pid" -ForegroundColor Red
+                Write-Host "❌ Failed to kill PID $processId" -ForegroundColor Red
                 Write-Host "⚠️  Continuing anyway..." -ForegroundColor Yellow
             }
         } else {

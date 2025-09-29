@@ -129,7 +129,10 @@ const BusinessDetail: React.FC = () => {
     if (!business?.latitude || !business?.longitude) return null;
     
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) return null;
+    if (!apiKey) {
+      console.warn('Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file');
+      return null;
+    }
 
     return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${business.latitude},${business.longitude}&zoom=15`;
   };
@@ -381,7 +384,7 @@ const BusinessDetail: React.FC = () => {
                   Get Directions
                 </Button>
 
-                {getEmbedMapUrl() && (
+                {getEmbedMapUrl() ? (
                   <div className="mt-4">
                     <iframe
                       src={getEmbedMapUrl()!}
@@ -393,6 +396,15 @@ const BusinessDetail: React.FC = () => {
                       referrerPolicy="no-referrer-when-downgrade"
                       className="rounded-lg"
                     />
+                  </div>
+                ) : (
+                  <div className="mt-4 p-4 bg-muted rounded-lg text-center">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Map not available - Google Maps API key required
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Please configure VITE_GOOGLE_MAPS_API_KEY in your environment
+                    </p>
                   </div>
                 )}
               </CardContent>

@@ -32,7 +32,144 @@ src/
 └── types/               # TypeScript type definitions
 ```
 
+## Dev Sync Panel
+
+### Overview
+The Dev Sync Panel provides administrators with a web-based interface to manage code synchronization and database migrations directly from the admin dashboard.
+
+### Architecture
+- **Frontend**: React component (`src/pages/admin/DevSyncPanel.tsx`)
+- **Backend**: Express server (`scripts/sync-server.js`)
+- **Security**: Role-based access with `ALLOW_SYNC` environment flag
+- **Integration**: Admin panel tab with real-time logs
+
+### Sync Server
+**Location**: `scripts/sync-server.js`
+
+**Endpoints**:
+- `POST /api/sync/pull` - Pull latest changes from GitHub
+- `POST /api/sync/push` - Stage, commit, and push changes to GitHub
+- `POST /api/sync/sync-ui` - Sync UI components (placeholder)
+- `POST /api/sync/migrate` - Push database migrations to Supabase
+- `GET /api/sync/health` - Health check endpoint
+
+**Features**:
+- Cross-platform shell command execution
+- Real-time output streaming
+- Error handling and logging
+- CORS support for frontend integration
+
+### DevSyncPanel Component
+**Location**: `src/pages/admin/DevSyncPanel.tsx`
+
+**Features**:
+- 4 action buttons with distinct styling:
+  - Blue: Pull from GitHub
+  - Green: Push to GitHub  
+  - Black: Sync UI
+  - Purple: Push DB Migrations
+- Real-time logs panel with status indicators
+- Toast notifications for user feedback
+- Security check for `ALLOW_SYNC` environment variable
+
+### Security Implementation
+- **Environment Check**: Requires `ALLOW_SYNC=1` to enable functionality
+- **Role-based Access**: Only accessible to admin users
+- **Server Validation**: Health check endpoint validates sync server availability
+- **Graceful Degradation**: Shows locked state when sync is not available
+
+### Setup Instructions
+
+#### 1. Environment Configuration
+Add to your `.env` file:
+```bash
+ALLOW_SYNC=1
+SYNC_SERVER_PORT=3001
+```
+
+#### 2. Install Dependencies
+```bash
+npm install express cors concurrently
+```
+
+#### 3. Start Development Server
+```bash
+# Start both frontend and sync server
+npm run dev:full
+
+# Or start individually
+npm run dev        # Frontend on port 5173
+npm run dev:sync   # Sync server on port 3001
+```
+
+#### 4. Access Dev Sync Panel
+1. Navigate to `/admin` (admin role required)
+2. Click on "Dev Sync" tab
+3. Use the sync buttons to manage code and database
+
+### Usage
+
+#### Pull from GitHub
+- Fetches latest changes from `origin/main`
+- Updates local repository
+- Shows real-time output in logs panel
+
+#### Push to GitHub
+- Stages all changes with `git add .`
+- Commits with message "Dev Sync: [action]"
+- Pushes to `origin/main`
+- Requires write access to repository
+
+#### Sync UI
+- Placeholder for UI component synchronization
+- Can be extended for specific UI sync workflows
+
+#### Push DB Migrations
+- Runs `npx supabase migration push`
+- Requires Supabase CLI to be installed
+- Pushes pending migrations to production database
+
+### Error Handling
+- Network errors are caught and displayed in logs
+- Command failures show error output
+- Toast notifications provide user feedback
+- Logs are limited to last 50 entries
+
+### Cross-Platform Support
+- Uses `child_process.spawn` with shell option
+- Works on Windows, macOS, and Linux
+- Handles different shell environments automatically
+
 ## Business Search System
+
+### SearchWithTypeahead Component
+**Location**: `src/components/SearchWithTypeahead.tsx`
+
+**Features**:
+- Direct Supabase querying (no AI search dependency)
+- Real-time autocomplete with 300ms debounce
+- Keyboard navigation (arrow keys, enter, escape)
+- Click-to-navigate functionality
+- Toast notifications for search results
+- Error handling with user-friendly messages
+- Bounded timeout (3 seconds max) for search operations
+
+**Search Implementation**:
+```typescript
+// Direct Supabase query for businesses
+const { data: businesses, error: businessError } = await supabase
+  .from('businesses')
+  .select('id, name, category, category_text, description')
+  .eq('status', 'active')
+  .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_text.ilike.%${searchTerm}%`)
+  .limit(8);
+```
+
+**User Feedback**:
+- Loading spinner during search
+- Toast messages for search success/failure
+- "No businesses found for {query}" message
+- Clear search and retry options
 
 ### BusinessSearch Component
 **Location**: `src/components/BusinessSearch.tsx`
@@ -43,6 +180,52 @@ src/
 - Click-to-navigate functionality
 - Responsive design with Tailwind CSS
 - Error handling and loading states
+
+## Category System
+
+### Dynamic Category Loading
+**Location**: `src/pages/Directory.tsx`
+
+**Implementation**:
+```typescript
+// Fetch categories from businesses table with counts
+const { data, error } = await supabase
+  .from('businesses')
+  .select('category_text, category')
+  .eq('status', 'active')
+  .not('category_text', 'is', null);
+
+// Get distinct categories with counts
+const categoryMap = new Map<string, { label: string, count: number }>();
+
+data?.forEach(business => {
+  const categoryValue = business.category_text || business.category;
+  if (categoryValue) {
+    const existing = categoryMap.get(categoryValue) || { label: categoryValue, count: 0 };
+    existing.count++;
+    categoryMap.set(categoryValue, existing);
+  }
+});
+
+// Convert to array and format labels with counts
+const categoryOptions = Array.from(categoryMap.entries()).map(([value, data]) => ({
+  value,
+  label: `${data.label} (${data.count})`
+})).sort((a, b) => a.label.localeCompare(b.label));
+```
+
+**Features**:
+- Dynamic category loading from actual business data
+- Category counts displayed in dropdown
+- Fallback to default categories if database query fails
+- Real-time category filtering
+- Sorted alphabetically for better UX
+
+### Category Filtering
+- Clicking a category filters businesses by that category
+- Results show immediately without page reload
+- Category counts update based on active businesses
+- Supports both `category` and `category_text` fields
 
 **Props**:
 ```typescript

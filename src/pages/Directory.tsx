@@ -122,17 +122,30 @@ const Directory = () => {
     const fetchCategories = async () => {
       try {
         const { data, error } = await supabase
-          .from('categories')
-          .select('slug, name')
-          .eq('is_active', true)
-          .order('name');
+          .from('businesses')
+          .select('category')
+          .eq('status', 'active')
+          .not('category', 'is', null);
 
         if (error) throw error;
         
-        const categoryOptions = data?.map(cat => ({
-          value: cat.slug,
-          label: cat.name
-        })) || [];
+        // Get distinct categories with counts
+        const categoryMap = new Map();
+        
+        data?.forEach(business => {
+          const categoryValue = business.category;
+          if (categoryValue) {
+            const existing = categoryMap.get(categoryValue) || { label: categoryValue, count: 0 };
+            existing.count++;
+            categoryMap.set(categoryValue, existing);
+          }
+        });
+
+        // Convert to array and format labels
+        const categoryOptions = Array.from(categoryMap.entries()).map(([value, data]) => ({
+          value,
+          label: `${data.label} (${data.count})`
+        })).sort((a, b) => a.label.localeCompare(b.label));
         
         setCategories(categoryOptions);
       } catch (error) {

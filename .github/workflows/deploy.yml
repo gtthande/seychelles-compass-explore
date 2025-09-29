@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test-and-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -27,7 +27,7 @@ jobs:
       run: npm run lint
       
     - name: Run tests
-      run: npm test -- --coverage --watchAll=false
+      run: npm run test
       
     - name: Build project
       run: npm run build
@@ -35,8 +35,8 @@ jobs:
         VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
-        VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
         VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}
+        RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         
     - name: Deploy to Vercel
       if: github.ref == 'refs/heads/main'
@@ -47,4 +47,3 @@ jobs:
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
         vercel-args: '--prod'
         working-directory: ./
-        scope: ${{ secrets.VERCEL_SCOPE }}

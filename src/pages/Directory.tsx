@@ -20,6 +20,7 @@ import ImageSearch from "@/components/ImageSearch";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import BusinessSearch from "@/components/BusinessSearch";
 import BusinessLocationMap from "@/components/business/BusinessLocationMap";
+import { BusinessMapPreview } from "@/components/BusinessMapPreview";
 import { geocodeAddress } from "@/lib/geocoding";
 import { 
   MapPin, 
@@ -619,6 +620,9 @@ const Directory = () => {
                   />
                 )}
               </div>
+              
+              {/* Map Preview */}
+              <BusinessMapPreview business={business} />
             </div>
 
             {/* Location Map Column - Only show if location data exists */}

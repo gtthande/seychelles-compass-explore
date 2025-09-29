@@ -18,6 +18,7 @@ import {
   Heart
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { BusinessMapPreview } from "./BusinessMapPreview";
 
 interface Category {
   id: string;
@@ -520,6 +521,8 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
           </Button>
         )}
       </div>
+      
+      <BusinessMapPreview business={business} />
     </CardContent>
   </Card>
 );

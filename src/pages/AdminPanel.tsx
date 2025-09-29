@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building, UserCog, Terminal } from "lucide-react";
+import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building, UserCog, Terminal, GitBranch } from "lucide-react";
 import CategoryManager from "@/components/admin/CategoryManager";
 import AppointmentManager from "@/components/admin/AppointmentManager";
 import HeroSectionManager from "@/components/admin/HeroSectionManager";
@@ -16,6 +16,7 @@ import PaymentProviderManager from "@/components/admin/PaymentProviderManager";
 import BusinessManager from "@/components/admin/BusinessManager";
 import UserManager from "@/components/admin/UserManager";
 import DevSyncPanel from "@/pages/admin/DevSyncPanel";
+import CodeSync from "@/pages/admin/CodeSync";
 
 const AdminPanel = () => {
   const { user, profile, loading: authLoading, isAdmin } = useAuth();
@@ -120,7 +121,7 @@ const AdminPanel = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="hero" className="flex items-center gap-2">
             <Image className="w-4 h-4" />
             Hero Section
@@ -156,6 +157,10 @@ const AdminPanel = () => {
           <TabsTrigger value="dev-sync" className="flex items-center gap-2">
             <Terminal className="w-4 h-4" />
             Dev Sync
+          </TabsTrigger>
+          <TabsTrigger value="code-sync" className="flex items-center gap-2">
+            <GitBranch className="w-4 h-4" />
+            Code & DB Sync
           </TabsTrigger>
         </TabsList>
 
@@ -211,6 +216,10 @@ const AdminPanel = () => {
 
         <TabsContent value="dev-sync">
           <DevSyncPanel />
+        </TabsContent>
+
+        <TabsContent value="code-sync">
+          <CodeSync />
         </TabsContent>
       </Tabs>
     </div>

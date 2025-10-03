@@ -1,5 +1,19 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+// Performance profiling utility
+const perfLog = (label: string, startTime?: number) => {
+  if (startTime) {
+    const duration = performance.now() - startTime;
+    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
+    if (duration > 1000) {
+      console.warn(`🐌 SLOW OPERATION: ${label} took ${duration.toFixed(2)}ms`);
+    }
+  } else {
+    console.log(`🚀 Starting: ${label}`);
+    return performance.now();
+  }
+};
 
 interface CounterData {
   businesses: number;
@@ -9,6 +23,8 @@ interface CounterData {
 }
 
 export const useLiveCounters = () => {
+  console.log('📊 useLiveCounters hook initializing...');
+  
   const [counters, setCounters] = useState<CounterData>({
     businesses: 0,
     products: 0,
@@ -19,20 +35,30 @@ export const useLiveCounters = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchCounts = async () => {
+    const queryStartTime = perfLog('LiveCounters fetchCounts start');
     try {
       setError(null);
       setLoading(true);
       
       // Use the new database function for accurate counts
+      const rpcStartTime = perfLog('LiveCounters RPC call start');
       const { data, error } = await supabase.rpc('get_live_counters');
+      perfLog('LiveCounters RPC call completed', rpcStartTime);
 
       if (error) {
         console.error('RPC Error:', error);
-        // Fallback to individual queries if RPC fails
-        const businessesResult = await supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active');
-        const productsResult = await supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active');
-        const usersResult = await supabase.from('profiles').select('id', { count: 'exact', head: true });
-        const reviewsResult = await supabase.from('reviews').select('id', { count: 'exact', head: true });
+        // Fallback to individual queries if RPC fails - optimized for performance
+        const fallbackStartTime = perfLog('LiveCounters fallback queries start');
+        
+        // Use parallel queries for better performance
+        const [businessesResult, productsResult, usersResult, reviewsResult] = await Promise.all([
+          supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }),
+          supabase.from('reviews').select('id', { count: 'exact', head: true })
+        ]);
+        
+        perfLog('LiveCounters fallback queries completed', fallbackStartTime);
 
         const businesses = businessesResult.count || 0;
         const products = productsResult.count || 0;
@@ -72,6 +98,7 @@ export const useLiveCounters = () => {
       });
     } finally {
       setLoading(false);
+      perfLog('LiveCounters fetchCounts completed', queryStartTime);
     }
   };
 

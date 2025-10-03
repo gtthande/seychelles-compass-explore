@@ -1,7 +1,21 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+
+// Performance profiling utility
+const perfLog = (label: string, startTime?: number) => {
+  if (startTime) {
+    const duration = performance.now() - startTime;
+    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
+    if (duration > 1000) {
+      console.warn(`🐌 SLOW OPERATION: ${label} took ${duration.toFixed(2)}ms`);
+    }
+  } else {
+    console.log(`🚀 Starting: ${label}`);
+    return performance.now();
+  }
+};
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +29,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import LiveCounters from "@/components/LiveCounters";
+import BackButton from "@/components/BackButton";
 import GoogleMap from "@/components/GoogleMap";
 import ImageSearch from "@/components/ImageSearch";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import BusinessSearch from "@/components/BusinessSearch";
 import BusinessLocationMap from "@/components/business/BusinessLocationMap";
-import { BusinessMapPreview } from "@/components/BusinessMapPreview";
+// import { BusinessMapPreview } from "@/components/BusinessMapPreview"; // Disabled for performance
+import BusinessCardSkeleton from "@/components/BusinessCardSkeleton";
 import { geocodeAddress } from "@/lib/geocoding";
 import { 
   MapPin, 
@@ -188,37 +204,74 @@ const Directory = () => {
     });
   };
 
+  // Cache for businesses data
+  const [businessesCache, setBusinessesCache] = React.useState<Business[] | null>(null);
+  const [cacheTimestamp, setCacheTimestamp] = React.useState<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
   const fetchBusinesses = async () => {
+    const fetchStartTime = perfLog('Directory fetchBusinesses start');
+    
+    // Check cache first
+    const now = Date.now();
+    if (businessesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      console.log('Using cached businesses data');
+      setBusinesses(businessesCache);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      console.log('Starting to fetch businesses...');
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
+      });
+      
+      const queryStartTime = perfLog('Directory Supabase query start');
+      const fetchPromise = supabase
         .from('businesses')
-        .select('*')
+        .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
         .eq('status', 'active')
         .order('featured', { ascending: false })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(20); // Limit results for performance
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      perfLog('Directory Supabase query completed', queryStartTime);
 
       if (error) {
         console.error('Error fetching businesses:', error);
         toast({
           title: "Error",
-          description: "Failed to load businesses. Please try again.",
+          description: `Failed to load businesses: ${error.message}`,
           variant: "destructive",
         });
+        // Set empty array to prevent infinite loading
+        setBusinesses([]);
       } else {
         console.log('Loaded businesses:', data?.length || 0);
         console.log('Business names:', data?.map(b => b.name) || []);
-        setBusinesses(data || []);
+        const businessesData = data || [];
+        setBusinesses(businessesData);
+        // Cache the data
+        setBusinessesCache(businessesData);
+        setCacheTimestamp(now);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: `An unexpected error occurred: ${error.message}`,
         variant: "destructive",
       });
+      // Set empty array to prevent infinite loading
+      setBusinesses([]);
     } finally {
       setLoading(false);
+      perfLog('Directory fetchBusinesses completed', fetchStartTime);
     }
   };
 
@@ -321,7 +374,35 @@ const Directory = () => {
   };
 
   useEffect(() => {
-    fetchBusinesses();
+    // Test Supabase connection first
+    const testConnection = async () => {
+      try {
+        console.log('Testing Supabase connection...');
+        const { data, error } = await supabase.from('businesses').select('count').limit(1);
+        if (error) {
+          console.error('Supabase connection error:', error);
+          toast({
+            title: "Connection Error",
+            description: "Cannot connect to database. Please check your connection.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        console.log('Supabase connection successful');
+        fetchBusinesses();
+      } catch (error) {
+        console.error('Connection test failed:', error);
+        toast({
+          title: "Connection Error",
+          description: "Cannot connect to database. Please check your connection.",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    };
+    
+    testConnection();
   }, []);
 
   useEffect(() => {
@@ -335,9 +416,11 @@ const Directory = () => {
     }
   }, [categories]);
 
+  // Debounced filter application
   useEffect(() => {
-    // Apply all filters
-    let filtered = businesses;
+    const timeoutId = setTimeout(() => {
+      // Apply all filters
+      let filtered = businesses;
     
     // Full-text search across multiple fields
     if (searchTerm) {
@@ -384,6 +467,9 @@ const Directory = () => {
     }
 
     setFilteredBusinesses(filtered);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
   }, [businesses, searchTerm, selectedCategory, selectedIsland, hasWhatsApp, showFeatured]);
   
   const openInMaps = (business: Business) => {
@@ -507,6 +593,42 @@ const Directory = () => {
                     )}
                   </div>
                   
+                  {/* Small Map Preview */}
+                  {hasLocationData && (
+                    <div className="mt-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0">
+                          <img
+                            src={`https://maps.googleapis.com/maps/api/staticmap?center=${business.latitude},${business.longitude}&zoom=15&size=120x80&markers=color:red%7C${business.latitude},${business.longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}`}
+                            alt={`Map of ${business.name}`}
+                            className="w-30 h-20 rounded-lg border border-gray-200 shadow-sm"
+                            onError={(e) => {
+                              // Fallback if image fails to load
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <MapPin className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800">Location</span>
+                          </div>
+                          <p className="text-xs text-blue-600 font-mono">
+                            {business.latitude.toFixed(4)}, {business.longitude.toFixed(4)}
+                          </p>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => openInMaps(business)}
+                            className="mt-2 h-7 text-xs"
+                          >
+                            View in Maps
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                    {/* Contact Information */}
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                      {business.phone && (
@@ -621,8 +743,8 @@ const Directory = () => {
                 )}
               </div>
               
-              {/* Map Preview */}
-              <BusinessMapPreview business={business} />
+              {/* Temporarily disabled to fix hanging issue */}
+              {/* Map preview disabled for performance - will be lazy-loaded in detail view */}
             </div>
 
             {/* Location Map Column - Only show if location data exists */}
@@ -729,6 +851,11 @@ const Directory = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-light via-background to-secondary">
       <div className="container mx-auto px-4 py-8">
+        {/* Navigation */}
+        <div className="mb-6">
+          <BackButton />
+        </div>
+        
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-4">
             Seychelles Business Directory
@@ -880,19 +1007,7 @@ const Directory = () => {
         ) : loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <div className="h-48 bg-muted rounded-t-lg"></div>
-                <CardHeader>
-                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-muted rounded"></div>
-                    <div className="h-3 bg-muted rounded w-2/3"></div>
-                  </div>
-                </CardContent>
-              </Card>
+              <BusinessCardSkeleton key={i} />
             ))}
           </div>
         ) : filteredBusinesses.length > 0 ? (

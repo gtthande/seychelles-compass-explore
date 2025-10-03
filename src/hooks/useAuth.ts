@@ -24,12 +24,24 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchUserProfile = async (userId: string) => {
+    console.log('🔍 useAuth: fetchUserProfile called for userId:', userId);
     try {
-      const { data: profile, error } = await supabase
+      console.log('🔍 useAuth: Making Supabase call to fetch profile...');
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
+      });
+      
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
+      
+      const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+      
+      console.log('🔍 useAuth: Profile fetch result:', { profile: !!profile, error: !!error });
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -65,33 +77,76 @@ export const useAuth = () => {
   };
 
   useEffect(() => {
+    console.log('🔍 useAuth: useEffect starting');
+    
+    // Set a fallback timeout to prevent infinite loading
+    const fallbackTimeout = setTimeout(() => {
+      console.log('🔍 useAuth: Fallback timeout reached, setting loading to false');
+      setLoading(false);
+    }, 15000);
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔍 useAuth: Auth state change:', event, 'session:', !!session);
+        clearTimeout(fallbackTimeout);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
+          console.log('🔍 useAuth: User found, fetching profile...');
+          try {
+            await fetchUserProfile(session.user.id);
+          } catch (error) {
+            console.error('🔍 useAuth: Profile fetch failed:', error);
+            setProfile(null);
+          }
         } else {
+          console.log('🔍 useAuth: No user, clearing profile');
           setProfile(null);
         }
         
+        console.log('🔍 useAuth: Setting loading to false');
         setLoading(false);
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    console.log('🔍 useAuth: Checking for existing session...');
+    
+    // Add timeout to getSession
+    const sessionTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Session check timeout')), 10000);
+    });
+    
+    Promise.race([
+      supabase.auth.getSession(),
+      sessionTimeoutPromise
+    ]).then(async (result: any) => {
+      clearTimeout(fallbackTimeout);
+      const { data: { session } } = result;
+      console.log('🔍 useAuth: getSession result:', !!session);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        await fetchUserProfile(session.user.id);
+        console.log('🔍 useAuth: Existing user found, fetching profile...');
+        try {
+          await fetchUserProfile(session.user.id);
+        } catch (error) {
+          console.error('🔍 useAuth: Profile fetch failed:', error);
+          setProfile(null);
+        }
       } else {
+        console.log('🔍 useAuth: No existing user, clearing profile');
         setProfile(null);
       }
       
+      console.log('🔍 useAuth: Setting loading to false (getSession)');
+      setLoading(false);
+    }).catch((error) => {
+      console.error('🔍 useAuth: Session check failed:', error);
+      clearTimeout(fallbackTimeout);
       setLoading(false);
     });
 

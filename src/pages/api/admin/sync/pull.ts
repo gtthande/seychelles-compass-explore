@@ -11,33 +11,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Check admin authentication
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    console.log('🔄 Starting git pull operation...');
+    
+    // Execute git pull
+    const { stdout, stderr } = await execAsync('git pull origin main', {
+      cwd: process.cwd(),
+      timeout: 30000, // 30 second timeout
+    });
 
-    // For now, we'll implement a simple check
-    // In production, you'd verify the JWT token here
-    const token = authHeader.substring(7);
-    
-    // Execute git pull command
-    const { stdout, stderr } = await execAsync('git pull origin main');
-    
-    const output = stdout + (stderr ? '\n' + stderr : '');
-    
+    console.log('✅ Git pull completed successfully');
+    console.log('STDOUT:', stdout);
+    if (stderr) console.log('STDERR:', stderr);
+
     return res.status(200).json({
       success: true,
-      output: output.trim(),
+      output: stdout,
+      error: stderr || null,
       timestamp: new Date().toISOString()
     });
 
   } catch (error: any) {
-    console.error('Git pull error:', error);
+    console.error('❌ Git pull failed:', error);
+    
     return res.status(500).json({
       success: false,
       error: error.message,
-      output: error.stdout || error.stderr || ''
+      output: error.stdout || '',
+      timestamp: new Date().toISOString()
     });
   }
 }

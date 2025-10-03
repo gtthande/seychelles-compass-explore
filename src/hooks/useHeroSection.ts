@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface HeroSection {
@@ -8,6 +8,8 @@ interface HeroSection {
 }
 
 export const useHeroSection = () => {
+  console.log('🎨 useHeroSection hook initializing...');
+  
   const [heroSection, setHeroSection] = useState<HeroSection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -18,6 +18,7 @@ import {
   Building2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import BackButton from '@/components/BackButton';
 
 interface Business {
   id: string;
@@ -185,6 +186,11 @@ const BusinessDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
+        {/* Navigation */}
+        <div className="mb-6">
+          <BackButton />
+        </div>
+        
         {/* Header */}
         <div className="mb-6">
           <Button 

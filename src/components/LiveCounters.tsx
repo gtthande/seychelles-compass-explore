@@ -1,12 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Package, Users, Star } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
 
+// Performance profiling utility
+const perfLog = (label: string, startTime?: number) => {
+  if (startTime) {
+    const duration = performance.now() - startTime;
+    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
+    if (duration > 1000) {
+      console.warn(`🐌 SLOW OPERATION: ${label} took ${duration.toFixed(2)}ms`);
+    }
+  } else {
+    console.log(`🚀 Starting: ${label}`);
+    return performance.now();
+  }
+};
+
 const LiveCounters = () => {
+  const componentStartTime = perfLog('LiveCounters component start');
   const { counters, loading, error } = useLiveCounters();
 
   console.log('LiveCounters:', { counters, loading, error });
+
+  useEffect(() => {
+    perfLog('LiveCounters data loaded', componentStartTime);
+  }, [loading, counters]);
 
   const CounterCard = ({ 
     title, 

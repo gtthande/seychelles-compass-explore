@@ -282,6 +282,42 @@ const BusinessLocationMap = ({
           </div>
         </div>
       )}
+
+      {/* Small Map Preview Image */}
+      {business.latitude && business.longitude && (
+        <div className="p-3 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <img
+                src={`https://maps.googleapis.com/maps/api/staticmap?center=${business.latitude},${business.longitude}&zoom=15&size=120x80&markers=color:red%7C${business.latitude},${business.longitude}&key=${apiKey || 'YOUR_API_KEY'}`}
+                alt={`Map of ${business.name}`}
+                className="w-30 h-20 rounded-lg border border-gray-200 shadow-sm"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">View Location</span>
+              </div>
+              <p className="text-xs text-blue-600 font-mono">
+                {business.latitude.toFixed(4)}, {business.longitude.toFixed(4)}
+              </p>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={openInMaps}
+                className="mt-2 h-7 text-xs"
+              >
+                Open in Maps
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <CardContent className="p-0">
         <div className="relative" style={{ height }}>

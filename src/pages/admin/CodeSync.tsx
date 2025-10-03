@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,26 @@ const CodeSync: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [logs, setLogs] = useState<SyncLog[]>([]);
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
+  const [functionsAvailable, setFunctionsAvailable] = useState<boolean | null>(null);
   const { toast } = useToast();
+
+  // Test if API routes are available
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        const response = await fetch('/api/admin/sync/pull', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        // If we get a response (even an error), API routes are available
+        setFunctionsAvailable(true);
+      } catch (error) {
+        // If we get a network error, API routes might not be available
+        setFunctionsAvailable(false);
+      }
+    };
+    testAPI();
+  }, []);
 
   // Redirect if not admin
   if (!user || !isAdmin) {
@@ -77,41 +96,51 @@ const CodeSync: React.FC = () => {
     addLog(action, 'running', `Starting ${action}...`);
 
     try {
-      // Get auth token from Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No authentication token found');
+      // Check if user is admin
+      if (!isAdmin) {
+        throw new Error('Access denied. Admin role required.');
       }
 
+      // Use API routes instead of Supabase Edge Functions
       const response = await fetch(`/api/admin/sync/${endpoint}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Content-Type': 'application/json'
         }
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (result.success) {
-        addLog(action, 'success', `${action} completed successfully`, result.output);
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (!data) {
+        throw new Error('No response data received from server');
+      }
+
+      if (data.success) {
+        addLog(action, 'success', `${action} completed successfully`, data.output);
         toast({
           title: 'Success',
           description: `${action} completed successfully`,
         });
       } else {
-        addLog(action, 'error', `${action} failed: ${result.error}`, result.output);
+        const errorMessage = data.error || 'Unknown error occurred';
+        addLog(action, 'error', `${action} failed: ${errorMessage}`, data.output);
         toast({
           title: 'Error',
-          description: `${action} failed: ${result.error}`,
+          description: `${action} failed: ${errorMessage}`,
           variant: 'destructive',
         });
       }
     } catch (error: any) {
-      addLog(action, 'error', `${action} failed: ${error.message}`);
+      console.error('Sync operation error:', error);
+      const errorMessage = error.message || 'An unexpected error occurred';
+      addLog(action, 'error', `${action} failed: ${errorMessage}`);
       toast({
         title: 'Error',
-        description: `${action} failed: ${error.message}`,
+        description: `${action} failed: ${errorMessage}`,
         variant: 'destructive',
       });
     } finally {
@@ -159,6 +188,39 @@ const CodeSync: React.FC = () => {
         <p className="text-muted-foreground">
           Manage code synchronization and database migrations
         </p>
+        {functionsAvailable === false && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-800">
+              <XCircle className="w-4 h-4" />
+              <span className="font-medium">Edge Functions Not Available</span>
+            </div>
+            <p className="text-sm text-red-700 mt-1">
+              The sync functions are not deployed. Please deploy the Edge Functions to use this feature.
+            </p>
+          </div>
+        )}
+        {functionsAvailable === true && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle className="w-4 h-4" />
+              <span className="font-medium">Edge Functions Available</span>
+            </div>
+            <p className="text-sm text-green-700 mt-1">
+              Sync functions are deployed and ready to use.
+            </p>
+          </div>
+        )}
+        {functionsAvailable === null && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2 text-yellow-800">
+              <Clock className="w-4 h-4 animate-spin" />
+              <span className="font-medium">Checking Functions...</span>
+            </div>
+            <p className="text-sm text-yellow-700 mt-1">
+              Verifying Edge Functions availability...
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -179,6 +241,11 @@ const CodeSync: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Download className="w-4 h-4 text-blue-500" />
                 <span className="font-medium">Pull from GitHub</span>
+                {isLoading['Pull from GitHub'] && (
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                    Running
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 Pull latest changes from the main branch
@@ -210,6 +277,11 @@ const CodeSync: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Upload className="w-4 h-4 text-green-500" />
                 <span className="font-medium">Push to GitHub</span>
+                {isLoading['Push to GitHub'] && (
+                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                    Running
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 Add, commit, and push all changes to main branch
@@ -241,6 +313,11 @@ const CodeSync: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4 text-purple-500" />
                 <span className="font-medium">Database Migrations</span>
+                {isLoading['Database Migrations'] && (
+                  <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                    Running
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 Deploy pending database migrations

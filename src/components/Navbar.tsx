@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useNavigate } from "react-router-dom";
@@ -11,7 +11,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Search, User, Heart, MapPin, LogOut } from "lucide-react";
+import { Menu, Search, User, Heart, MapPin, LogOut, Home } from "lucide-react";
 
 const Navbar = () => {
   const { user, signOut, loading } = useAuth();
@@ -51,6 +51,17 @@ const Navbar = () => {
             </div>
             <span className="text-2xl font-bold text-foreground">iCompass</span>
           </Link>
+
+          {/* Home Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-sm font-medium hover:bg-primary/10"
+          >
+            <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">Home</span>
+          </Button>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">

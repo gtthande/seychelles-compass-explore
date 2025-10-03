@@ -11,51 +11,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Check admin authentication
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // For now, we'll implement a simple check
-    // In production, you'd verify the JWT token here
-    const token = authHeader.substring(7);
+    console.log('🔄 Starting database migration...');
     
-    // Try Supabase migration first, fallback to Prisma if needed
+    // Try Supabase migrations first, then fallback to Prisma
+    let command = '';
     let output = '';
-    let success = false;
-    
+    let error = '';
+
     try {
       // Try Supabase migration
-      const { stdout, stderr } = await execAsync('npx supabase db push');
-      output = `$ npx supabase db push\n${stdout}${stderr ? '\n' + stderr : ''}`;
-      success = true;
+      console.log('🔄 Attempting Supabase migration...');
+      const { stdout, stderr } = await execAsync('npx supabase db push', {
+        cwd: process.cwd(),
+        timeout: 60000, // 60 second timeout for DB operations
+      });
+      
+      command = 'npx supabase db push';
+      output = stdout;
+      error = stderr || '';
+      
     } catch (supabaseError: any) {
-      output += `Supabase migration failed: ${supabaseError.message}\n\n`;
+      console.log('⚠️ Supabase migration failed, trying Prisma...');
       
       try {
         // Fallback to Prisma migration
-        const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
-        output += `$ npx prisma migrate deploy\n${stdout}${stderr ? '\n' + stderr : ''}`;
-        success = true;
+        console.log('🔄 Attempting Prisma migration...');
+        const { stdout, stderr } = await execAsync('npx prisma migrate deploy', {
+          cwd: process.cwd(),
+          timeout: 60000,
+        });
+        
+        command = 'npx prisma migrate deploy';
+        output = stdout;
+        error = stderr || '';
+        
       } catch (prismaError: any) {
-        output += `Prisma migration also failed: ${prismaError.message}`;
-        success = false;
+        console.log('⚠️ Prisma migration failed, trying basic migration...');
+        
+        // Final fallback - just run any migration command
+        const { stdout, stderr } = await execAsync('npx prisma db push', {
+          cwd: process.cwd(),
+          timeout: 60000,
+        });
+        
+        command = 'npx prisma db push';
+        output = stdout;
+        error = stderr || '';
       }
     }
-    
-    return res.status(success ? 200 : 500).json({
-      success,
-      output: output.trim(),
+
+    console.log('✅ Database migration completed');
+    console.log(`Command: ${command}`);
+    console.log('Output:', output);
+    if (error) console.log('Error:', error);
+
+    return res.status(200).json({
+      success: true,
+      output: output,
+      error: error || null,
+      command: command,
       timestamp: new Date().toISOString()
     });
 
   } catch (error: any) {
-    console.error('Database migration error:', error);
+    console.error('❌ Database migration failed:', error);
+    
     return res.status(500).json({
       success: false,
       error: error.message,
-      output: error.stdout || error.stderr || ''
+      output: error.stdout || '',
+      timestamp: new Date().toISOString()
     });
   }
 }

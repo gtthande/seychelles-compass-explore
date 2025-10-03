@@ -47,26 +47,28 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
   }, [query]);
 
   const searchBusinesses = async (searchTerm: string) => {
+    console.log('🔍 BusinessSearch: Searching for:', searchTerm);
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('businesses')
         .select('id, name, category, description, address, island')
         .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_text.ilike.%${searchTerm}%`)
+        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
         .order('name')
         .limit(10);
 
       if (error) {
-        console.error('Search error:', error);
+        console.error('🔍 BusinessSearch: Search error:', error);
         setResults([]);
       } else {
+        console.log('🔍 BusinessSearch: Found results:', data?.length || 0);
         setResults(data || []);
         setIsOpen(true);
         setSelectedIndex(-1);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('🔍 BusinessSearch: Search error:', error);
       setResults([]);
     } finally {
       setIsLoading(false);
@@ -107,6 +109,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🔍 BusinessSearch: Input changed to:', e.target.value);
     setQuery(e.target.value);
   };
 
@@ -152,7 +155,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           onKeyDown={handleKeyDown}
-          className="pl-10 pr-4 h-12 text-base"
+          className="pl-10 pr-4 h-12 text-base bg-white border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
         {isLoading && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">

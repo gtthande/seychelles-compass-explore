@@ -42,39 +42,24 @@ export const BusinessMapPreview: React.FC<BusinessMapPreviewProps> = ({
         setGeocodingError(null);
 
         try {
-          // First try the Supabase function
-          const { data: supabaseResult, error: supabaseError } = await supabase.functions.invoke('geocode-address', {
-            body: { 
-              address: business.address, 
-              island: business.island 
-            }
+          // Add timeout to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Geocoding timeout')), 5000);
           });
 
-          if (supabaseResult?.success && supabaseResult.latitude && supabaseResult.longitude) {
-            const coords = { 
-              lat: supabaseResult.latitude, 
-              lng: supabaseResult.longitude 
-            };
-            setCoordinates(coords);
+          const geocodePromise = (async () => {
+            // First try the Supabase function
+            const { data: supabaseResult, error: supabaseError } = await supabase.functions.invoke('geocode-address', {
+              body: { 
+                address: business.address, 
+                island: business.island 
+              }
+            });
 
-            // Save coordinates back to the database
-            await supabase
-              .from('businesses')
-              .update({ 
-                lat: coords.lat, 
-                lng: coords.lng 
-              })
-              .eq('id', business.id);
-
-            console.log(`Geocoded and cached coordinates for ${business.name}:`, coords);
-          } else {
-            // Fallback to client-side geocoding
-            const result = await geocodeAddress(business.address, business.island);
-            
-            if ('latitude' in result && 'longitude' in result) {
+            if (supabaseResult?.success && supabaseResult.latitude && supabaseResult.longitude) {
               const coords = { 
-                lat: result.latitude, 
-                lng: result.longitude 
+                lat: supabaseResult.latitude, 
+                lng: supabaseResult.longitude 
               };
               setCoordinates(coords);
 
@@ -87,14 +72,40 @@ export const BusinessMapPreview: React.FC<BusinessMapPreviewProps> = ({
                 })
                 .eq('id', business.id);
 
-              console.log(`Client-side geocoded and cached coordinates for ${business.name}:`, coords);
+              console.log(`Geocoded and cached coordinates for ${business.name}:`, coords);
+              return;
             } else {
-              setGeocodingError(result.error || 'Failed to geocode address');
+              // Fallback to client-side geocoding
+              const result = await geocodeAddress(business.address, business.island);
+              
+              if ('latitude' in result && 'longitude' in result) {
+                const coords = { 
+                  lat: result.latitude, 
+                  lng: result.longitude 
+                };
+                setCoordinates(coords);
+
+                // Save coordinates back to the database
+                await supabase
+                  .from('businesses')
+                  .update({ 
+                    lat: coords.lat, 
+                    lng: coords.lng 
+                  })
+                  .eq('id', business.id);
+
+                console.log(`Client-side geocoded and cached coordinates for ${business.name}:`, coords);
+              } else {
+                setGeocodingError(result.error || 'Failed to geocode address');
+              }
             }
-          }
-        } catch (error) {
+          })();
+
+          await Promise.race([geocodePromise, timeoutPromise]);
+
+        } catch (error: any) {
           console.error('Geocoding error:', error);
-          setGeocodingError('Failed to geocode address');
+          setGeocodingError(error.message || 'Failed to geocode address');
         } finally {
           setIsGeocoding(false);
         }
@@ -102,7 +113,7 @@ export const BusinessMapPreview: React.FC<BusinessMapPreviewProps> = ({
     };
 
     initializeMap();
-  }, [business.id, business.lat, business.lng, business.address, business.island, isGeocoding]);
+  }, [business.id, business.lat, business.lng, business.address, business.island]);
 
   const handleMapError = () => {
     setMapError(true);

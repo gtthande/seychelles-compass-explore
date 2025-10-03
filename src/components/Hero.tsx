@@ -1,14 +1,18 @@
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Users, Star, ArrowDown } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
 import { useHeroSection } from "@/hooks/useHeroSection";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
-import { useState } from "react";
 
 const Hero = () => {
+  console.log('🎯 Hero component initializing...');
+  
   const { counters, loading } = useLiveCounters();
   const { heroSection, loading: heroLoading } = useHeroSection();
   const [searchValue, setSearchValue] = useState("");
+  
+  console.log('🎯 Hero component state:', { counters, loading, heroSection, heroLoading });
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 md:pt-32 pb-16 md:pb-20">

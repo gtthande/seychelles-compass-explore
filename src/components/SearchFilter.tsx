@@ -18,7 +18,7 @@ import {
   Heart
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { BusinessMapPreview } from "./BusinessMapPreview";
+// import { BusinessMapPreview } from "./BusinessMapPreview"; // Disabled for performance
 
 interface Category {
   id: string;
@@ -522,7 +522,8 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
         )}
       </div>
       
-      <BusinessMapPreview business={business} />
+      {/* Temporarily disabled to fix hanging issue */}
+            {/* Map preview disabled for performance - will be lazy-loaded in detail view */}
     </CardContent>
   </Card>
 );

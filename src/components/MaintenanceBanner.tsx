@@ -1,7 +1,7 @@
+import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useState } from 'react';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 
 export const MaintenanceBanner = () => {

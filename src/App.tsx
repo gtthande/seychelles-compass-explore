@@ -1,9 +1,9 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MaintenanceBanner } from "@/components/MaintenanceBanner";
 import RouteGuard from "@/components/RouteGuard";
 import Index from "./pages/Index";
@@ -19,14 +19,35 @@ import BusinessDashboard from "./pages/BusinessDashboard";
 import Products from "./pages/Products";
 import Documentation from "./pages/Documentation";
 import AdminPanel from "./pages/AdminPanel";
+import AdminPanelFallback from "./pages/AdminPanelFallback";
 import BusinessDetail from "./pages/BusinessDetail";
 import PaymentTest from "./pages/PaymentTest";
 import EmailPreview from "./pages/EmailPreview";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <ErrorBoundary>
+const App = () => {
+  // Enhanced error logging for debugging
+  console.log('🚀 App component initializing...');
+  
+  // Add global error handlers
+  window.addEventListener('error', (event) => {
+    console.error('🚨 Global JavaScript Error:', event.error);
+    console.error('📍 Error details:', {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error
+    });
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('🚨 Unhandled Promise Rejection:', event.reason);
+    console.error('📍 Promise rejection details:', event.reason);
+  });
+
+  return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <MaintenanceBanner />
@@ -34,7 +55,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-          <Route path="/" element={<Index />} />
+            <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/reset-password" element={<PasswordReset />} />
@@ -45,8 +66,8 @@ const App = () => (
           <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
           <Route path="/products" element={<Products />} />
           <Route path="/docs" element={<Documentation />} />
-          <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
-          <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+          <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanelFallback /></RouteGuard>} />
+          <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanelFallback /></RouteGuard>} />
           <Route path="/payments/test" element={<PaymentTest />} />
           <Route path="/dev/email-preview" element={<EmailPreview />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -55,7 +76,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
-  </ErrorBoundary>
-);
+  );
+};
 
 export default App;

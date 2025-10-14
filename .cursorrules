@@ -1,0 +1,14 @@
+ignore:
+  - node_modules/**
+  - .git/**
+  - *.lock
+  - *.env
+  - **/*.sql
+  - **/*.png
+  - **/*.jpg
+  - **/*.jpeg
+  - **/*.zip
+  - **/*.pdf
+  - docs/README_How_To_Link.md
+include:
+  - docs/Dev_Profile_and_Cursor_Prompt_Pack.md

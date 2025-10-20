@@ -14,3 +14,13 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+// Register Service Worker for offline tile caching
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then(() => console.log("✅ Service Worker registered for offline tiles"))
+      .catch((err) => console.warn("SW registration failed:", err));
+  });
+}

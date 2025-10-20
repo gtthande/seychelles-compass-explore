@@ -335,10 +335,9 @@ const MapPicker: React.FC<MapPickerProps> = ({
               className="z-0"
             >
               <TileLayer
-                url={tileSources[0].url}
-                attribution={tileSources[0].attribution}
-                crossOrigin={tileSources[0].crossOrigin}
-                maxZoom={tileSources[0].maxZoom}
+                url="/tiles/{z}/{x}/{y}.png"
+                attribution="&copy; OpenStreetMap contributors"
+                maxZoom={19}
                 onError={handleTileError}
               />
               <Marker

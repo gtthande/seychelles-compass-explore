@@ -47,6 +47,19 @@ export default function MapPickerModal({
   const [currentCoords, setCurrentCoords] = useState<[number, number]>(defaultCoords);
   const [currentAddress, setCurrentAddress] = useState<string>("");
 
+  // Register service worker for offline tile caching
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered:', registration);
+        })
+        .catch((error) => {
+          console.log('Service Worker registration failed:', error);
+        });
+    }
+  }, []);
+
   // Initialize map
   useEffect(() => {
     if (!isOpen || mapRef.current || !mapContainerRef.current) return;
@@ -54,12 +67,24 @@ export default function MapPickerModal({
     const map = L.map(mapContainerRef.current).setView(defaultCoords, 12);
     mapRef.current = map;
 
-    // Use CORS-safe tile layer
-    L.tileLayer("https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", {
+    // Use proxy tile layer to avoid VM network restrictions
+    const tileLayer = L.tileLayer("/tiles/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      crossOrigin: true,
       maxZoom: 19,
     }).addTo(map);
+
+    // Add fallback tile layer for offline scenarios
+    const fallbackLayer = L.tileLayer("/osm/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    });
+
+    // Handle tile loading errors
+    tileLayer.on('tileerror', () => {
+      console.log('Primary tiles failed, trying fallback...');
+      map.removeLayer(tileLayer);
+      map.addLayer(fallbackLayer);
+    });
 
     const marker = L.marker(defaultCoords, { draggable: true }).addTo(map);
     markerRef.current = marker;

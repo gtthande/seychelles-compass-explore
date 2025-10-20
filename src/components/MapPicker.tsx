@@ -225,22 +225,22 @@ const MapPicker: React.FC<MapPickerProps> = ({
     console.warn('Map tiles failed to load - using fallback mode');
   };
 
-  // Alternative tile sources for fallback
+  // Alternative tile sources for fallback (proxy-first for VM environments)
   const tileSources = [
     {
-      url: "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      crossOrigin: true,
-      maxZoom: 19
-    },
-    {
-      url: "/osm/{z}/{x}/{y}.png", // Proxy fallback
+      url: "/tiles/{z}/{x}/{y}.png", // Primary proxy for VM environments
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       crossOrigin: false,
       maxZoom: 19
     },
     {
-      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      url: "/osm/{z}/{x}/{y}.png", // Secondary proxy fallback
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      crossOrigin: false,
+      maxZoom: 19
+    },
+    {
+      url: "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       crossOrigin: true,
       maxZoom: 19

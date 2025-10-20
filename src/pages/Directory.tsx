@@ -34,10 +34,13 @@ import GoogleMap from "@/components/GoogleMap";
 import ImageSearch from "@/components/ImageSearch";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import BusinessSearch from "@/components/BusinessSearch";
+import BusinessTable from "@/components/BusinessTable";
 import BusinessLocationMap from "@/components/business/BusinessLocationMap";
-// import { BusinessMapPreview } from "@/components/BusinessMapPreview"; // Disabled for performance
+// import { BusinessMapPreview } from "@/components/BusinessMapPreview"; // Disabled - using static maps instead
 import BusinessCardSkeleton from "@/components/BusinessCardSkeleton";
+import MapModal from "@/components/MapModal";
 import { geocodeAddress } from "@/lib/geocoding";
+import { getDirectionsUrl, getAddressDirectionsUrl, isValidCoordinates } from "@/lib/maps";
 import { 
   MapPin, 
   Phone, 
@@ -106,6 +109,8 @@ const Directory = () => {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -129,8 +134,10 @@ const Directory = () => {
   });
   const [hasWhatsApp, setHasWhatsApp] = useState(false);
   const [showFeatured, setShowFeatured] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [viewMode, setViewMode] = useState<"list" | "map" | "table">("table");
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [selectedBusinessForMap, setSelectedBusinessForMap] = useState<Business | null>(null);
 
   const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
 
@@ -147,19 +154,20 @@ const Directory = () => {
         if (error) throw error;
         
         // Get distinct categories with counts
-        const categoryMap = new Map();
+        const categoryMap: Record<string, { label: string; count: number }> = {};
         
         data?.forEach(business => {
           const categoryValue = business.category;
           if (categoryValue) {
-            const existing = categoryMap.get(categoryValue) || { label: categoryValue, count: 0 };
-            existing.count++;
-            categoryMap.set(categoryValue, existing);
+            if (!categoryMap[categoryValue]) {
+              categoryMap[categoryValue] = { label: categoryValue, count: 0 };
+            }
+            categoryMap[categoryValue].count++;
           }
         });
 
         // Convert to array and format labels
-        const categoryOptions = Array.from(categoryMap.entries()).map(([value, data]) => ({
+        const categoryOptions = Object.entries(categoryMap).map(([value, data]) => ({
           value,
           label: `${data.label} (${data.count})`
         })).sort((a, b) => a.label.localeCompare(b.label));
@@ -272,6 +280,35 @@ const Directory = () => {
     } finally {
       setLoading(false);
       perfLog('Directory fetchBusinesses completed', fetchStartTime);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      console.log('Starting to fetch products...');
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          id, name, description, category, price, currency, business_id,
+          business:businesses(id, name, category, status, island, address)
+        `)
+        .eq('status', 'active')
+        .eq('business.status', 'active')
+        .order('featured', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching products:', error);
+        setProducts([]);
+      } else {
+        console.log('Loaded products:', data?.length || 0);
+        setProducts(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
     }
   };
 
@@ -391,6 +428,7 @@ const Directory = () => {
         }
         console.log('Supabase connection successful');
         fetchBusinesses();
+        fetchProducts();
       } catch (error) {
         console.error('Connection test failed:', error);
         toast({
@@ -405,11 +443,23 @@ const Directory = () => {
     testConnection();
   }, []);
 
+  // Handle URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    
+    if (searchParam) {
+      console.log('🔍 Directory: Setting search term from URL on mount:', searchParam);
+      setSearchTerm(searchParam);
+    }
+  }, []); // Run once on mount
+
   useEffect(() => {
     // Check for URL parameters after categories and businesses are loaded
     if (categories.length > 0) {
       const urlParams = new URLSearchParams(window.location.search);
       const categoryParam = urlParams.get('category');
+      
       if (categoryParam && categories.some(cat => cat.value === categoryParam)) {
         setSelectedCategory(categoryParam);
       }
@@ -422,30 +472,129 @@ const Directory = () => {
       // Apply all filters
       let filtered = businesses;
     
-    // Full-text search across multiple fields
+    // Enhanced search with relevance scoring and prioritization
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      console.log('Searching for:', searchTerm, 'in', businesses.length, 'businesses');
-      filtered = filtered.filter(business => {
-        try {
-          const matches = (
-            business.name?.toLowerCase().includes(searchLower) ||
-            business.description?.toLowerCase().includes(searchLower) ||
-            business.category?.toLowerCase().includes(searchLower) ||
-            business.address?.toLowerCase().includes(searchLower) ||
-            business.island?.toLowerCase().includes(searchLower) ||
-            (business.services && Array.isArray(business.services) && business.services.some(service => service?.toLowerCase().includes(searchLower)))
-          );
-          if (matches) {
-            console.log('Found match:', business.name);
+      console.log('🔍 Enhanced search for:', searchTerm, 'in', businesses.length, 'businesses');
+      console.log('🔍 Search term details:', { searchTerm, searchLower, length: searchTerm.length });
+      
+      filtered = filtered
+        .map(business => {
+          let relevanceScore = 0;
+          const name = business.name?.toLowerCase() || '';
+          const description = business.description?.toLowerCase() || '';
+          const category = business.category?.toLowerCase() || '';
+          const address = business.address?.toLowerCase() || '';
+          const island = business.island?.toLowerCase() || '';
+          
+          // Prioritize exact name matches (highest score)
+          if (name.includes(searchLower)) {
+            console.log(`🔍 Name match found: "${business.name}" contains "${searchLower}"`);
+            relevanceScore += 100;
+            // Bonus for exact name match
+            if (name === searchLower) relevanceScore += 50;
+            // Bonus for name starting with search term
+            if (name.startsWith(searchLower)) relevanceScore += 25;
           }
-          return matches;
-        } catch (error) {
-          console.error('Error filtering business:', business, error);
-          return false;
-        }
+          
+          // Category match (high relevance)
+          if (category.includes(searchLower)) {
+            relevanceScore += 75;
+          }
+          
+          // Description match (medium relevance)
+          if (description.includes(searchLower)) {
+            relevanceScore += 50;
+          }
+          
+          // Address match (low relevance)
+          if (address.includes(searchLower)) {
+            relevanceScore += 25;
+          }
+          
+          // Island match (low relevance)
+          if (island.includes(searchLower)) {
+            relevanceScore += 20;
+          }
+          
+          // Services match (medium relevance)
+          if (business.services && Array.isArray(business.services)) {
+            const serviceMatch = business.services.some(service => 
+              service?.toLowerCase().includes(searchLower)
+            );
+            if (serviceMatch) {
+              relevanceScore += 40;
+            }
+          }
+          
+          return { ...business, relevanceScore };
+        })
+        .filter(business => (business as any).relevanceScore > 0)
+        .sort((a, b) => (b as any).relevanceScore - (a as any).relevanceScore) // Sort by relevance
+        .slice(0, 50); // Limit to top 50 results
+      
+      console.log('🔍 Enhanced search results:', filtered.length, 'businesses found');
+      filtered.forEach((business, index) => {
+        console.log(`  ${index + 1}. ${business.name} (score: ${(business as any).relevanceScore})`);
       });
-      console.log('Filtered results:', filtered.length);
+
+      // Also search products and add matching businesses
+      const productMatches = products
+        .map(product => {
+          let relevanceScore = 0;
+          const name = product.name?.toLowerCase() || '';
+          const description = product.description?.toLowerCase() || '';
+          const businessName = product.business?.name?.toLowerCase() || '';
+          const searchLower = searchTerm.toLowerCase();
+
+          // Product name match (highest priority)
+          if (name.includes(searchLower)) {
+            relevanceScore += 100;
+            if (name === searchLower) relevanceScore += 50;
+            if (name.startsWith(searchLower)) relevanceScore += 25;
+          }
+
+          // Product description match
+          if (description.includes(searchLower)) {
+            relevanceScore += 75;
+          }
+
+          // Business name match (lower priority)
+          if (businessName.includes(searchLower)) {
+            relevanceScore += 50;
+          }
+
+          return { ...product, relevanceScore };
+        })
+        .filter(product => (product as any).relevanceScore > 0)
+        .sort((a, b) => (b as any).relevanceScore - (a as any).relevanceScore)
+        .slice(0, 20);
+
+      console.log('🔍 Product search results:', productMatches.length, 'products found');
+      
+      // Add businesses that have matching products to the results
+      const businessIdsWithMatchingProducts = new Set(
+        productMatches.map(p => p.business_id)
+      );
+      
+      const businessesWithMatchingProducts = businesses.filter(b => 
+        businessIdsWithMatchingProducts.has(b.id)
+      );
+
+      // Merge and deduplicate results
+      const allBusinessIds = new Set([
+        ...filtered.map(b => b.id),
+        ...businessesWithMatchingProducts.map(b => b.id)
+      ]);
+
+      const mergedResults = Array.from(allBusinessIds).map(id => {
+        const businessResult = filtered.find(b => b.id === id);
+        const productResult = businessesWithMatchingProducts.find(b => b.id === id);
+        return businessResult || productResult;
+      }).filter(Boolean);
+
+      filtered = mergedResults;
+      console.log('🔍 Combined search results:', filtered.length, 'total businesses found');
     }
 
     if (selectedCategory && selectedCategory !== "__all__") {
@@ -467,7 +616,7 @@ const Directory = () => {
     }
 
     setFilteredBusinesses(filtered);
-    }, 300); // 300ms debounce
+    }, 200); // 200ms debounce for faster response
 
     return () => clearTimeout(timeoutId);
   }, [businesses, searchTerm, selectedCategory, selectedIsland, hasWhatsApp, showFeatured]);
@@ -496,6 +645,23 @@ const Directory = () => {
       // Fallback to address search with directions
       const query = encodeURIComponent(business.name + ', ' + business.address + ', Seychelles');
       window.open(`https://maps.google.com/maps?daddr=${query}&dirflg=d`);
+    }
+  };
+
+  const handleViewOnMap = (business: Business) => {
+    setSelectedBusinessForMap(business);
+    setMapModalOpen(true);
+  };
+
+  const handleGetDirections = (business: Business) => {
+    if (isValidCoordinates(business.latitude, business.longitude)) {
+      const url = getDirectionsUrl(business.latitude!, business.longitude!);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      // Fallback to address search
+      const address = `${business.name}, ${business.address}, Seychelles`;
+      const url = getAddressDirectionsUrl(address);
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -597,16 +763,8 @@ const Directory = () => {
                   {hasLocationData && (
                     <div className="mt-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                       <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0">
-                          <img
-                            src={`https://maps.googleapis.com/maps/api/staticmap?center=${business.latitude},${business.longitude}&zoom=15&size=120x80&markers=color:red%7C${business.latitude},${business.longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}`}
-                            alt={`Map of ${business.name}`}
-                            className="w-30 h-20 rounded-lg border border-gray-200 shadow-sm"
-                            onError={(e) => {
-                              // Fallback if image fails to load
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <MapPin className="w-5 h-5 text-blue-600" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -732,7 +890,31 @@ const Directory = () => {
                        </Button>
                      )}
                    </div>
-                </div>
+
+                   {/* Map Action Buttons */}
+                   <div className="flex gap-2 mt-3">
+                     <Button
+                       variant="secondary"
+                       size="sm"
+                       onClick={() => handleViewOnMap(business)}
+                       disabled={!isValidCoordinates(business.latitude, business.longitude)}
+                       className="flex-1 text-xs"
+                       title={!isValidCoordinates(business.latitude, business.longitude) ? "No location set" : "View on Map"}
+                     >
+                       <MapPin className="w-3 h-3 mr-1" />
+                       View on Map
+                     </Button>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => handleGetDirections(business)}
+                       className="flex-1 text-xs"
+                     >
+                       <Navigation className="w-3 h-3 mr-1" />
+                       Get Directions
+                     </Button>
+                   </div>
+                 </div>
 
                 {business.logo_url && (
                   <img 
@@ -863,28 +1045,128 @@ const Directory = () => {
           <p className="text-lg text-muted-foreground">
             Find trusted local businesses across the beautiful islands of Seychelles
           </p>
+          {searchTerm && (
+            <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <p className="text-sm text-primary font-medium">
+                🔍 Search Results: {filteredBusinesses.length} business{filteredBusinesses.length !== 1 ? 'es' : ''} found for "{searchTerm}"
+                {filteredBusinesses.length > 0 && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (Sorted by relevance)
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Live Counters */}
-        <LiveCounters />
-
-        {/* Search and Filters */}
-        <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card mb-8">
-          {/* Business Search */}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-3">Quick Business Search</h2>
-            <BusinessSearch 
-              placeholder="Type a business name to find it quickly..."
-              className="max-w-2xl"
-            />
+        {/* Search Results - Show immediately when there's a search term */}
+        {searchTerm && (
+          <div className="mb-8">
+            {filteredBusinesses.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-foreground">
+                    Search Results ({filteredBusinesses.length})
+                  </h2>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={viewMode === 'table' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('table')}
+                    >
+                      <List className="w-4 h-4 mr-2" />
+                      Table
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                    >
+                      <List className="w-4 h-4 mr-2" />
+                      Cards
+                    </Button>
+                    <Button
+                      variant={viewMode === 'map' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('map')}
+                    >
+                      <Map className="w-4 h-4 mr-2" />
+                      Map
+                    </Button>
+                  </div>
+                </div>
+                
+                {viewMode === 'map' ? (
+                  <div className="space-y-4">
+                    <GoogleMap 
+                      businesses={filteredBusinesses}
+                      selectedBusiness={selectedBusiness}
+                      onBusinessSelect={(business) => setSelectedBusiness(business)}
+                    />
+                    {selectedBusiness && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <BusinessListingCard business={selectedBusiness} />
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                ) : viewMode === 'table' ? (
+                  <BusinessTable businesses={filteredBusinesses} searchTerm={searchTerm} />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredBusinesses.map((business) => (
+                      <BusinessListingCard key={business.id} business={business} />
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <div className="mb-4">
+                  <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <MapPin className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">No results found for "{searchTerm}"</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Try different search terms or browse all available options.
+                  </p>
+                  <Button onClick={() => {
+                    setSearchTerm("");
+                    setSelectedCategory("");
+                    setSelectedIsland("");
+                    setHasWhatsApp(false);
+                    setShowFeatured(false);
+                  }}>
+                    Clear Search & Show All
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Image Search */}
-          <ImageSearch onSearchResults={handleImageSearchResults} />
-          
-          {/* Main Search */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
-            <div className="lg:col-span-2">
+        {/* Live Counters - Only show when no search */}
+        {!searchTerm && <LiveCounters />}
+
+        {/* Search and Filters - Hide when there's an active search */}
+        {!searchTerm && (
+          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card mb-8">
+            {/* Business Search */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold mb-3">Quick Business Search</h2>
+              <BusinessSearch 
+                placeholder="Type a business name to find it quickly..."
+                className="max-w-2xl"
+              />
+            </div>
+
+            {/* Image Search */}
+            <ImageSearch onSearchResults={handleImageSearchResults} />
+            
+            {/* Main Search */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
+              <div className="lg:col-span-2">
                 <SearchWithTypeahead
                   value={searchTerm}
                   onChange={setSearchTerm}
@@ -895,8 +1177,16 @@ const Directory = () => {
                     }
                   }}
                   onSearch={(searchTerm) => {
+                    console.log('🔍 Directory: Search triggered with term:', searchTerm);
                     setSearchTerm(searchTerm);
-                    // The useEffect will automatically filter based on searchTerm
+                    // Update URL with search parameter
+                    const url = new URL(window.location.href);
+                    if (searchTerm) {
+                      url.searchParams.set('search', searchTerm);
+                    } else {
+                      url.searchParams.delete('search');
+                    }
+                    navigate(url.pathname + url.search, { replace: true });
                   }}
                   placeholder="Find businesses, services, or products..."
                 />
@@ -972,11 +1262,20 @@ const Directory = () => {
 
             <div className="ml-auto flex gap-2">
               <Button
+                variant={viewMode === 'table' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('table')}
+              >
+                <List className="w-4 h-4" />
+                Table
+              </Button>
+              <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('list')}
               >
                 <List className="w-4 h-4" />
+                Cards
               </Button>
               <Button
                 variant={viewMode === 'map' ? 'default' : 'outline'}
@@ -984,59 +1283,68 @@ const Directory = () => {
                 onClick={() => setViewMode('map')}
               >
                 <Map className="w-4 h-4" />
+                Map
               </Button>
             </div>
           </div>
         </div>
+        )}
         
-        {viewMode === 'map' ? (
-          <div className="space-y-4">
-            <GoogleMap 
-              businesses={filteredBusinesses}
-              selectedBusiness={selectedBusiness}
-              onBusinessSelect={(business) => setSelectedBusiness(business)}
-            />
-            {selectedBusiness && (
-              <Card>
-                <CardContent className="pt-6">
-                  <BusinessListingCard business={selectedBusiness} />
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        ) : loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <BusinessCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : filteredBusinesses.length > 0 ? (
-          <div className="space-y-6">
-            {groupedBusinesses.map((categoryGroup) => (
-              <CategoryAccordion key={categoryGroup.category} categoryGroup={categoryGroup} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="mb-4">
-              <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">
-                <MapPin className="w-8 h-8 text-muted-foreground" />
+        {/* Regular results - Only show when no search term */}
+        {!searchTerm && (
+          <>
+            {viewMode === 'map' ? (
+              <div className="space-y-4">
+                <GoogleMap 
+                  businesses={filteredBusinesses}
+                  selectedBusiness={selectedBusiness}
+                  onBusinessSelect={(business) => setSelectedBusiness(business)}
+                />
+                {selectedBusiness && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <BusinessListingCard business={selectedBusiness} />
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No results found</h3>
-              <p className="text-muted-foreground">
-                Try different search terms or browse all available options.
-              </p>
-            </div>
-            <Button onClick={() => {
-              setSearchTerm("");
-              setSelectedCategory("");
-              setSelectedIsland("");
-              setHasWhatsApp(false);
-              setShowFeatured(false);
-            }}>
-              Show All Results
-            </Button>
-          </div>
+            ) : viewMode === 'table' ? (
+              <BusinessTable businesses={filteredBusinesses} />
+            ) : loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <BusinessCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : filteredBusinesses.length > 0 ? (
+              <div className="space-y-6">
+                {groupedBusinesses.map((categoryGroup) => (
+                  <CategoryAccordion key={categoryGroup.category} categoryGroup={categoryGroup} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="mb-4">
+                  <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <MapPin className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">No results found</h3>
+                  <p className="text-muted-foreground">
+                    Try different search terms or browse all available options.
+                  </p>
+                </div>
+                <Button onClick={() => {
+                  setSearchTerm("");
+                  setSelectedCategory("");
+                  setSelectedIsland("");
+                  setHasWhatsApp(false);
+                  setShowFeatured(false);
+                }}>
+                  Show All Results
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -1240,6 +1548,21 @@ const Directory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Map Modal */}
+      {selectedBusinessForMap && (
+        <MapModal
+          isOpen={mapModalOpen}
+          onClose={() => {
+            setMapModalOpen(false);
+            setSelectedBusinessForMap(null);
+          }}
+          businessName={selectedBusinessForMap.name}
+          lat={selectedBusinessForMap.latitude!}
+          lng={selectedBusinessForMap.longitude!}
+          address={selectedBusinessForMap.address}
+        />
+      )}
     </div>
   );
 };

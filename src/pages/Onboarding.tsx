@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -96,6 +96,19 @@ const Onboarding = () => {
       longitude: 0,
     },
   });
+
+  // Auto-capture location on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          form.setValue("latitude", pos.coords.latitude);
+          form.setValue("longitude", pos.coords.longitude);
+        },
+        (err) => console.error("Geolocation error:", err)
+      );
+    }
+  }, []);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {

@@ -1,8 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
+import { MapPin, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { MapPin, Loader2 } from 'lucide-react';
-import { useGoogleMapsApiKey } from '@/hooks/useGoogleMapsApiKey';
 
 interface Business {
   id: string;
@@ -39,202 +37,76 @@ interface GoogleMapProps {
 }
 
 const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMapProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  const [manualApiKey, setManualApiKey] = useState('');
-  const [showApiInput, setShowApiInput] = useState(false);
-  const { apiKey, loading: apiKeyLoading, error: apiKeyError } = useGoogleMapsApiKey();
-
-  // Check if Google Maps is loaded
-  const isGoogleMapsLoaded = () => {
-    return typeof window !== 'undefined' && window.google && window.google.maps;
-  };
-
-  const loadGoogleMaps = (apiKey: string) => {
-    if (isGoogleMapsLoaded()) {
-      initializeMap();
-      return;
+  // Filter businesses with valid coordinates
+  const businessesWithCoords = businesses.filter(b => b.latitude && b.longitude);
+  
+  // Calculate center point for the map
+  const getMapCenter = () => {
+    if (selectedBusiness && selectedBusiness.latitude && selectedBusiness.longitude) {
+      return { lat: selectedBusiness.latitude, lng: selectedBusiness.longitude };
     }
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      initializeMap();
-    };
-    script.onerror = () => {
-      console.error('Failed to load Google Maps');
-    };
-    document.head.appendChild(script);
-  };
-
-  const initializeMap = () => {
-    if (!mapRef.current || !isGoogleMapsLoaded()) return;
-
-    // Center on Seychelles
-    const seychellesCenter = { lat: -4.6796, lng: 55.4920 };
     
-    const mapInstance = new google.maps.Map(mapRef.current, {
-      zoom: 10,
-      center: seychellesCenter,
-      mapTypeControl: true,
-      streetViewControl: true,
-      fullscreenControl: true,
-      zoomControl: true,
-    });
-
-    setMap(mapInstance);
-  };
-
-  const addMarkersToMap = () => {
-    if (!map || !isGoogleMapsLoaded()) return;
-
-    // Clear existing markers
-    markers.forEach(marker => marker.setMap(null));
-    const newMarkers: google.maps.Marker[] = [];
-
-    businesses.forEach((business) => {
-      if (business.latitude && business.longitude) {
-        const marker = new google.maps.Marker({
-          position: { lat: business.latitude, lng: business.longitude },
-          map: map,
-          title: business.name,
-          icon: {
-            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-              <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="15" cy="15" r="12" fill="#3b82f6" stroke="#ffffff" stroke-width="2"/>
-                <circle cx="15" cy="15" r="4" fill="#ffffff"/>
-              </svg>
-            `),
-            scaledSize: new google.maps.Size(30, 30),
-            anchor: new google.maps.Point(15, 15),
-          },
-        });
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div style="padding: 10px; max-width: 200px;">
-              <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">${business.name}</h3>
-              <p style="margin: 0 0 4px 0; font-size: 12px; color: #666;">${business.category}</p>
-              ${business.address ? `<p style="margin: 0 0 8px 0; font-size: 12px;"><strong>Address:</strong> ${business.address}</p>` : ''}
-              ${business.description ? `<p style="margin: 0; font-size: 12px;">${business.description.substring(0, 100)}...</p>` : ''}
-            </div>
-          `,
-        });
-
-        marker.addListener('click', () => {
-          infoWindow.open(map, marker);
-          if (onBusinessSelect) {
-            onBusinessSelect(business);
-          }
-        });
-
-        newMarkers.push(marker);
-      }
-    });
-
-    setMarkers(newMarkers);
-
-    // Fit map to show all markers
-    if (newMarkers.length > 0) {
-      const bounds = new google.maps.LatLngBounds();
-      newMarkers.forEach(marker => {
-        const position = marker.getPosition();
-        if (position) {
-          bounds.extend(position);
-        }
-      });
-      map.fitBounds(bounds);
+    if (businessesWithCoords.length === 0) {
+      return { lat: -4.6796, lng: 55.4920 }; // Seychelles center
     }
+    
+    // Calculate average position
+    const avgLat = businessesWithCoords.reduce((sum, b) => sum + (b.latitude || 0), 0) / businessesWithCoords.length;
+    const avgLng = businessesWithCoords.reduce((sum, b) => sum + (b.longitude || 0), 0) / businessesWithCoords.length;
+    return { lat: avgLat, lng: avgLng };
   };
 
-  useEffect(() => {
-    if (apiKeyLoading) return;
+  const center = getMapCenter();
+  
+  // Generate static map URL
+  const getStaticMapUrl = () => {
+    if (businessesWithCoords.length === 0) {
+      return `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=10&size=800x400&markers=color:blue|${center.lat},${center.lng}`;
+    }
     
-    if (apiKey) {
-      loadGoogleMaps(apiKey);
-    } else if (apiKeyError) {
-      // Fallback to localStorage if database fetch failed
-      const savedApiKey = localStorage.getItem('google_maps_api_key');
-      if (savedApiKey) {
-        loadGoogleMaps(savedApiKey);
-      } else {
-        setShowApiInput(true);
-      }
+    // Create markers for all businesses
+    const markers = businessesWithCoords.map(b => 
+      `markers=color:red|${b.latitude},${b.longitude}`
+    ).join('&');
+    
+    return `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=10&size=800x400&${markers}`;
+  };
+
+  const openInGoogleMaps = () => {
+    if (selectedBusiness && selectedBusiness.latitude && selectedBusiness.longitude) {
+      window.open(`https://www.google.com/maps?q=${selectedBusiness.latitude},${selectedBusiness.longitude}`, '_blank');
     } else {
-      setShowApiInput(true);
-    }
-  }, [apiKey, apiKeyLoading, apiKeyError]);
-
-  useEffect(() => {
-    if (map && businesses.length > 0) {
-      addMarkersToMap();
-    }
-  }, [map, businesses]);
-
-  useEffect(() => {
-    if (map && selectedBusiness && selectedBusiness.latitude && selectedBusiness.longitude) {
-      map.setCenter({ lat: selectedBusiness.latitude, lng: selectedBusiness.longitude });
-      map.setZoom(15);
-    }
-  }, [map, selectedBusiness]);
-
-  const handleApiKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualApiKey.trim()) {
-      localStorage.setItem('google_maps_api_key', manualApiKey);
-      setShowApiInput(false);
-      loadGoogleMaps(manualApiKey);
+      window.open(`https://www.google.com/maps?q=${center.lat},${center.lng}`, '_blank');
     }
   };
-
-  if (apiKeyLoading) {
-    return (
-      <div className="w-full h-96 bg-muted rounded-lg flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading map configuration...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (showApiInput) {
-    return (
-      <div className="w-full h-96 bg-muted rounded-lg flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md p-6">
-          <MapPin className="w-16 h-16 mx-auto text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Google Maps API Key Required</h3>
-          <p className="text-sm text-muted-foreground">
-            {apiKeyError 
-              ? 'Unable to load API key from server. Please enter your Google Maps API key manually.'
-              : 'To display the map, please enter your Google Maps API key. You can get one from the Google Cloud Console.'
-            }
-          </p>
-          <form onSubmit={handleApiKeySubmit} className="space-y-3">
-            <Input
-              type="text"
-              placeholder="Enter Google Maps API Key"
-              value={manualApiKey}
-              onChange={(e) => setManualApiKey(e.target.value)}
-            />
-            <Button type="submit" disabled={!manualApiKey.trim()}>
-              Load Map
-            </Button>
-          </form>
-          <p className="text-xs text-muted-foreground">
-            Your API key will be stored locally for future use.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="w-full h-96 bg-muted rounded-lg overflow-hidden">
-      <div ref={mapRef} className="w-full h-full" />
+    <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+          <MapPin className="w-8 h-8 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-blue-800">Business Locations</h3>
+          <p className="text-sm text-blue-600">
+            {businessesWithCoords.length} business{businessesWithCoords.length !== 1 ? 'es' : ''} with coordinates
+          </p>
+          {selectedBusiness && (
+            <p className="text-xs text-blue-500 font-mono mt-2">
+              {selectedBusiness.latitude.toFixed(6)}, {selectedBusiness.longitude.toFixed(6)}
+            </p>
+          )}
+        </div>
+        <Button
+          onClick={openInGoogleMaps}
+          variant="outline"
+          size="sm"
+          className="bg-white hover:bg-blue-50"
+        >
+          <ExternalLink className="w-4 h-4 mr-2" />
+          Open in Google Maps
+        </Button>
+      </div>
     </div>
   );
 };

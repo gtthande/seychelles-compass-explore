@@ -3,8 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, Building2, Package } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { useAdvancedSearch, SearchResult as AdvancedSearchResult } from '@/hooks/useAdvancedSearch';
 
 interface SearchResult {
   id: string;
@@ -13,6 +14,9 @@ interface SearchResult {
   category?: string;
   description?: string;
   business_name?: string;
+  business_id?: string;
+  match_type?: 'business_name' | 'business_description' | 'product_name' | 'product_description';
+  highlight_field?: string;
   aiEnhanced?: boolean;
 }
 
@@ -20,33 +24,34 @@ interface SearchWithTypeaheadProps {
   value: string;
   onChange: (value: string) => void;
   onSelect?: (result: SearchResult) => void;
-  onSearch?: (searchTerm: string) => void;
+  onSearch: (searchTerm: string) => void; // Made required for better type safety
   placeholder?: string;
 }
 
 const SearchWithTypeahead = ({ 
   value, 
   onChange, 
-  onSelect, 
+  onSelect,
   onSearch,
   placeholder = "Search businesses and products..." 
 }: SearchWithTypeaheadProps) => {
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { searchWithFallback, isLoading, error } = useAdvancedSearch();
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (value.trim().length >= 2) {
+      if (value.trim().length >= 3) { // Increased minimum length for more focused results
         fetchSuggestions(value.trim());
       } else {
         setSuggestions([]);
         setIsOpen(false);
       }
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(debounceTimer);
   }, [value]);
@@ -57,57 +62,64 @@ const SearchWithTypeahead = ({
       return;
     }
 
-    setIsLoading(true);
     try {
-      // Query Supabase directly for businesses
-      const { data: businesses, error: businessError } = await supabase
-        .from('businesses')
-        .select('id, name, category, description')
-        .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
-        .limit(8);
+      console.log('🔍 SearchWithTypeahead: Fetching suggestions for:', searchTerm);
+      
+      const searchResponse = await searchWithFallback(searchTerm, 10);
+      
+      if (searchResponse && searchResponse.results.length > 0) {
+        // Convert advanced search results to SearchResult format
+        const convertedResults: SearchResult[] = searchResponse.results.map(result => ({
+          id: result.business_id,
+          name: result.business_name,
+          type: result.match_source === 'business' ? 'business' : 'product',
+          category: result.business_description ? 'Business' : 'Product',
+          description: result.business_description,
+          business_id: result.business_id,
+          business_name: result.business_name,
+          match_type: result.matched_field === 'name' ? 
+            (result.match_source === 'business' ? 'business_name' : 'product_name') :
+            (result.match_source === 'business' ? 'business_description' : 'product_description'),
+          highlight_field: result.matched_field
+        }));
 
-      if (businessError) {
-        console.error('Business search error:', businessError);
+        console.log('🔍 SearchWithTypeahead: Found', convertedResults.length, 'suggestions');
+        setSuggestions(convertedResults);
+        setIsOpen(convertedResults.length > 0);
+      } else {
         setSuggestions([]);
         setIsOpen(false);
-        return;
       }
-
-      const businessResults: SearchResult[] = (businesses || []).map(b => ({
-        id: b.id,
-        name: b.name,
-        type: 'business' as const,
-        category: b.category,
-        description: b.description
-      }));
-
-      setSuggestions(businessResults);
-      setIsOpen(businessResults.length > 0);
       
-      if (businessResults.length > 0) {
-        toast({
-          title: "Search Results",
-          description: `Found ${businessResults.length} business${businessResults.length === 1 ? '' : 'es'} for "${searchTerm}"`,
-        });
-      }
     } catch (error) {
       console.error('Error fetching suggestions:', error);
       setSuggestions([]);
       setIsOpen(false);
-      toast({
-        title: "Search Error",
-        description: "Failed to search businesses. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      if (error) {
+        toast({
+          title: "Search Error",
+          description: "Failed to search businesses and products. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const handleSelect = (result: SearchResult) => {
+    console.log('🔍 SearchWithTypeahead: Selected result:', result);
     onChange(result.name);
     setIsOpen(false);
+    
+    // Navigate to business page or directory with search
+    if (result.type === 'business') {
+      console.log('🔍 SearchWithTypeahead: Navigating to business page:', result.id);
+      navigate(`/business/${result.id}`);
+    } else {
+      // For products or general search, navigate to directory
+      console.log('🔍 SearchWithTypeahead: Navigating to directory with search:', result.name);
+      navigate(`/directory?search=${encodeURIComponent(result.name)}`);
+    }
+    
     onSelect?.(result);
   };
 
@@ -128,8 +140,11 @@ const SearchWithTypeahead = ({
 
   const handleSearch = () => {
     if (value.trim()) {
-      onSearch?.(value.trim());
+      console.log('🔍 SearchWithTypeahead: Performing search for:', value.trim());
+      onSearch(value.trim()); // No longer optional since onSearch is required
       setIsOpen(false);
+    } else {
+      console.warn('🔍 SearchWithTypeahead: Empty search term, no action taken');
     }
   };
 
@@ -229,10 +244,30 @@ const SearchWithTypeahead = ({
                           <span>{suggestion.business_name}</span>
                         </>
                       )}
+                      {suggestion.match_type && (
+                        <>
+                          <span>•</span>
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${
+                            suggestion.match_type.includes('business') 
+                              ? 'bg-blue-50 text-blue-600' 
+                              : 'bg-green-50 text-green-600'
+                          }`}>
+                            {suggestion.match_type === 'business_name' && 'Business Name'}
+                            {suggestion.match_type === 'business_description' && 'Business Description'}
+                            {suggestion.match_type === 'product_name' && 'Product/Service'}
+                            {suggestion.match_type === 'product_description' && 'Product Description'}
+                          </span>
+                        </>
+                      )}
                     </div>
                     {suggestion.description && (
                       <p className="text-xs text-muted-foreground mt-1 truncate">
                         {suggestion.description}
+                      </p>
+                    )}
+                    {suggestion.type === 'product' && (
+                      <p className="text-xs text-sky-600 mt-1 italic">
+                        Found under product/service: {suggestion.name}
                       </p>
                     )}
                   </div>

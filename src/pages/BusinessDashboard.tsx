@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Building, Package, Plus, Edit, Trash2, MapPin, Phone, Mail, Globe, Navigation } from "lucide-react";
-import BusinessLocationMap from "@/components/business/BusinessLocationMap";
+import { geocodeAddress as geocodeAddressLib } from "@/lib/geocoding";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +59,7 @@ const BusinessDashboard = () => {
   const [business, setBusiness] = useState<Business | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isBusinessDialogOpen, setIsBusinessDialogOpen] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -77,6 +78,11 @@ const BusinessDashboard = () => {
     longitude: null as number | null
   });
 
+  // Debug form state changes
+  useEffect(() => {
+    console.log('🔍 BusinessForm state changed:', businessForm);
+  }, [businessForm]);
+
   const [productForm, setProductForm] = useState({
     name: "",
     description: "",
@@ -92,6 +98,8 @@ const BusinessDashboard = () => {
       fetchCategories();
     }
   }, [user]);
+
+  // Removed automatic geolocation - users should manually select location
 
   const fetchCategories = async () => {
     try {
@@ -115,39 +123,150 @@ const BusinessDashboard = () => {
   };
 
   const geocodeAddress = async (address: string) => {
-    if (!address.trim()) return;
+    console.log('🔍 geocodeAddress called with:', address);
+    console.log('🔍 Call stack:', new Error().stack);
     
-    try {
-      const { data, error } = await supabase.functions.invoke('geocode-address', {
-        body: { address: address }
-      });
-
-      if (error) throw error;
-      
-      if (data && data.latitude && data.longitude) {
-        setBusinessForm(prev => ({
-          ...prev,
-          latitude: data.latitude,
-          longitude: data.longitude
-        }));
-        toast({
-          title: 'Location Found',
-          description: 'Coordinates have been automatically set for your address.',
-        });
-      } else {
-        toast({
-          title: 'Location Not Found',
-          description: 'Could not find coordinates for this address. You can set them manually.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error: any) {
-      console.error('Error geocoding address:', error);
+    if (!address.trim()) {
       toast({
-        title: 'Geocoding Failed',
-        description: 'Could not get coordinates for this address.',
+        title: 'Address Required',
+        description: 'Please enter an address to get coordinates.',
         variant: 'destructive',
       });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // First try the Supabase function
+      const { data, error } = await supabase.functions.invoke('geocode-address', {
+        body: { 
+          address: address,
+          island: businessForm.island || 'Mahé'
+        }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+      
+      if (data && data.latitude && data.longitude) {
+        const updatedForm = {
+          ...businessForm,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          address: data.formatted_address || address
+        };
+        
+        setBusinessForm(updatedForm);
+        
+        // Auto-save to Supabase if business exists
+        if (business?.id) {
+          await autoSaveBusiness(updatedForm);
+        }
+        
+        toast({
+          title: 'Location Found & Saved',
+          description: `Coordinates set: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Fallback to client-side geocoding
+      console.log('Supabase function failed, trying client-side geocoding...');
+      const result = await geocodeAddressLib(address, businessForm.island);
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      
+      if (result.latitude && result.longitude) {
+        const updatedForm = {
+          ...businessForm,
+          latitude: result.latitude,
+          longitude: result.longitude,
+          address: result.formatted_address || address
+        };
+        
+        setBusinessForm(updatedForm);
+        
+        // Auto-save to Supabase if business exists
+        if (business?.id) {
+          await autoSaveBusiness(updatedForm);
+        }
+        
+        toast({
+          title: 'Location Found & Saved',
+          description: `Coordinates set: ${result.latitude.toFixed(6)}, ${result.longitude.toFixed(6)}`,
+        });
+        setIsLoading(false);
+      } else {
+        throw new Error('No coordinates returned');
+      }
+      
+    } catch (error: any) {
+      console.error('Error geocoding address:', error);
+      
+      // Final fallback to Seychelles center coordinates
+      const seychellesCoords = {
+        'Mahé': { lat: -4.6796, lng: 55.4920 },
+        'Praslin': { lat: -4.3197, lng: 55.7370 },
+        'La Digue': { lat: -4.3598, lng: 55.8275 }
+      };
+
+      const coords = seychellesCoords[businessForm.island as keyof typeof seychellesCoords] || seychellesCoords['Mahé'];
+      
+      const updatedForm = {
+        ...businessForm,
+        latitude: coords.lat,
+        longitude: coords.lng
+      };
+      
+      setBusinessForm(updatedForm);
+      
+      // Auto-save to Supabase if business exists
+      if (business?.id) {
+        await autoSaveBusiness(updatedForm);
+      }
+      
+      toast({
+        title: 'Using Default Location',
+        description: `Set to ${businessForm.island || 'Mahé'} center coordinates. You can adjust manually.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const autoSaveBusiness = async (formData: any) => {
+    if (!business?.id || !user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('businesses')
+        .update({
+          latitude: formData.latitude,
+          longitude: formData.longitude,
+          address: formData.address,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', business.id);
+
+      if (error) {
+        console.error('Auto-save error:', error);
+        toast({
+          title: 'Auto-save Failed',
+          description: 'Location updated locally but failed to save to database.',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('Business location auto-saved successfully');
+      }
+    } catch (error) {
+      console.error('Auto-save error:', error);
     }
   };
 
@@ -166,6 +285,8 @@ const BusinessDashboard = () => {
       }
 
       if (data) {
+        console.log('🔍 Loading business data:', data);
+        console.log('🔍 Existing coordinates:', data.latitude, data.longitude);
         setBusiness(data);
         setBusinessForm({
           name: data.name || "",
@@ -175,8 +296,12 @@ const BusinessDashboard = () => {
           email: data.email || "",
           website: data.website || "",
           address: data.address || "",
-          island: data.island || ""
+          island: data.island || "",
+          latitude: data.latitude || null,
+          longitude: data.longitude || null
         });
+      } else {
+        console.log('🔍 No existing business data found - starting with empty form');
       }
     } catch (error: any) {
       console.error('Error fetching business:', error);
@@ -467,34 +592,49 @@ const BusinessDashboard = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => geocodeAddress(businessForm.address)}
-                    disabled={!businessForm.address.trim()}
+                    disabled={!businessForm.address.trim() || isLoading}
                     className="flex items-center gap-1"
                   >
-                    <MapPin className="w-4 h-4" />
-                    Get Location
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <MapPin className="w-4 h-4" />
+                    )}
+                    {isLoading ? "Getting Location..." : "Get Location"}
                   </Button>
                 </div>
+                
+                {/* Manual Coordinate Input */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="latitude">Latitude</Label>
+                    <Input
+                      id="latitude"
+                      type="number"
+                      step="any"
+                      value={businessForm.latitude || ''}
+                      onChange={(e) => setBusinessForm({ ...businessForm, latitude: e.target.value ? Number(e.target.value) : null })}
+                      placeholder="-4.6515344"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="longitude">Longitude</Label>
+                    <Input
+                      id="longitude"
+                      type="number"
+                      step="any"
+                      value={businessForm.longitude || ''}
+                      onChange={(e) => setBusinessForm({ ...businessForm, longitude: e.target.value ? Number(e.target.value) : null })}
+                      placeholder="55.4863716"
+                    />
+                  </div>
+                </div>
+                
                 {businessForm.latitude && businessForm.longitude && (
-                  <div className="mt-2 space-y-2">
-                    <div className="p-2 bg-muted rounded-md">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Navigation className="w-4 h-4" />
-                        <span>Location: {businessForm.latitude.toFixed(6)}, {businessForm.longitude.toFixed(6)}</span>
-                      </div>
-                    </div>
-                    <div className="h-32">
-                      <BusinessLocationMap
-                        business={{
-                          id: 'preview',
-                          name: businessForm.name || 'Business Location',
-                          address: businessForm.address,
-                          latitude: businessForm.latitude,
-                          longitude: businessForm.longitude,
-                          island: businessForm.island
-                        }}
-                        height="128px"
-                        showTitle={false}
-                      />
+                  <div className="mt-2 p-2 bg-muted rounded-md">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Navigation className="w-4 h-4" />
+                      <span>Location: {businessForm.latitude.toFixed(6)}, {businessForm.longitude.toFixed(6)}</span>
                     </div>
                   </div>
                 )}

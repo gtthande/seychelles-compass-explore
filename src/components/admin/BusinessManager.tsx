@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import BusinessStatusBadge from "@/components/ui/BusinessStatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -265,10 +266,11 @@ const BusinessManager = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'suspended': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'active': return 'bg-green-500 text-white';
+      case 'pending': return 'bg-yellow-400 text-black';
+      case 'suspended': return 'bg-red-500 text-white';
+      case 'draft': return 'bg-gray-300 text-gray-700';
+      default: return 'bg-gray-300 text-gray-700';
     }
   };
 
@@ -385,9 +387,7 @@ const BusinessManager = () => {
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-lg">{business.name}</h3>
-                        <Badge className={getStatusColor(business.status)}>
-                          {business.status}
-                        </Badge>
+                        <BusinessStatusBadge status={business.status} />
                         {business.featured && (
                           <Badge variant="secondary" className="flex items-center gap-1">
                             <Star className="w-3 h-3" />

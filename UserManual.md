@@ -29,6 +29,8 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 - **Reviews & Ratings**: Read customer feedback and ratings
 - **Contact Information**: Direct access to phone, email, and social media
 - **Map Navigation**: Get directions to business locations
+- **Interactive Maps**: View business locations on embedded Google Maps
+- **Quick Directions**: One-click access to Google Maps directions
 
 ## How to Use
 
@@ -69,7 +71,10 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 - **Ratings**: Customer reviews and star ratings
 
 #### Getting Directions
-- Click on the map icon next to business addresses
+- **View on Map**: Click the "📍 View on Map" button on any business card to see the location in an interactive Google Maps modal
+- **Get Directions**: Click the "🧭 Get Directions" button to open Google Maps with turn-by-turn directions to the business
+- Buttons are only available for businesses with location coordinates
+- If a business doesn't have location data, the "View on Map" button will be disabled with a tooltip
 - Opens in your device's default map application
 - Provides turn-by-turn directions
 
@@ -95,6 +100,16 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 - **Enhanced Security**: Improved RLS policies and role-based permissions
 - **Fixed Dropdown Issues**: Resolved crashes when using category and location filters
 - **Enhanced Search**: Improved search functionality across all business fields
+
+### January 20, 2025 - Directory Map Integration
+- **View on Map Buttons**: Added "📍 View on Map" buttons to all business cards in the directory
+- **Get Directions Buttons**: Added "🧭 Get Directions" buttons for quick navigation
+- **Interactive Map Modal**: Full-screen modal with embedded Google Maps for each business
+- **Smart Button States**: Buttons are disabled when location coordinates are missing
+- **Mobile Responsive**: Map modal works perfectly on mobile devices
+- **API Key Configuration**: Easy setup with VITE_GOOGLE_MAPS_KEY environment variable
+- **Utility Functions**: Comprehensive maps utility library for consistent URL generation
+- **Enhanced UX**: Buttons positioned under contact icons for better user experience
 - **Better Navigation**: Smoother filtering and browsing experience
 - **Role-Based Access**: Admin, business, and user roles with appropriate permissions
 - **CI/CD Pipeline**: Automated GitHub Actions workflow for testing, building, and deployment

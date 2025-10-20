@@ -209,21 +209,71 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
     let filteredBiz = businesses;
     let filteredProd = products;
 
-    // Apply search filter
+    // Enhanced search filter with relevance scoring
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       
-      filteredBiz = filteredBiz.filter(business => 
-        business.name.toLowerCase().includes(searchLower) ||
-        business.description?.toLowerCase().includes(searchLower) ||
-        business.address?.toLowerCase().includes(searchLower)
-      );
+      // Apply relevance scoring to businesses
+      filteredBiz = filteredBiz
+        .map(business => {
+          let relevanceScore = 0;
+          const name = business.name.toLowerCase();
+          const description = business.description?.toLowerCase() || '';
+          const address = business.address?.toLowerCase() || '';
+          
+          // Prioritize name matches
+          if (name.includes(searchLower)) {
+            relevanceScore += 100;
+            if (name === searchLower) relevanceScore += 50;
+            if (name.startsWith(searchLower)) relevanceScore += 25;
+          }
+          
+          // Description match
+          if (description.includes(searchLower)) {
+            relevanceScore += 50;
+          }
+          
+          // Address match
+          if (address.includes(searchLower)) {
+            relevanceScore += 25;
+          }
+          
+          return { ...business, relevanceScore };
+        })
+        .filter(business => business.relevanceScore > 0)
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, 20); // Limit to top 20 businesses
 
-      filteredProd = filteredProd.filter(product => 
-        product.name.toLowerCase().includes(searchLower) ||
-        product.description?.toLowerCase().includes(searchLower) ||
-        product.businesses.name.toLowerCase().includes(searchLower)
-      );
+      // Apply relevance scoring to products
+      filteredProd = filteredProd
+        .map(product => {
+          let relevanceScore = 0;
+          const name = product.name.toLowerCase();
+          const description = product.description?.toLowerCase() || '';
+          const businessName = product.businesses.name.toLowerCase();
+          
+          // Prioritize product name matches
+          if (name.includes(searchLower)) {
+            relevanceScore += 100;
+            if (name === searchLower) relevanceScore += 50;
+            if (name.startsWith(searchLower)) relevanceScore += 25;
+          }
+          
+          // Business name match
+          if (businessName.includes(searchLower)) {
+            relevanceScore += 75;
+          }
+          
+          // Description match
+          if (description.includes(searchLower)) {
+            relevanceScore += 50;
+          }
+          
+          return { ...product, relevanceScore };
+        })
+        .filter(product => product.relevanceScore > 0)
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, 20); // Limit to top 20 products
     }
 
     // Apply category filter

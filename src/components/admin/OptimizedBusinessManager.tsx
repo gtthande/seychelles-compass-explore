@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Eye, Edit, Trash2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Eye, Edit, Trash2, Loader2, AlertCircle, RefreshCw, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Business {
   id: string;
@@ -28,6 +29,7 @@ interface Category {
 
 const OptimizedBusinessManager: React.FC = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -224,10 +226,18 @@ const OptimizedBusinessManager: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Business Management</CardTitle>
-          <CardDescription>
-            Manage business listings and approvals ({totalBusinesses} total businesses)
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Business Management</CardTitle>
+              <CardDescription>
+                Manage business listings and approvals ({totalBusinesses} total businesses)
+              </CardDescription>
+            </div>
+            <Button onClick={() => navigate('/admin/businesses/create')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Business
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search and Filters */}
@@ -292,9 +302,12 @@ const OptimizedBusinessManager: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium">{business.name}</h3>
-                      <Badge variant={
-                        business.status === 'approved' ? 'default' : 
-                        business.status === 'pending' ? 'secondary' : 'destructive'
+                      <Badge className={
+                        business.status === 'active' ? 'bg-green-500 text-white' :
+                        business.status === 'pending' ? 'bg-yellow-400 text-black' :
+                        business.status === 'suspended' ? 'bg-red-500 text-white' :
+                        business.status === 'draft' ? 'bg-gray-300 text-gray-700' :
+                        'bg-gray-300 text-gray-700'
                       }>
                         {business.status}
                       </Badge>
@@ -321,10 +334,18 @@ const OptimizedBusinessManager: React.FC = () => {
                         <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/business/${business.id}`)}
+                    >
                       <Eye className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/admin/businesses/edit/${business.id}`)}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button 

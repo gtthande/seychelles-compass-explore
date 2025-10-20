@@ -32,6 +32,88 @@ src/
 └── types/               # TypeScript type definitions
 ```
 
+## Directory Enhancements - Map Integration
+
+### Overview
+The Directory page now includes enhanced map functionality with "View on Map" and "Get Directions" buttons for each business card. This provides users with quick access to location information and navigation.
+
+### Implementation Details
+
+#### MapModal Component
+**Location**: `src/components/MapModal.tsx`
+
+**Features**:
+- Interactive Google Maps embed using Google Maps Embed API
+- Business location display with coordinates
+- "Get Directions" and "View in Google Maps" action buttons
+- Responsive design with mobile optimization
+- Graceful fallback when API key is not configured
+
+**Props**:
+```typescript
+interface MapModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  businessName: string;
+  lat: number;
+  lng: number;
+  address?: string;
+}
+```
+
+#### Maps Utility Library
+**Location**: `src/lib/maps.ts`
+
+**Functions**:
+- `getDirectionsUrl(lat, lng)` - Generate Google Maps directions URL
+- `getAddressDirectionsUrl(address)` - Generate directions from address
+- `getEmbedUrl(lat, lng, apiKey, zoom)` - Generate Google Maps embed URL
+- `getViewUrl(lat, lng)` - Generate Google Maps search URL
+- `isValidCoordinates(lat, lng)` - Validate coordinate values
+- `formatCoordinates(lat, lng, precision)` - Format coordinates for display
+
+#### Button Implementation
+**Location**: `src/pages/Directory.tsx` (BusinessListingCard component)
+
+**Features**:
+- "View on Map" button (secondary variant) - Opens modal with interactive map
+- "Get Directions" button (outline variant) - Opens Google Maps directions
+- Buttons are disabled when coordinates are missing
+- Proper tooltips for disabled state
+- Positioned under contact icons as requested
+
+#### API Configuration
+**Environment Variables**:
+```bash
+# .env.local
+VITE_GOOGLE_MAPS_KEY=your_google_maps_api_key_here
+```
+
+**Required Google Maps APIs**:
+- Maps Embed API
+- Maps JavaScript API  
+- Directions API
+
+#### Coordinate Data
+Business records must include `latitude` and `longitude` fields:
+```sql
+ALTER TABLE businesses ADD COLUMN latitude DECIMAL(10, 8);
+ALTER TABLE businesses ADD COLUMN longitude DECIMAL(11, 8);
+```
+
+The Directory query already fetches these fields:
+```typescript
+.select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
+```
+
+### Testing Checklist
+- [ ] Verify buttons render only when lat/lng exist
+- [ ] Test "View on Map" opens modal with correct coordinates
+- [ ] Test "Get Directions" opens Google Maps with route
+- [ ] Test modal closes smoothly and is responsive on mobile
+- [ ] Test fallback behavior when coordinates are missing
+- [ ] Test API key configuration and fallback display
+
 ## Dev Sync Panel
 
 ### Overview

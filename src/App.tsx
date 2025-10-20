@@ -19,7 +19,10 @@ import BusinessDashboard from "./pages/BusinessDashboard";
 import Products from "./pages/Products";
 import Documentation from "./pages/Documentation";
 import AdminPanel from "./pages/AdminPanel";
-import AdminPanelFallback from "./pages/AdminPanelFallback";
+import BusinessEdit from "./pages/admin/BusinessEdit";
+import BusinessCreate from "./pages/admin/BusinessCreate";
+import ProductEdit from "./pages/admin/ProductEdit";
+import ProductCreate from "./pages/admin/ProductCreate";
 import BusinessDetail from "./pages/BusinessDetail";
 import PaymentTest from "./pages/PaymentTest";
 import EmailPreview from "./pages/EmailPreview";
@@ -66,8 +69,12 @@ const App = () => {
           <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
           <Route path="/products" element={<Products />} />
           <Route path="/docs" element={<Documentation />} />
-          <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanelFallback /></RouteGuard>} />
-          <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanelFallback /></RouteGuard>} />
+          <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+          <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+          <Route path="/admin/businesses/create" element={<RouteGuard requiredRole="admin"><BusinessCreate /></RouteGuard>} />
+          <Route path="/admin/businesses/edit/:id" element={<RouteGuard requiredRole="admin"><BusinessEdit /></RouteGuard>} />
+          <Route path="/admin/products/create" element={<RouteGuard requiredRole="admin"><ProductCreate /></RouteGuard>} />
+          <Route path="/admin/products/edit/:id" element={<RouteGuard requiredRole="admin"><ProductEdit /></RouteGuard>} />
           <Route path="/payments/test" element={<PaymentTest />} />
           <Route path="/dev/email-preview" element={<EmailPreview />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

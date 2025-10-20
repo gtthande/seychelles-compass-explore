@@ -4,6 +4,7 @@ import { Search, MapPin, Users, Star, ArrowDown } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
 import { useHeroSection } from "@/hooks/useHeroSection";
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
+import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
   console.log('🎯 Hero component initializing...');
@@ -11,8 +12,15 @@ const Hero = () => {
   const { counters, loading } = useLiveCounters();
   const { heroSection, loading: heroLoading } = useHeroSection();
   const [searchValue, setSearchValue] = useState("");
+  const navigate = useNavigate();
   
   console.log('🎯 Hero component state:', { counters, loading, heroSection, heroLoading });
+
+  // Handle search navigation
+  const handleSearch = (searchTerm: string) => {
+    console.log('🔍 Hero: Navigating to directory with search:', searchTerm);
+    navigate(`/directory?search=${encodeURIComponent(searchTerm)}`);
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 md:pt-32 pb-16 md:pb-20">
@@ -77,6 +85,7 @@ const Hero = () => {
               <SearchWithTypeahead
                 value={searchValue}
                 onChange={setSearchValue}
+                onSearch={handleSearch}
                 placeholder="What are you looking for in Seychelles?"
               />
             </div>

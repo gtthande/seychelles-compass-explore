@@ -32,10 +32,10 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Debounced search
+  // Debounced search with minimum length requirement
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (query.trim().length >= 2) {
+      if (query.trim().length >= 3) { // Increased minimum length for more focused results
         searchBusinesses(query.trim());
       } else {
         setResults([]);
@@ -50,20 +50,53 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
     console.log('🔍 BusinessSearch: Searching for:', searchTerm);
     setIsLoading(true);
     try {
+      // Enhanced search with relevance scoring
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, category, description, address, island')
+        .select('id, name, category, description, address, island, featured')
         .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        .or(`name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        .order('featured', { ascending: false })
         .order('name')
-        .limit(10);
+        .limit(15); // Get more results for better scoring
 
       if (error) {
         console.error('🔍 BusinessSearch: Search error:', error);
         setResults([]);
       } else {
-        console.log('🔍 BusinessSearch: Found results:', data?.length || 0);
-        setResults(data || []);
+        // Apply relevance scoring and filtering
+        const scoredResults = (data || [])
+          .map(business => {
+            let relevanceScore = 0;
+            const name = business.name?.toLowerCase() || '';
+            const category = business.category?.toLowerCase() || '';
+            const searchLower = searchTerm.toLowerCase();
+            
+            // Prioritize exact name matches
+            if (name.includes(searchLower)) {
+              relevanceScore += 100;
+              if (name === searchLower) relevanceScore += 50;
+              if (name.startsWith(searchLower)) relevanceScore += 25;
+            }
+            
+            // Category match
+            if (category.includes(searchLower)) {
+              relevanceScore += 75;
+            }
+            
+            // Featured business bonus
+            if (business.featured) {
+              relevanceScore += 30;
+            }
+            
+            return { ...business, relevanceScore };
+          })
+          .filter(business => business.relevanceScore > 0)
+          .sort((a, b) => b.relevanceScore - a.relevanceScore)
+          .slice(0, 8); // Limit to top 8 results
+        
+        console.log('🔍 BusinessSearch: Found', scoredResults.length, 'relevant results');
+        setResults(scoredResults);
         setIsOpen(true);
         setSelectedIndex(-1);
       }

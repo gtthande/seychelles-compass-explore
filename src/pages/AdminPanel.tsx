@@ -27,6 +27,7 @@ import CodeSync from "@/pages/admin/CodeSync";
 import LazyTabContent from "@/components/admin/LazyTabContent";
 import OptimizedUserManager from "@/components/admin/OptimizedUserManager";
 import OptimizedBusinessManager from "@/components/admin/OptimizedBusinessManager";
+import ProductManager from "@/components/admin/ProductManager";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PerformanceMonitor from "@/components/PerformanceMonitor";
 
@@ -280,19 +281,16 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="products">
-          <Card>
-            <CardHeader>
-              <CardTitle>Product Oversight</CardTitle>
-              <CardDescription>
-                Review and manage all products across businesses
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Product oversight functionality coming soon...
-              </p>
-            </CardContent>
-          </Card>
+          <LazyTabContent
+            title="Product Management"
+            description="Manage product catalog and inventory"
+            onLoad={async () => {
+              // Product data will be loaded by the ProductManager component
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }}
+          >
+            <ProductManager />
+          </LazyTabContent>
         </TabsContent>
 
         <TabsContent value="settings">

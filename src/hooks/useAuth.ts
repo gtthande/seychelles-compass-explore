@@ -81,6 +81,11 @@ export const useAuth = () => {
     
     // Set a fallback timeout to prevent infinite loading
     const fallbackTimeout = setTimeout(() => {
+      console.error("⚠️ Fallback reason:", { 
+        supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+        anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Present' : 'Missing',
+        profile: 'Timeout reached'
+      });
       console.log('🔍 useAuth: Fallback timeout reached, setting loading to false');
       setLoading(false);
     }, 15000);

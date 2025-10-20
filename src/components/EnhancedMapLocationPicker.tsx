@@ -26,6 +26,7 @@ const EnhancedMapLocationPicker: React.FC<EnhancedMapLocationPickerProps> = ({
   
   const [isLoading, setIsLoading] = useState(true);
   const [mapType, setMapType] = useState<'google' | 'leaflet' | 'error'>('google');
+  const [tileRetryCount, setTileRetryCount] = useState(0);
   const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number }>({
     lat: lat || -4.619,
     lng: lng || 55.451
@@ -133,7 +134,6 @@ const EnhancedMapLocationPicker: React.FC<EnhancedMapLocationPickerProps> = ({
 
     // Dynamically import Leaflet
     const L = await import('leaflet');
-    const { MapContainer, TileLayer, Marker, useMapEvents } = await import('react-leaflet');
 
     // Fix Leaflet default markers
     delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -148,10 +148,71 @@ const EnhancedMapLocationPicker: React.FC<EnhancedMapLocationPickerProps> = ({
     // Create Leaflet map
     const map = L.map(mapRef.current).setView(center, 15);
     
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    // Multiple tile sources with fallback
+    const tileUrls = [
+      {
+        url: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+        attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+      },
+      {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+      },
+      {
+        url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+        attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+      }
+    ];
+
+    // Try each tile source until one works
+    let tileLayer = null;
+    let tileLoadSuccess = false;
+    
+    for (const tileConfig of tileUrls) {
+      try {
+        tileLayer = L.tileLayer(tileConfig.url, {
+          attribution: tileConfig.attribution,
+          maxZoom: 18,
+          errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+        });
+        
+        // Add event listeners to detect tile loading success/failure
+        tileLayer.on('tileerror', (error) => {
+          console.warn(`Tile loading error for ${tileConfig.url}:`, error);
+        });
+        
+        tileLayer.on('tileload', () => {
+          tileLoadSuccess = true;
+        });
+        
+        tileLayer.addTo(map);
+        
+        // Wait a bit to see if tiles load successfully
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (tileLoadSuccess) {
+          console.log(`Successfully loaded tiles from ${tileConfig.url}`);
+          break;
+        } else {
+          console.warn(`No tiles loaded from ${tileConfig.url}, trying next source...`);
+          map.removeLayer(tileLayer);
+          tileLayer = null;
+        }
+      } catch (error) {
+        console.warn(`Failed to load tile source ${tileConfig.url}:`, error);
+        continue;
+      }
+    }
+
+    if (!tileLayer) {
+      toast({
+        title: "Map Loading Error",
+        description: "Unable to load map tiles. Please check your internet connection or try again.",
+        variant: "destructive",
+      });
+      setMapType('error');
+      return;
+    }
 
     // Create draggable marker
     const marker = L.marker(center, { draggable: true }).addTo(map);
@@ -256,6 +317,21 @@ const EnhancedMapLocationPicker: React.FC<EnhancedMapLocationPickerProps> = ({
     });
   };
 
+  const handleRetryMap = async () => {
+    setTileRetryCount(prev => prev + 1);
+    setIsLoading(true);
+    setMapType('leaflet');
+    
+    try {
+      await initLeafletMap();
+    } catch (error) {
+      console.error('Retry failed:', error);
+      setMapType('error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Map Container */}
@@ -276,10 +352,20 @@ const EnhancedMapLocationPicker: React.FC<EnhancedMapLocationPickerProps> = ({
 
         {mapType === 'error' && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-3">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-              <p className="text-sm text-gray-600">Unable to load map</p>
-              <p className="text-xs text-gray-500">Please check your internet connection</p>
+              <div>
+                <p className="text-sm text-gray-600">Unable to load map</p>
+                <p className="text-xs text-gray-500">Please check your internet connection</p>
+              </div>
+              <Button
+                onClick={handleRetryMap}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                Retry Map Loading
+              </Button>
             </div>
           </div>
         )}
@@ -292,6 +378,11 @@ const EnhancedMapLocationPicker: React.FC<EnhancedMapLocationPickerProps> = ({
           <span className="text-sm text-gray-600">
             {mapType === 'google' ? 'Google Maps' : mapType === 'leaflet' ? 'OpenStreetMap' : 'Map Unavailable'}
           </span>
+          {tileRetryCount > 0 && (
+            <span className="text-xs text-orange-600">
+              (Retry {tileRetryCount})
+            </span>
+          )}
         </div>
         <div className="text-sm text-gray-600">
           {currentPosition.lat.toFixed(6)}, {currentPosition.lng.toFixed(6)}

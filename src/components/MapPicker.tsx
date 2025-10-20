@@ -36,6 +36,7 @@ interface MapPickerProps {
   onClose: () => void;
   className?: string;
   showControls?: boolean;
+  isOpen?: boolean; // Modal open state for map sizing
 }
 
 const MapPicker: React.FC<MapPickerProps> = ({
@@ -44,7 +45,8 @@ const MapPicker: React.FC<MapPickerProps> = ({
   onSelect,
   onClose,
   className = '',
-  showControls = true
+  showControls = true,
+  isOpen = true
 }) => {
   const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number }>({
     lat: lat || -4.619,
@@ -236,6 +238,19 @@ const MapPicker: React.FC<MapPickerProps> = ({
     setIsLoading(false);
   }, []);
 
+  // Fix map sizing when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure modal animation is complete
+      const timer = setTimeout(() => {
+        // Trigger map resize by dispatching a window resize event
+        window.dispatchEvent(new Event('resize'));
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Search Bar */}
@@ -291,13 +306,14 @@ const MapPicker: React.FC<MapPickerProps> = ({
         <div className="h-96 w-full rounded-lg overflow-hidden border">
           {!isLoading && (
             <MapContainer
+              key={isOpen ? 'open' : 'closed'}
               center={[currentPosition.lat, currentPosition.lng]}
               zoom={15}
               style={{ height: '100%', width: '100%' }}
               className="z-0"
             >
               <TileLayer
-                url="https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
                 onError={handleTileError}
               />

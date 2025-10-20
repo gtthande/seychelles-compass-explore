@@ -502,6 +502,7 @@ const BusinessCreate: React.FC = () => {
                 lng={formData.longitude ? parseFloat(formData.longitude) : null}
                 onSelect={handleMapSelect}
                 onClose={() => setShowMapPicker(false)}
+                isOpen={showMapPicker}
               />
             </div>
           </div>

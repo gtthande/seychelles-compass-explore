@@ -114,6 +114,92 @@ The Directory query already fetches these fields:
 - [ ] Test fallback behavior when coordinates are missing
 - [ ] Test API key configuration and fallback display
 
+## Enhanced Map Picker with Fallback
+
+### Overview
+The map picker system has been enhanced with Google Maps primary support and OpenStreetMap (Leaflet) fallback for robust location selection functionality.
+
+### Implementation Details
+
+#### EnhancedMapLocationPicker Component
+**Location**: `src/components/EnhancedMapLocationPicker.tsx`
+
+**Features**:
+- **Google Maps Primary**: Uses Google Maps JavaScript API when API key is available
+- **Leaflet Fallback**: Automatically falls back to OpenStreetMap when Google Maps fails
+- **Dynamic Loading**: Loads map libraries only when needed
+- **Draggable Markers**: Users can click or drag to set location
+- **Current Location**: GPS-based location detection
+- **Reset Functionality**: Reset to default Seychelles coordinates
+
+**Fallback Logic**:
+```typescript
+// Try Google Maps first
+if (apiKey && apiKey !== 'your_key_here') {
+  try {
+    const maps = await loadGoogleMaps(apiKey);
+    await initGoogleMap(maps);
+    setMapType('google');
+    return;
+  } catch (error) {
+    console.warn('Google Maps failed, falling back to Leaflet:', error);
+  }
+}
+
+// Fallback to Leaflet
+await initLeafletMap();
+setMapType('leaflet');
+```
+
+#### API Key Configuration
+**Environment Variables**:
+```bash
+# .env.local (ignored by git)
+VITE_GOOGLE_MAPS_API_KEY=your_actual_google_maps_api_key_here
+```
+
+**Required Google Maps APIs**:
+- Maps JavaScript API
+- Maps Embed API
+- Directions API
+
+#### Database Schema
+**Coordinate Fields**:
+```sql
+-- Already exists in businesses table
+latitude DECIMAL(10,8),   -- -90 to 90 degrees
+longitude DECIMAL(11,8),  -- -180 to 180 degrees
+```
+
+**Indexes**:
+```sql
+CREATE INDEX idx_businesses_location ON public.businesses(latitude, longitude);
+```
+
+#### Coordinate Validation
+**Utility Functions**:
+- `isValidCoordinates(lat, lng)` - Validates coordinate ranges
+- `getDirectionsUrl(lat, lng)` - Generates Google Maps directions URL
+- `getViewUrl(lat, lng)` - Generates Google Maps view URL
+- `formatCoordinates(lat, lng, precision)` - Formats coordinates for display
+
+### Security Considerations
+- **API Key Protection**: Google Maps API key stored in `.env.local` (git-ignored)
+- **Rate Limiting**: Google Maps API has built-in rate limiting
+- **Fallback Security**: OpenStreetMap requires no API key, reducing security surface
+- **Coordinate Validation**: All coordinates validated before database storage
+
+### Testing Checklist
+- [ ] Test Google Maps picker with valid API key
+- [ ] Test Leaflet fallback when API key is missing/invalid
+- [ ] Test coordinate validation and error handling
+- [ ] Test GPS location detection
+- [ ] Test marker dragging and map clicking
+- [ ] Test coordinate sync to database
+- [ ] Test "View in Maps" and "Get Directions" buttons
+- [ ] Test mobile responsiveness
+- [ ] Test offline functionality with Leaflet
+
 ## Dev Sync Panel
 
 ### Overview

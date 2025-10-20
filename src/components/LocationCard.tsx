@@ -3,6 +3,7 @@ import { MapPin, Navigation, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { getDirectionsUrl, getViewUrl, isValidCoordinates } from "@/lib/maps";
 
 // ✅ Initialize Supabase client (safe client-side)
 const supabase = createClient(
@@ -45,7 +46,7 @@ export default function LocationCard({
     }
   }, [latitude, longitude]);
 
-  const hasCoords = coords.lat !== null && coords.lng !== null && !isNaN(coords.lat) && !isNaN(coords.lng);
+  const hasCoords = isValidCoordinates(coords.lat, coords.lng);
 
   // --- Map URL generation ---
   const mapUrl = hasCoords && !mapError
@@ -138,7 +139,7 @@ export default function LocationCard({
       {/* Maps Buttons */}
       <div className="flex flex-wrap gap-3 mb-3">
         <a
-          href={hasCoords ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}` : "#"}
+          href={hasCoords ? getViewUrl(coords.lat, coords.lng) : "#"}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1"
@@ -151,7 +152,7 @@ export default function LocationCard({
           </Button>
         </a>
         <a
-          href={hasCoords ? `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}` : "#"}
+          href={hasCoords ? getDirectionsUrl(coords.lat, coords.lng) : "#"}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1"

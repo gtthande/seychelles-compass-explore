@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { geocodeAddress } from '@/lib/minimal-geocode';
-import MapLocationPicker from '@/components/MapLocationPicker';
+import EnhancedMapLocationPicker from '@/components/EnhancedMapLocationPicker';
 import { MapPin, Map, X } from 'lucide-react';
 
 interface MinimalLocationInputProps {
@@ -177,7 +177,7 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
               Pick Business Location on Map
             </DialogTitle>
           </DialogHeader>
-          <MapLocationPicker
+          <EnhancedMapLocationPicker
             lat={latitude ? parseFloat(latitude) : null}
             lng={longitude ? parseFloat(longitude) : null}
             onSelect={handleMapSelect}

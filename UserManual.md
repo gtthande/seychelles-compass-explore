@@ -110,6 +110,16 @@ The Seychelles Business Directory is a comprehensive platform that helps visitor
 - **API Key Configuration**: Easy setup with VITE_GOOGLE_MAPS_KEY environment variable
 - **Utility Functions**: Comprehensive maps utility library for consistent URL generation
 - **Enhanced UX**: Buttons positioned under contact icons for better user experience
+
+### January 20, 2025 - Enhanced Map Picker with Fallback
+- **Google Maps Primary**: Map picker uses Google Maps when API key is available
+- **OpenStreetMap Fallback**: Automatically falls back to Leaflet/OpenStreetMap when Google Maps fails
+- **Robust Location Selection**: Works offline and without API keys using OpenStreetMap
+- **GPS Integration**: "Get Current Location" button for automatic coordinate detection
+- **Coordinate Validation**: All coordinates validated before saving to database
+- **Database Sync**: Coordinates sync to both MySQL and Supabase databases
+- **Enhanced Security**: API keys stored securely in .env.local (git-ignored)
+- **Mobile Optimized**: Touch-friendly map interaction on mobile devices
 - **Better Navigation**: Smoother filtering and browsing experience
 - **Role-Based Access**: Admin, business, and user roles with appropriate permissions
 - **CI/CD Pipeline**: Automated GitHub Actions workflow for testing, building, and deployment

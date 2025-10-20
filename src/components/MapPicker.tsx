@@ -225,6 +225,28 @@ const MapPicker: React.FC<MapPickerProps> = ({
     console.warn('Map tiles failed to load - using fallback mode');
   };
 
+  // Alternative tile sources for fallback
+  const tileSources = [
+    {
+      url: "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      crossOrigin: true,
+      maxZoom: 19
+    },
+    {
+      url: "/osm/{z}/{x}/{y}.png", // Proxy fallback
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      crossOrigin: false,
+      maxZoom: 19
+    },
+    {
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      crossOrigin: true,
+      maxZoom: 19
+    }
+  ];
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -313,8 +335,10 @@ const MapPicker: React.FC<MapPickerProps> = ({
               className="z-0"
             >
               <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
+                url={tileSources[0].url}
+                attribution={tileSources[0].attribution}
+                crossOrigin={tileSources[0].crossOrigin}
+                maxZoom={tileSources[0].maxZoom}
                 onError={handleTileError}
               />
               <Marker

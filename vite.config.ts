@@ -12,6 +12,15 @@ export default defineConfig(({ mode }) => ({
     strictPort: true, // fail instead of switching ports
     open: true, // automatically open browser
     https: true, // Enable HTTPS for local development
+    // Proxy for OpenStreetMap tiles to avoid CORS issues
+    proxy: {
+      "/osm": {
+        target: "https://a.tile.openstreetmap.fr/hot/",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/osm/, ""),
+        secure: true,
+      },
+    },
   },
   plugins: [
     react(),

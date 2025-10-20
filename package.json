@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npx kill-port 5173 && vite --host",
+    "dev:debug": "npx kill-port 5173 && vite --host --debug",
     "dev:reset": "npx kill-port 5173 && vite --host",
     "dev:clean": "npx kill-port 5173 && Remove-Item -Recurse -Force node_modules\\.vite -ErrorAction SilentlyContinue && vite --host",
     "dev:recover": "node scripts/vite-recovery.js",
@@ -21,6 +22,7 @@
     "reset:full": "powershell -ExecutionPolicy Bypass -File reset-dev.ps1 -Mode full",
     "reset:database": "powershell -ExecutionPolicy Bypass -File reset-dev.ps1 -Mode database",
     "setup:profile": "powershell -ExecutionPolicy Bypass -File setup-powershell-profile.ps1",
+    "setup:env": "node scripts/setup-env.js",
     "reset:node": "node scripts/reset-dev.js",
     "reset:bat": "reset-dev.bat",
     "health": "node scripts/health-check.js",
@@ -122,7 +124,7 @@
     "tsx": "^4.20.5",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19",
+    "vite": "^5.4.21",
     "vite-plugin-mkcert": "^1.17.9"
   }
 }

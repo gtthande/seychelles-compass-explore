@@ -7,9 +7,10 @@ import mkcert from "vite-plugin-mkcert";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "0.0.0.0", // allows localhost and LAN access
     port: 5173,
     strictPort: true, // fail instead of switching ports
+    open: true, // automatically open browser
     https: true, // Enable HTTPS for local development
   },
   plugins: [

@@ -3,12 +3,20 @@
  * Caches OpenStreetMap tiles for 7 days offline use
  */
 
-const CACHE_NAME = "osm-tiles-v1";
+const CACHE_NAME = "osm-cache-v2";
 const TTL_DAYS = 7;
+const OFFLINE_TILES = [
+  "/osm-tiles-fallback/blank.png",
+  "/osm-tiles-fallback/seychelles-z4.png",
+  "/osm-tiles-fallback/seychelles-z6.png",
+];
 
 // Install event - skip waiting for immediate activation
 self.addEventListener("install", (event) => {
   console.log("Service Worker: Installing offline tile cache...");
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_TILES).catch(() => void 0))
+  );
   self.skipWaiting();
 });
 
@@ -45,7 +53,9 @@ self.addEventListener("fetch", (event) => {
         } catch (error) {
           console.log("Service Worker: Network failed, serving stale cache");
           // Return stale cache if available, or 503 error
-          return cached || new Response("", { status: 503 });
+          return (
+            cached || (await cache.match("/osm-tiles-fallback/blank.png")) || new Response("", { status: 503 })
+          );
         }
       })
     );

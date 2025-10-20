@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import mkcert from "vite-plugin-mkcert";
 
@@ -19,6 +20,26 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/tiles\//, ""),
         secure: true,
+        // If the upstream tile server is unreachable, serve a local fallback
+        configure: (proxy: any) => {
+          proxy.on("error", (_err: any, _req: any, res: any) => {
+            try {
+              const pngPath = path.resolve(process.cwd(), "public/osm-tiles-fallback/blank.png");
+              if (fs.existsSync(pngPath)) {
+                res.writeHead(200, { "Content-Type": "image/png" });
+                fs.createReadStream(pngPath).pipe(res);
+                return;
+              }
+              // SVG gray tile fallback (no binary asset required)
+              const svg = `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"256\" height=\"256\"><rect width=\"256\" height=\"256\" fill=\"#e5e7eb\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"#9ca3af\" font-family=\"Arial, sans-serif\" font-size=\"14\">offline tile</text></svg>`;
+              res.writeHead(200, { "Content-Type": "image/svg+xml" });
+              res.end(svg);
+            } catch {
+              res.writeHead(500);
+              res.end("Tile proxy failed");
+            }
+          });
+        },
       },
     },
   },

@@ -338,6 +338,7 @@ const MapPicker: React.FC<MapPickerProps> = ({
                 url="/tiles/{z}/{x}/{y}.png"
                 attribution="&copy; OpenStreetMap contributors"
                 maxZoom={19}
+                errorTileUrl="/osm-tiles-fallback/blank.png"
                 onError={handleTileError}
               />
               <Marker

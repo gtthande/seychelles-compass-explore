@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import MinimalLocationInput from '@/components/MinimalLocationInput';
-import MapPicker from '@/components/MapPicker';
+import MapPickerModal from '@/components/MapPickerModal';
 import { 
   Save, 
   ArrowLeft, 
@@ -29,6 +29,7 @@ const BusinessCreate: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [showLocationOptions, setShowLocationOptions] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -76,17 +77,51 @@ const BusinessCreate: React.FC = () => {
     }
   };
 
-  const handleMapSelect = (coordinates: { lat: number; lng: number }) => {
+  const handleMapSelect = (lat: number, lng: number, address?: string) => {
     setFormData(prev => ({
       ...prev,
-      latitude: coordinates.lat.toString(),
-      longitude: coordinates.lng.toString()
+      latitude: lat.toString(),
+      longitude: lng.toString(),
+      address: address || prev.address
     }));
     setShowMapPicker(false);
     toast({
       title: "Location Selected",
-      description: `Coordinates: ${coordinates.lat.toFixed(6)}, ${coordinates.lng.toFixed(6)}`
+      description: `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}${address ? ` - ${address}` : ''}`
     });
+  };
+
+  const handleCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Error",
+        description: "Geolocation is not supported by this browser",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setFormData(prev => ({
+          ...prev,
+          latitude: latitude.toString(),
+          longitude: longitude.toString()
+        }));
+        toast({
+          title: "Current Location Set",
+          description: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+        });
+      },
+      (error) => {
+        toast({
+          title: "Error",
+          description: "Failed to get current location",
+          variant: "destructive",
+        });
+      }
+    );
   };
 
   const validateForm = () => {
@@ -358,20 +393,40 @@ const BusinessCreate: React.FC = () => {
                 onLongitudeChange={(longitude) => handleInputChange('longitude', longitude)}
               />
 
-              {/* Map Picker Button */}
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowMapPicker(true)}
-                  className="flex items-center gap-2"
-                >
-                  <MapPin className="w-4 h-4" />
-                  Pick Location on Map
-                </Button>
+              {/* Enhanced Location Picker */}
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCurrentLocation}
+                    className="flex items-center gap-2"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Use Current Location
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowMapPicker(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Pick on Map
+                  </Button>
+                </div>
+                
                 {(formData.latitude && formData.longitude) && (
-                  <div className="text-sm text-gray-600">
-                    Current: {parseFloat(formData.latitude).toFixed(6)}, {parseFloat(formData.longitude).toFixed(6)}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="text-sm text-gray-600">
+                      <strong>Selected Location:</strong>
+                    </div>
+                    <div className="text-sm text-gray-800 mt-1">
+                      {formData.address || 'No address selected'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Coordinates: {parseFloat(formData.latitude).toFixed(6)}, {parseFloat(formData.longitude).toFixed(6)}
+                    </div>
                   </div>
                 )}
               </div>
@@ -482,32 +537,16 @@ const BusinessCreate: React.FC = () => {
         </div>
       </div>
 
-      {/* Map Picker Modal */}
-      {showMapPicker && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Pick Business Location</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowMapPicker(false)}
-                >
-                  ✕
-                </Button>
-              </div>
-              <MapPicker
-                lat={formData.latitude ? parseFloat(formData.latitude) : null}
-                lng={formData.longitude ? parseFloat(formData.longitude) : null}
-                onSelect={handleMapSelect}
-                onClose={() => setShowMapPicker(false)}
-                isOpen={showMapPicker}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Enhanced Map Picker Modal */}
+      <MapPickerModal
+        isOpen={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onSelect={handleMapSelect}
+        defaultCoords={formData.latitude && formData.longitude 
+          ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
+          : [-4.619, 55.451]
+        }
+      />
     </div>
   );
 };

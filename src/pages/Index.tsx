@@ -6,10 +6,27 @@ import LiveCounters from "@/components/LiveCounters";
 import BusinessSearch from "@/components/BusinessSearch";
 import { CategorySkeleton, FeaturedSkeleton } from "@/components/LoadingSkeleton";
 
-// Lazy load heavy components
+// Lazy load heavy components with error handling
 const CategoryGrid = lazy(() => import("@/components/CategoryGrid"));
 const FeaturedListings = lazy(() => import("@/components/FeaturedListings"));
 const SearchFilter = lazy(() => import("@/components/SearchFilter"));
+
+// Error boundary component for lazy loading failures
+const LazyErrorBoundary = ({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) => {
+  const [hasError, setHasError] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleError = () => setHasError(true);
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return <>{fallback}</>;
+  }
+
+  return <>{children}</>;
+};
 
 // Performance profiling utility
 const perfLog = (label: string, startTime?: number) => {
@@ -45,9 +62,11 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8">
         <LiveCounters />
       </div>
-      <Suspense fallback={<CategorySkeleton />}>
-        <CategoryGrid />
-      </Suspense>
+      <LazyErrorBoundary fallback={<CategorySkeleton />}>
+        <Suspense fallback={<CategorySkeleton />}>
+          <CategoryGrid />
+        </Suspense>
+      </LazyErrorBoundary>
       
       {/* Enhanced Search and Directory Section */}
       <section className="py-16 bg-muted/30">
@@ -68,15 +87,19 @@ const Index = () => {
               />
             </div>
           </div>
-          <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded-lg"></div>}>
-            <SearchFilter onFiltersChange={() => {}} />
-          </Suspense>
+          <LazyErrorBoundary fallback={<div className="animate-pulse h-32 bg-muted rounded-lg"></div>}>
+            <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded-lg"></div>}>
+              <SearchFilter onFiltersChange={() => {}} />
+            </Suspense>
+          </LazyErrorBoundary>
         </div>
       </section>
       
-      <Suspense fallback={<FeaturedSkeleton />}>
-        <FeaturedListings />
-      </Suspense>
+      <LazyErrorBoundary fallback={<FeaturedSkeleton />}>
+        <Suspense fallback={<FeaturedSkeleton />}>
+          <FeaturedListings />
+        </Suspense>
+      </LazyErrorBoundary>
       <Footer />
     </div>
     );

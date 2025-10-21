@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, ExternalLink, AlertCircle } from 'lucide-react';
+import { MapPin, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface LocationInputProps {
@@ -133,21 +133,6 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
         </div>
       </div>
 
-      {/* Help text */}
-      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded-md">
-        <div className="flex items-start gap-2">
-          <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium mb-1">How to get coordinates:</p>
-            <ol className="list-decimal list-inside space-y-1 text-xs">
-              <li>Open Google Maps and find your location</li>
-              <li>Right-click on the exact spot → "What's here?"</li>
-              <li>Copy the coordinates that appear</li>
-              <li>Or copy the full Google Maps URL</li>
-            </ol>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

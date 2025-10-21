@@ -94,6 +94,17 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // Sanitize: Remove any internal route patterns that might cause router issues
+    // This prevents accidentally pasted internal links from interfering with React Router
+    value = value.replace(/^https?:\/\/localhost.*\/businesses\//, '');
+    value = value.replace(/^https?:\/\/.*\/admin\/businesses\//, '');
+    
+    setInput(value);
+  };
+
   return (
     <div className={`space-y-3 ${className}`}>
       <div className="space-y-2">
@@ -106,7 +117,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
           <Input
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder="https://maps.google.com/... or -4.6515, 55.4863"
             className="flex-1"

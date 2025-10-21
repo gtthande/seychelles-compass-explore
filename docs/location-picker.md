@@ -31,14 +31,21 @@ This guide explains how to use the hybrid location picker in iCompass Seychelles
 
 ### Step-by-Step Guide:
 
-1. **Open Google Maps**: Click the "Open in Google Maps" button
+1. **Open Google Maps**: Navigate to [maps.google.com](https://maps.google.com)
 2. **Find Location**: Use Google Maps search or navigation to find your business
 3. **Get Coordinates**: 
    - Right-click on the exact location in Google Maps
    - Select "What's here?" from the context menu
    - Copy the coordinates that appear (e.g., `-4.619000, 55.451000`)
-4. **Paste Coordinates**: Return to the form and paste the coordinates
-5. **Verify**: The map will update to show the selected location
+4. **Paste in Form**: Return to the business form and paste the coordinates
+5. **Click Parse**: The system will extract the coordinates and display a location card
+6. **Verify**: The location card shows "View in Maps" and "Get Directions" buttons
+
+### Alternative: Google Maps URL
+1. **Share Location**: In Google Maps, click "Share" on your location
+2. **Copy Link**: Copy the full Google Maps URL (e.g., `https://maps.google.com/...`)
+3. **Paste in Form**: Paste the URL into the location input field
+4. **Click Parse**: The system will extract coordinates from the URL
 
 ### Coordinate Format
 - **Format**: `latitude, longitude` (e.g., `-4.619000, 55.451000`)

@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import MinimalLocationInput from '@/components/MinimalLocationInput';
 import MapPickerModal from '@/components/MapPickerModal';
+import LocationInput from '@/components/LocationInput';
+import LocationCard from '@/components/LocationCard';
 import { 
   Save, 
   ArrowLeft, 
@@ -30,6 +32,7 @@ const BusinessCreate: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [showLocationOptions, setShowLocationOptions] = useState(false);
+  const [locationLink, setLocationLink] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -88,6 +91,19 @@ const BusinessCreate: React.FC = () => {
     toast({
       title: "Location Selected",
       description: `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}${address ? ` - ${address}` : ''}`
+    });
+  };
+
+  const handleLocationParsed = (lat: number, lng: number, link: string) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: lat.toString(),
+      longitude: lng.toString()
+    }));
+    setLocationLink(link);
+    toast({
+      title: "Location Parsed",
+      description: `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`
     });
   };
 
@@ -384,17 +400,25 @@ const BusinessCreate: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <MinimalLocationInput
-                address={formData.address}
-                latitude={formData.latitude}
-                longitude={formData.longitude}
-                onAddressChange={(address) => handleInputChange('address', address)}
-                onLatitudeChange={(latitude) => handleInputChange('latitude', latitude)}
-                onLongitudeChange={(longitude) => handleInputChange('longitude', longitude)}
-              />
+              {/* Google Maps Link Parser */}
+              <LocationInput onParsed={handleLocationParsed} />
+              
+              {/* Display Location Card */}
+              {formData.latitude && formData.longitude && (
+                <LocationCard
+                  address={formData.address}
+                  latitude={parseFloat(formData.latitude)}
+                  longitude={parseFloat(formData.longitude)}
+                  link={locationLink}
+                  phone={formData.phone}
+                  website={formData.website}
+                  email={formData.email}
+                />
+              )}
 
-              {/* Enhanced Location Picker */}
-              <div className="space-y-3">
+              {/* Legacy Location Options (Optional) */}
+              <div className="pt-4 border-t border-gray-200">
+                <div className="text-sm text-gray-600 mb-3">Alternative location methods:</div>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -415,20 +439,6 @@ const BusinessCreate: React.FC = () => {
                     Pick on Map
                   </Button>
                 </div>
-                
-                {(formData.latitude && formData.longitude) && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-600">
-                      <strong>Selected Location:</strong>
-                    </div>
-                    <div className="text-sm text-gray-800 mt-1">
-                      {formData.address || 'No address selected'}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Coordinates: {parseFloat(formData.latitude).toFixed(6)}, {parseFloat(formData.longitude).toFixed(6)}
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-2">

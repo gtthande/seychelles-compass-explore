@@ -290,3 +290,4 @@ const calculateRank = (name: string, description: string, query: string): number
 
 export default useUnifiedSearch;
 
+

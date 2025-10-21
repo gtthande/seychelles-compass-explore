@@ -69,3 +69,4 @@ export function getGoogleMapsInstance(): GoogleMapsInstance | null {
   return (window as any).google?.maps || null;
 }
 
+

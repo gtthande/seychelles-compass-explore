@@ -9,7 +9,8 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Navigation, RotateCcw, AlertCircle, Search, Wifi, WifiOff } from 'lucide-react';
+import { MapPin, Navigation, RotateCcw, AlertCircle, Search, Wifi, WifiOff, ExternalLink } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet default markers
@@ -181,9 +182,11 @@ const MapPicker: React.FC<MapPickerProps> = ({
   // Get current location
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
-      console.warn('Geolocation is not supported by this browser');
+      toast.error('Geolocation is not supported by this browser');
       return;
     }
+
+    toast.loading('Getting your location...', { id: 'gps' });
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -191,10 +194,12 @@ const MapPicker: React.FC<MapPickerProps> = ({
         setCurrentPosition({ lat: latitude, lng: longitude });
         onSelect({ lat: latitude, lng: longitude });
         setGeolocationError(null);
+        toast.success('Current location set!', { id: 'gps' });
       },
       (error) => {
         console.warn('Geolocation error:', error.message);
         setGeolocationError(error.message);
+        toast.error('Unable to access GPS location', { id: 'gps' });
       },
       {
         enableHighAccuracy: true,
@@ -204,6 +209,19 @@ const MapPicker: React.FC<MapPickerProps> = ({
     );
   };
 
+  // Open in Google Maps
+  const openInGoogleMaps = () => {
+    const lat = currentPosition.lat;
+    const lon = currentPosition.lng;
+    
+    toast('Opening Google Maps — copy the coordinates and paste them back here.', {
+      duration: 4000,
+      icon: '🗺️'
+    });
+    
+    window.open(`https://www.google.com/maps?q=${lat},${lon}`, '_blank');
+  };
+
   // Reset to default location
   const handleReset = () => {
     const defaultPosition = { lat: -4.619, lng: 55.451 }; // Seychelles center
@@ -211,12 +229,14 @@ const MapPicker: React.FC<MapPickerProps> = ({
     onSelect(defaultPosition);
     setSearchQuery('');
     setShowSearchResults(false);
+    toast.success('Reset to Seychelles center');
   };
 
   // Use this location
   const handleUseLocation = () => {
     onSelect(currentPosition);
     onClose();
+    toast.success('Location confirmed!');
   };
 
   // Handle tile loading errors
@@ -402,43 +422,59 @@ const MapPicker: React.FC<MapPickerProps> = ({
 
       {/* Controls */}
       {showControls && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleGetCurrentLocation}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-            >
-              <Navigation className="w-3 h-3 mr-1" />
-              Get Current Location
-            </Button>
-            <Button
-              onClick={handleReset}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-            >
-              <RotateCcw className="w-3 h-3 mr-1" />
-              Reset to Default
-            </Button>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleGetCurrentLocation}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <Navigation className="w-3 h-3 mr-1" />
+                Use Current Location
+              </Button>
+              <Button
+                onClick={openInGoogleMaps}
+                variant="outline"
+                size="sm"
+                className="text-xs bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+              >
+                <ExternalLink className="w-3 h-3 mr-1" />
+                Open in Google Maps
+              </Button>
+              <Button
+                onClick={handleReset}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Reset to Default
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={onClose}
+                variant="outline"
+                size="sm"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUseLocation}
+                size="sm"
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                Use This Location
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={onClose}
-              variant="outline"
-              size="sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUseLocation}
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Use This Location
-            </Button>
-          </div>
+          
+          {/* UX Tip */}
+          <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded-md">
+            💡 <strong>Tip:</strong> You can open Google Maps, drop a pin, copy the coordinates, and paste them below.
+          </p>
         </div>
       )}
     </div>

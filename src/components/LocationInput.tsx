@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, ExternalLink } from 'lucide-react';
+import { MapPin, ExternalLink, Navigation } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface LocationInputProps {
@@ -18,6 +18,7 @@ interface LocationInputProps {
 const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' }) => {
   const [input, setInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   const parseLocation = async () => {
     if (!input.trim()) {
@@ -45,6 +46,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
         }
         
         toast.success('Coordinates parsed successfully!', { id: 'parse' });
+        setCoords({ lat, lon });
         onParsed(lat, lon, parsedLink);
         return;
       }
@@ -56,6 +58,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
         lon = parseFloat(urlMatch[2]);
         
         toast.success('Google Maps link parsed successfully!', { id: 'parse' });
+        setCoords({ lat, lon });
         onParsed(lat, lon, parsedLink);
         return;
       }
@@ -67,6 +70,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
         lon = parseFloat(queryMatch[2]);
         
         toast.success('Google Maps query parsed successfully!', { id: 'parse' });
+        setCoords({ lat, lon });
         onParsed(lat, lon, parsedLink);
         return;
       }
@@ -105,6 +109,18 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
     setInput(value);
   };
 
+  const openMaps = () => {
+    if (coords) {
+      window.open(`https://www.google.com/maps?q=${coords.lat},${coords.lon}`, '_blank');
+    }
+  };
+
+  const openDirections = () => {
+    if (coords) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lon}`, '_blank');
+    }
+  };
+
   return (
     <div className={`space-y-3 ${className}`}>
       <div className="space-y-2">
@@ -132,6 +148,32 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
           </Button>
         </div>
       </div>
+
+      {/* Action Buttons - Show when coordinates are parsed */}
+      {coords && (
+        <div className="flex gap-2 mt-3 transition-opacity duration-300 ease-in-out opacity-100">
+          <Button
+            onClick={openMaps}
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <ExternalLink className="w-3 h-3 mr-1" />
+            View in Maps
+          </Button>
+          <Button
+            onClick={openDirections}
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Navigation className="w-3 h-3 mr-1" />
+            Get Directions
+          </Button>
+          <div className="flex items-center text-sm text-gray-600 ml-2">
+            <MapPin className="w-3 h-3 mr-1" />
+            <span>Coordinates: {coords.lat.toFixed(5)}, {coords.lon.toFixed(5)}</span>
+          </div>
+        </div>
+      )}
 
     </div>
   );

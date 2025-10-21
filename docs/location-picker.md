@@ -8,6 +8,7 @@ This guide explains how to use the hybrid location picker in iCompass Seychelles
 - **Paste Google Maps Link**: Copy a Google Maps URL and paste it into the parser
 - **Paste Coordinates**: Copy coordinates from Google Maps and paste them directly
 - **Automatic Parsing**: The system extracts coordinates and displays a location card
+- **Live Map Buttons**: "View in Maps" and "Get Directions" buttons appear immediately after parsing
 
 ### Method 2: Alternative Methods
 - **GPS Location**: Use your device's current location
@@ -51,7 +52,8 @@ This guide explains how to use the hybrid location picker in iCompass Seychelles
    - Copy the coordinates that appear (e.g., `-4.619000, 55.451000`)
 4. **Paste in Form**: Return to the business form and paste the coordinates
 5. **Click Parse**: The system will extract the coordinates and display a location card
-6. **Verify**: The location card shows "View in Maps" and "Get Directions" buttons
+6. **Live Buttons Appear**: "View in Maps" and "Get Directions" buttons appear immediately below the parser
+7. **Verify**: Click the buttons to open Google Maps with the exact location
 
 ### Alternative: Google Maps URL
 1. **Share Location**: In Google Maps, click "Share" on your location

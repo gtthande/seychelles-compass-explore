@@ -1,10 +1,3 @@
-#!/usr/bin/env node
-
-/**
- * Environment Setup Script
- * Creates .env.local with proper Vite configuration
- */
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,31 +5,34 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const envContent = `# Vite Development Configuration
-VITE_SITE_URL=http://localhost:5173
+const envLocalPath = path.resolve(__dirname, '../.env.local');
+
+const envContent = `# Supabase Configuration
+VITE_SUPABASE_URL=your-supabase-url-here
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key-here
 
 # Google Maps API Configuration
-VITE_GOOGLE_MAPS_API_KEY=your_key_here
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 
-# Supabase Configuration (if using)
-# VITE_SUPABASE_URL=your_supabase_url
-# VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+# Site Configuration
+VITE_SITE_URL=http://localhost:5173
 
-# Development Settings
-VITE_DEV_MODE=true
-VITE_DEBUG_MODE=false
+# IMPORTANT: Replace the placeholder values above with your actual keys
+# You can find your Supabase keys in your Supabase project dashboard
+# You can get a Google Maps API key from the Google Cloud Console
 `;
 
-const envPath = path.join(process.cwd(), '.env.local');
-
-try {
-  if (!fs.existsSync(envPath)) {
-    fs.writeFileSync(envPath, envContent);
-    console.log('✅ Created .env.local with Vite configuration');
-  } else {
-    console.log('✅ .env.local already exists');
-  }
-} catch (error) {
-  console.error('❌ Failed to create .env.local:', error.message);
-  process.exit(1);
+if (!fs.existsSync(envLocalPath)) {
+  fs.writeFileSync(envLocalPath, envContent.trim() + '\n');
+  console.log('✅ .env.local created with default configuration.');
+  console.log('⚠️  Please update the values with your actual API keys.');
+} else {
+  console.log('✅ .env.local already exists.');
+  console.log('⚠️  Please verify your Supabase and Google Maps API keys are configured.');
 }
+
+console.log('\n🔧 To fix "Failed to create business" errors:');
+console.log('1. Check that VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set');
+console.log('2. Verify your Supabase project is running and accessible');
+console.log('3. Check the browser console for detailed error messages');
+console.log('4. Ensure you are logged in to the application');

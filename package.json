@@ -23,6 +23,7 @@
     "reset:database": "powershell -ExecutionPolicy Bypass -File reset-dev.ps1 -Mode database",
     "setup:profile": "powershell -ExecutionPolicy Bypass -File setup-powershell-profile.ps1",
     "setup:env": "node scripts/setup-env.js",
+    "test:supabase": "node scripts/test-supabase-connection.js",
     "reset:node": "node scripts/reset-dev.js",
     "reset:bat": "reset-dev.bat",
     "health": "node scripts/health-check.js",

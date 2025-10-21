@@ -219,6 +219,9 @@ const BusinessCreate: React.FC = () => {
 
     setSaving(true);
     try {
+      // Debug: Log form data
+      console.log('Form data being submitted:', formData);
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -233,6 +236,8 @@ const BusinessCreate: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
+      
+      console.log('Insert data prepared:', insertData);
 
       const { data, error } = await supabase
         .from('businesses')
@@ -240,7 +245,12 @@ const BusinessCreate: React.FC = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
+      
+      console.log('Business created successfully:', data);
 
       toast({
         title: "Success",
@@ -250,9 +260,24 @@ const BusinessCreate: React.FC = () => {
       navigate(`/admin/businesses/edit/${data.id}`);
     } catch (error) {
       console.error('Error creating business:', error);
+      
+      // More specific error messages
+      let errorMessage = "Failed to create business";
+      if (error instanceof Error) {
+        if (error.message.includes('User not authenticated')) {
+          errorMessage = "Please log in to create a business";
+        } else if (error.message.includes('duplicate key')) {
+          errorMessage = "A business with this name already exists";
+        } else if (error.message.includes('violates')) {
+          errorMessage = "Please check all required fields are filled";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to create business",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

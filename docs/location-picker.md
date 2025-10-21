@@ -5,10 +5,10 @@ This guide explains how to use the hybrid location picker in iCompass Seychelles
 ## 🎯 Two Ways to Set a Business Location
 
 ### Method 1: Google Maps Parser (Recommended)
-- **Paste Google Maps Link**: Copy a Google Maps URL and paste it into the parser
-- **Paste Coordinates**: Copy coordinates from Google Maps and paste them directly
+- **Open Google Maps**: Click "🌍 Open Google Maps" to find your location
+- **Get Coordinates**: Right-click on the exact spot → "What's here?" → copy coordinates
+- **Paste & Parse**: Paste coordinates or Google Maps URL into the parser
 - **Automatic Parsing**: The system extracts coordinates and displays a location card
-- **Live Map Buttons**: "View in Maps" and "Get Directions" buttons appear immediately after parsing
 
 ### Method 2: Alternative Methods
 - **GPS Location**: Use your device's current location
@@ -44,16 +44,15 @@ This guide explains how to use the hybrid location picker in iCompass Seychelles
 
 ### Step-by-Step Guide:
 
-1. **Open Google Maps**: Navigate to [maps.google.com](https://maps.google.com)
-2. **Find Location**: Use Google Maps search or navigation to find your business
+1. **Click "🌍 Open Google Maps"**: This opens Google Maps centered on Seychelles
+2. **Find Your Location**: Use Google Maps search or navigation to find your business
 3. **Get Coordinates**: 
    - Right-click on the exact location in Google Maps
    - Select "What's here?" from the context menu
    - Copy the coordinates that appear (e.g., `-4.619000, 55.451000`)
 4. **Paste in Form**: Return to the business form and paste the coordinates
 5. **Click Parse**: The system will extract the coordinates and display a location card
-6. **Live Buttons Appear**: "View in Maps" and "Get Directions" buttons appear immediately below the parser
-7. **Verify**: Click the buttons to open Google Maps with the exact location
+6. **Need Help?**: Click "ℹ️ How to Get My Coordinates" for Google's official guide
 
 ### Alternative: Google Maps URL
 1. **Share Location**: In Google Maps, click "Share" on your location

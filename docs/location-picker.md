@@ -2,6 +2,18 @@
 
 This guide explains how to use the hybrid location picker in iCompass Seychelles, which provides multiple ways to select business locations without requiring Google API keys.
 
+## 🎯 Two Ways to Set a Business Location
+
+### Method 1: Google Maps Parser (Recommended)
+- **Paste Google Maps Link**: Copy a Google Maps URL and paste it into the parser
+- **Paste Coordinates**: Copy coordinates from Google Maps and paste them directly
+- **Automatic Parsing**: The system extracts coordinates and displays a location card
+
+### Method 2: Alternative Methods
+- **GPS Location**: Use your device's current location
+- **Interactive Map**: Pick location on an interactive map
+- **Manual Entry**: Enter coordinates manually
+
 ## 🌍 Location Selection Methods
 
 ### 1. GPS Location (Use Current Location)

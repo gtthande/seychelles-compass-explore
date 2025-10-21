@@ -403,6 +403,17 @@ const BusinessCreate: React.FC = () => {
               {/* Google Maps Link Parser */}
               <LocationInput onParsed={handleLocationParsed} />
               
+              {/* Help Instructions */}
+              <div className="text-sm text-gray-500 bg-gray-50 border rounded-md p-3">
+                <p className="font-medium mb-1">ℹ️ How to get coordinates:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Open Google Maps and find your location</li>
+                  <li>Right-click on the exact spot → "What's here?"</li>
+                  <li>Copy the coordinates that appear</li>
+                  <li>Or copy the full Google Maps URL</li>
+                </ol>
+              </div>
+
               {/* Display Location Card */}
               {formData.latitude && formData.longitude && (
                 <LocationCard
@@ -416,10 +427,13 @@ const BusinessCreate: React.FC = () => {
                 />
               )}
 
-              {/* Legacy Location Options (Optional) */}
-              <div className="pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600 mb-3">Alternative location methods:</div>
-                <div className="flex gap-2">
+              {/* Divider */}
+              <hr className="my-2" />
+
+              {/* Alternative Location Methods */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-gray-700">Alternative location methods:</p>
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     type="button"
                     variant="outline"

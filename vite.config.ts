@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     strictPort: true, // fail instead of switching ports
     open: true, // automatically open browser
-    https: true, // Enable HTTPS for local development
+    https: false, // Disable HTTPS for local development
     // Local proxy for OSM tiles to avoid CORS or mixed-content issues
     proxy: {
       "/tiles": {
@@ -65,9 +65,27 @@ export default defineConfig(({ mode }) => ({
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-toast'],
           'supabase-vendor': ['@supabase/supabase-js']
+        },
+        // Optimize asset file names
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name?.split('.') || [];
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `assets/images/[name]-[hash][extname]`;
+          }
+          if (/woff2?|eot|ttf|otf/i.test(ext)) {
+            return `assets/fonts/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
         }
       }
     },
-    chunkSizeWarningLimit: 1000
-  }
+    chunkSizeWarningLimit: 1000,
+    // Image optimization
+    assetsInlineLimit: 4096, // Inline assets smaller than 4kb
+    cssCodeSplit: true,
+    sourcemap: false, // Disable sourcemaps in production for smaller bundles
+  },
+  // Image optimization
+  assetsInclude: ['**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.gif', '**/*.webp', '**/*.svg'],
 }));

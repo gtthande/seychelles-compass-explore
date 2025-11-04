@@ -13,7 +13,10 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Settings
+  Settings,
+  Upload,
+  Image as ImageIcon,
+  X
 } from "lucide-react";
 import {
   Dialog,
@@ -39,10 +42,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
+// Storage bucket constant - ensure consistency across the app
+// Can be overridden via environment variable for flexibility
+const CATEGORY_IMAGES_BUCKET = import.meta.env.VITE_IMAGE_BUCKET_CATEGORIES || import.meta.env.VITE_CATEGORY_IMAGES_BUCKET || 'category-images';
+
 const categorySchema = z.object({
   name: z.string().min(2, "Category name must be at least 2 characters"),
   description: z.string().optional(),
   slug: z.string().min(2, "Slug must be at least 2 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
+  image_url: z.string().url().optional().or(z.literal("")),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -53,6 +61,7 @@ interface Category {
   description: string | null;
   slug: string;
   is_active: boolean;
+  image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +74,9 @@ const CategoryManager = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   const form = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
@@ -72,6 +84,7 @@ const CategoryManager = () => {
       name: "",
       description: "",
       slug: "",
+      image_url: "",
     },
   });
 
@@ -129,6 +142,230 @@ const CategoryManager = () => {
       .trim();
   };
 
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    const startTime = performance.now();
+    
+    console.log('📤 Starting category image upload:', {
+      fileName: file.name,
+      fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+      fileType: file.type,
+      bucket: CATEGORY_IMAGES_BUCKET
+    });
+
+    try {
+      // Verify bucket exists and is accessible
+      console.log(`🔍 Verifying bucket '${CATEGORY_IMAGES_BUCKET}' exists...`);
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .getBucket(CATEGORY_IMAGES_BUCKET);
+      
+      if (bucketError) {
+        const errorDetails = {
+          bucket: CATEGORY_IMAGES_BUCKET,
+          error: bucketError,
+          message: bucketError.message,
+          code: bucketError.statusCode || 'N/A',
+          timestamp: new Date().toISOString()
+        };
+        
+        console.error('❌ Bucket verification failed:', errorDetails);
+        
+        // Provide detailed error message based on error type
+        let errorDescription = `The '${CATEGORY_IMAGES_BUCKET}' storage bucket is not available. `;
+        
+        if (bucketError.message?.includes('not found') || bucketError.statusCode === 404) {
+          errorDescription += `Please create the bucket in Supabase Dashboard:\n1. Go to Storage in Supabase Dashboard\n2. Click "New bucket"\n3. Name it "${CATEGORY_IMAGES_BUCKET}"\n4. Set it to Public\n5. Save\n\nAlternatively, run the migration: supabase/migrations/20250120000001_add_category_images_bucket.sql`;
+        } else if (bucketError.message?.includes('permission') || bucketError.statusCode === 403) {
+          errorDescription += `You don't have permission to access this bucket. Please contact an administrator.`;
+        } else {
+          errorDescription += `Error: ${bucketError.message}. Check the console for details.`;
+        }
+        
+        toast({
+          title: "Storage Error",
+          description: errorDescription,
+          variant: "destructive",
+          duration: 10000, // Show longer for detailed instructions
+        });
+        throw new Error(`Bucket '${CATEGORY_IMAGES_BUCKET}' is not accessible: ${bucketError.message}`);
+      }
+
+      console.log('✅ Bucket verified:', {
+        bucket: CATEGORY_IMAGES_BUCKET,
+        public: bucketData?.public || false,
+        createdAt: bucketData?.created_at || 'N/A'
+      });
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`; // Store directly in bucket root, no subfolder needed
+
+      console.log(`⬆️  Uploading file to bucket:`, {
+        bucket: CATEGORY_IMAGES_BUCKET,
+        filePath,
+        fileSize: file.size
+      });
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(CATEGORY_IMAGES_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Upload failed:', {
+          error: uploadError,
+          message: uploadError.message,
+          code: uploadError.statusCode || 'N/A',
+          bucket: CATEGORY_IMAGES_BUCKET,
+          filePath
+        });
+        throw uploadError;
+      }
+
+      console.log('✅ Upload successful:', {
+        path: uploadData?.path || filePath,
+        bucket: CATEGORY_IMAGES_BUCKET
+      });
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from(CATEGORY_IMAGES_BUCKET)
+        .getPublicUrl(filePath);
+
+      if (!urlData?.publicUrl) {
+        console.error('❌ Failed to generate public URL:', {
+          filePath,
+          bucket: CATEGORY_IMAGES_BUCKET
+        });
+        throw new Error('Failed to get public URL for uploaded image');
+      }
+
+      console.log('✅ Public URL generated:', {
+        url: urlData.publicUrl,
+        duration: `${(performance.now() - startTime).toFixed(2)}ms`
+      });
+
+      setImagePreview(urlData.publicUrl);
+      form.setValue('image_url', urlData.publicUrl);
+      setImageFile(file);
+      
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully",
+      });
+    } catch (error: any) {
+      const errorDetails = {
+        error,
+        message: error?.message || 'Unknown error',
+        code: error?.statusCode || error?.code || 'N/A',
+        bucket: CATEGORY_IMAGES_BUCKET,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        duration: `${(performance.now() - startTime).toFixed(2)}ms`
+      };
+      
+      console.error('❌ Image upload error (full details):', errorDetails);
+      
+      const errorMessage = error?.message || "Failed to upload image";
+      
+      // Provide specific error messages based on error type
+      if (errorMessage.includes('bucket') || errorMessage.includes('not found') || error?.statusCode === 404) {
+        toast({
+          title: "Bucket Not Found",
+          description: `The '${CATEGORY_IMAGES_BUCKET}' storage bucket does not exist. Please create it in the Supabase Dashboard under Storage (set to public), or run the migration to create it.`,
+          variant: "destructive",
+        });
+      } else if (errorMessage.includes('permission') || errorMessage.includes('unauthorized') || error?.statusCode === 403) {
+        toast({
+          title: "Permission Denied",
+          description: `You don't have permission to upload to the '${CATEGORY_IMAGES_BUCKET}' bucket. Please contact an administrator.`,
+          variant: "destructive",
+        });
+      } else if (errorMessage.includes('duplicate') || error?.statusCode === 409) {
+        toast({
+          title: "File Already Exists",
+          description: "A file with this name already exists. Please try again or choose a different image.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload image: ${errorMessage}. Check the console for details.`,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validImageTypes.includes(file.type)) {
+      toast({
+        title: "Invalid Image Type",
+        description: "Please select a valid image file (JPEG, PNG, WebP, or GIF)",
+        variant: "destructive",
+      });
+      // Reset the input
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: `Image must be less than 5MB. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
+        variant: "destructive",
+      });
+      // Reset the input
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file dimensions (optional - prevent extremely large images)
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const maxDimension = 4000; // Max 4000px on either side
+      if (img.width > maxDimension || img.height > maxDimension) {
+        toast({
+          title: "Image Too Large",
+          description: `Image dimensions must be less than ${maxDimension}x${maxDimension}px. Current: ${img.width}x${img.height}px`,
+          variant: "destructive",
+        });
+      } else {
+        handleImageUpload(file);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      toast({
+        title: "Invalid Image File",
+        description: "The selected file could not be loaded as an image. Please choose a valid image file.",
+        variant: "destructive",
+      });
+      e.target.value = '';
+    };
+    img.src = objectUrl;
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    form.setValue('image_url', '');
+  };
+
   const onSubmit = async (data: CategoryFormData) => {
     if (!isAdmin) {
       toast({
@@ -142,13 +379,31 @@ const CategoryManager = () => {
     try {
       if (editingCategory) {
         // Update existing category
+        // Only update image_url if a new value was provided (preserve existing if empty)
+        const updateData: any = {
+          name: data.name,
+          description: data.description || null,
+          slug: data.slug,
+        };
+        
+        // Only update image_url if a new URL was provided (don't overwrite with empty)
+        if (data.image_url && data.image_url.trim() !== '') {
+          updateData.image_url = data.image_url;
+        } else if (data.image_url === '') {
+          // Explicitly clear image_url if user removed it
+          updateData.image_url = null;
+        }
+        // If image_url is undefined/null, don't include it in update (preserves existing)
+        
+        console.log('💾 Updating category:', {
+          categoryId: editingCategory.id,
+          updateData,
+          existingImageUrl: editingCategory.image_url
+        });
+        
         const { error } = await supabase
           .from('categories')
-          .update({
-            name: data.name,
-            description: data.description || null,
-            slug: data.slug,
-          })
+          .update(updateData)
           .eq('id', editingCategory.id);
 
         if (error) throw error;
@@ -159,13 +414,22 @@ const CategoryManager = () => {
         });
       } else {
         // Create new category
+        const insertData: any = {
+          name: data.name,
+          description: data.description || null,
+          slug: data.slug,
+        };
+        
+        // Only include image_url if provided (allow null for new categories)
+        if (data.image_url && data.image_url.trim() !== '') {
+          insertData.image_url = data.image_url;
+        }
+        
+        console.log('💾 Creating new category:', insertData);
+        
         const { error } = await supabase
           .from('categories')
-          .insert({
-            name: data.name,
-            description: data.description || null,
-            slug: data.slug,
-          });
+          .insert(insertData);
 
         if (error) throw error;
 
@@ -177,6 +441,8 @@ const CategoryManager = () => {
 
       setShowDialog(false);
       setEditingCategory(null);
+      setImageFile(null);
+      setImagePreview('');
       form.reset();
       fetchCategories();
     } catch (error: any) {
@@ -191,11 +457,15 @@ const CategoryManager = () => {
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
+    const imageUrl = category.image_url || '';
     form.reset({
       name: category.name,
       description: category.description || "",
       slug: category.slug,
+      image_url: imageUrl,
     });
+    setImagePreview(imageUrl);
+    setImageFile(null);
     setShowDialog(true);
   };
 
@@ -290,10 +560,13 @@ const CategoryManager = () => {
           <DialogTrigger asChild>
             <Button onClick={() => {
               setEditingCategory(null);
+              setImageFile(null);
+              setImagePreview('');
               form.reset({
                 name: "",
                 description: "",
                 slug: "",
+                image_url: "",
               });
             }}>
               <Plus className="w-4 h-4 mr-2" />
@@ -360,6 +633,85 @@ const CategoryManager = () => {
                           className="min-h-[80px]"
                           {...field} 
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="image_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category Image (Optional)</FormLabel>
+                      <FormControl>
+                        <div className="space-y-4">
+                          {imagePreview ? (
+                            <div className="relative">
+                              <img
+                                src={imagePreview}
+                                alt="Category preview"
+                                className="w-full h-48 object-cover rounded-lg border"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2"
+                                onClick={removeImage}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                              <ImageIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground mb-2">
+                                Upload an image for this category
+                              </p>
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleImageFileChange}
+                                  className="hidden"
+                                  disabled={uploading}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  disabled={uploading}
+                                  asChild
+                                >
+                                  <span>
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    {uploading ? "Uploading..." : "Choose Image"}
+                                  </span>
+                                </Button>
+                              </label>
+                            </div>
+                          )}
+                          <div className="space-y-2">
+                            <Input
+                              type="url"
+                              placeholder="Or enter image URL"
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                if (e.target.value) {
+                                  setImagePreview(e.target.value);
+                                } else if (!imageFile) {
+                                  setImagePreview('');
+                                }
+                              }}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Upload an image file or provide an image URL
+                            </p>
+                          </div>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

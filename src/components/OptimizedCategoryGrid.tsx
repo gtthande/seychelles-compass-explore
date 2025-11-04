@@ -1,0 +1,444 @@
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import OptimizedImage from "@/components/OptimizedImage";
+import { 
+  Store, 
+  UtensilsCrossed, 
+  Plane, 
+  Building, 
+  Car, 
+  Heart, 
+  GraduationCap, 
+  Wrench,
+  Camera,
+  Waves,
+  Calendar,
+  Gift,
+  Package,
+  Briefcase
+} from "lucide-react";
+
+// Import the generated category images
+import accommodationImg from '@/assets/category-accommodation.jpg';
+import foodImg from '@/assets/category-food.jpg';
+import toursImg from '@/assets/category-tours.jpg';
+import transportImg from '@/assets/category-transport.jpg';
+import retailImg from '@/assets/category-retail.jpg';
+import servicesImg from '@/assets/category-services.jpg';
+import entertainmentImg from '@/assets/category-entertainment.jpg';
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_active: boolean;
+  image_url?: string | null;
+}
+
+interface CategoryWithCount extends Category {
+  count: number;
+  businessCount: number;
+  productCount: number;
+}
+
+// Memoized icon mapping to prevent recreation on every render
+const getIconForCategory = (slug: string) => {
+  const iconMap: Record<string, any> = {
+    food: UtensilsCrossed,
+    accommodation: Building,
+    tours: Plane,
+    transport: Car,
+    retail: Store,
+    services: Wrench,
+    entertainment: Camera,
+    wellness: Heart,
+    education: GraduationCap,
+    events: Calendar,
+    products: Package,
+    professional: Briefcase,
+    'water-sports': Waves,
+    gifts: Gift,
+  };
+  
+  return iconMap[slug] || Store;
+};
+
+// Memoized color mapping
+const getColorForCategory = (index: number) => {
+  const colors = [
+    "from-primary to-primary-dark",
+    "from-orange-400 to-orange-600",
+    "from-blue-400 to-blue-600",
+    "from-purple-400 to-purple-600",
+    "from-green-400 to-green-600",
+    "from-pink-400 to-pink-600",
+    "from-indigo-400 to-indigo-600",
+    "from-gray-400 to-gray-600",
+    "from-red-400 to-red-600",
+    "from-teal-400 to-teal-600",
+    "from-yellow-400 to-yellow-600",
+    "from-rose-400 to-rose-600"
+  ];
+  
+  return colors[index % colors.length];
+};
+
+// Memoized image mapping
+const getImageForCategory = (slug: string): string => {
+  const imageMap: Record<string, string> = {
+    accommodation: accommodationImg,
+    food: foodImg,
+    tours: toursImg,
+    // Helicopter on tropical island for transportation in Seychelles
+    transport: 'https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=800&h=600&fit=crop&q=80',
+    retail: retailImg,
+    services: servicesImg,
+    entertainment: entertainmentImg,
+    // Yoga/fitness image for health & wellness (woman exercising)
+    wellness: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=600&fit=crop&q=80',
+    other: foodImg
+  };
+  
+  return imageMap[slug] || foodImg;
+};
+
+// Memoized CategoryCard component to prevent unnecessary re-renders
+const CategoryCard = React.memo(({ 
+  category, 
+  index, 
+  onCategoryClick 
+}: { 
+  category: CategoryWithCount; 
+  index: number; 
+  onCategoryClick: (category: CategoryWithCount) => void;
+}) => {
+  const IconComponent = useMemo(() => getIconForCategory(category.slug), [category.slug]);
+  const colorGradient = useMemo(() => getColorForCategory(index), [index]);
+  // Use image_url from database if available, otherwise fall back to default mapping
+  const categoryImage = useMemo(() => {
+    return category.image_url || getImageForCategory(category.slug);
+  }, [category.slug, category.image_url]);
+  
+  const handleClick = useCallback(() => {
+    onCategoryClick(category);
+  }, [category, onCategoryClick]);
+  
+  return (
+    <Card 
+      className="group cursor-pointer hover:shadow-card-hover transition-all duration-300 border-border/50 hover:border-primary/30 animate-fade-in overflow-hidden"
+      style={{ animationDelay: `${index * 0.1}s`, boxShadow: 'var(--card-shadow)' }}
+      onClick={handleClick}
+    >
+      <div className="relative h-32 overflow-hidden">
+        <OptimizedImage
+          src={categoryImage}
+          alt={category.name}
+          width={300}
+          height={128}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          loading="lazy"
+          fallback={
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+              <IconComponent className="h-12 w-12 text-primary/60" />
+            </div>
+          }
+        />
+        <div className={`hidden w-full h-full bg-gradient-to-br ${colorGradient} flex items-center justify-center`}>
+          <IconComponent className="h-12 w-12 text-white" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+        <div className={`absolute top-3 left-3 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg`}>
+          <IconComponent className="h-5 w-5 text-white" />
+        </div>
+      </div>
+      
+      <CardContent className="p-4 text-center">
+        <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+          {category.name}
+        </h3>
+        
+        <div className="text-sm text-muted-foreground space-y-1">
+          <p>{category.count} total listings</p>
+          <div className="flex justify-center gap-2 text-xs">
+            {category.businessCount > 0 && (
+              <span>{category.businessCount} businesses</span>
+            )}
+            {category.productCount > 0 && (
+              <span>{category.productCount} products</span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+CategoryCard.displayName = 'CategoryCard';
+
+const OptimizedCategoryGrid = () => {
+  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Memoized fetch function to prevent recreation
+  const fetchCategoriesWithCounts = useCallback(async () => {
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
+    const startTime = performance.now();
+    console.log('🚀 CategoryGrid: Starting data fetch...');
+    
+    try {
+      setDataLoading(true);
+      
+      // Fetch categories first, then get counts separately for better reliability
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (categoriesError) {
+        console.error('🚨 CategoryGrid: Categories query failed:', categoriesError);
+        throw categoriesError;
+      }
+
+      // Fetch business counts separately
+      const { data: businessCounts, error: businessError } = await supabase
+        .from('businesses')
+        .select('category')
+        .eq('status', 'active');
+
+      if (businessError) {
+        console.error('🚨 CategoryGrid: Business counts query failed:', businessError);
+      }
+
+      // Fetch product counts separately
+      const { data: productCounts, error: productError } = await supabase
+        .from('products')
+        .select('category')
+        .eq('status', 'active');
+
+      if (productError) {
+        console.error('🚨 CategoryGrid: Product counts query failed:', productError);
+      }
+
+      // Count by category slug
+      const businessCountMap = (businessCounts || []).reduce((acc, business) => {
+        if (business.category) {
+          acc[business.category] = (acc[business.category] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const productCountMap = (productCounts || []).reduce((acc, product) => {
+        if (product.category) {
+          acc[product.category] = (acc[product.category] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Process the data - show all categories even with zero counts
+      const categoriesWithCounts = (categoriesData || []).map(category => ({
+        ...category,
+        businessCount: businessCountMap[category.slug] || 0,
+        productCount: productCountMap[category.slug] || 0,
+        count: (businessCountMap[category.slug] || 0) + (productCountMap[category.slug] || 0)
+      }));
+
+      const endTime = performance.now();
+      console.log(`✅ CategoryGrid: Data fetch completed in ${(endTime - startTime).toFixed(2)}ms`);
+
+      if (!signal.aborted) {
+        setCategories(categoriesWithCounts);
+      }
+    } catch (error) {
+      // Don't set error if request was aborted
+      if (signal.aborted) return;
+      
+      console.error('🚨 CategoryGrid: Exception caught:', error);
+      console.error('Exception type:', typeof error);
+      console.error('Exception instanceof Error:', error instanceof Error);
+      if (error instanceof Error) {
+        console.error('Exception message:', error.message);
+        console.error('Exception stack:', error.stack);
+      }
+      
+      // Fallback: try individual queries if the join fails
+      try {
+        console.log('🔄 CategoryGrid: Trying fallback queries...');
+        
+        const [categoriesResult, businessCountsResult, productCountsResult] = await Promise.all([
+          supabase.from('categories').select('*').eq('is_active', true).order('name'),
+          supabase.from('businesses').select('category').eq('status', 'active'),
+          supabase.from('products').select('category, business_id').eq('status', 'active')
+        ]);
+
+        // Log individual query errors
+        if (categoriesResult.error) {
+          console.error('🚨 CategoryGrid: Categories query error:', categoriesResult.error);
+        }
+        if (businessCountsResult.error) {
+          console.error('🚨 CategoryGrid: Business counts query error:', businessCountsResult.error);
+        }
+        if (productCountsResult.error) {
+          console.error('🚨 CategoryGrid: Product counts query error:', productCountsResult.error);
+        }
+
+        const categories = categoriesResult.data || [];
+        const businessCounts = businessCountsResult.data || [];
+        const productCounts = productCountsResult.data || [];
+
+        // Count by category
+        const businessCountMap = businessCounts.reduce((acc, business) => {
+          if (business.category) {
+            acc[business.category] = (acc[business.category] || 0) + 1;
+          }
+          return acc;
+        }, {} as Record<string, number>);
+
+        const productCountMap = productCounts.reduce((acc, product) => {
+          if (product.category) {
+            acc[product.category] = (acc[product.category] || 0) + 1;
+          }
+          return acc;
+        }, {} as Record<string, number>);
+
+        const categoriesWithCounts = categories.map(category => ({
+          ...category,
+          businessCount: businessCountMap[category.slug] || 0,
+          productCount: productCountMap[category.slug] || 0,
+          count: (businessCountMap[category.slug] || 0) + (productCountMap[category.slug] || 0)
+        }));
+
+        const endTime = performance.now();
+        console.log(`✅ CategoryGrid: Fallback queries completed in ${(endTime - startTime).toFixed(2)}ms`);
+
+        if (!signal.aborted) {
+          setCategories(categoriesWithCounts);
+        }
+      } catch (fallbackError) {
+        console.error('🚨 CategoryGrid: Fallback queries also failed:', fallbackError);
+        console.error('Fallback error type:', typeof fallbackError);
+        console.error('Fallback error instanceof Error:', fallbackError instanceof Error);
+        if (fallbackError instanceof Error) {
+          console.error('Fallback error message:', fallbackError.message);
+          console.error('Fallback error stack:', fallbackError.stack);
+        }
+        if (!signal.aborted) {
+          setCategories([]);
+        }
+      }
+    } finally {
+      if (!signal.aborted) {
+        setDataLoading(false);
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const startTime = performance.now();
+    console.log('🚀 CategoryGrid: Component mounting...');
+    
+    fetchCategoriesWithCounts();
+    
+    const endTime = performance.now();
+    console.log(`✅ CategoryGrid: Component mounted in ${(endTime - startTime).toFixed(2)}ms`);
+    
+    return () => {
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchCategoriesWithCounts]);
+
+  // Memoized click handler
+  const handleCategoryClick = useCallback((category: CategoryWithCount) => {
+    // Navigate to directory with category filter
+    window.location.href = `/directory?category=${category.slug}`;
+  }, []);
+
+  // Memoized skeleton component
+  const skeletonCards = useMemo(() => (
+    [...Array(8)].map((_, i) => (
+      <Card key={i} className="animate-pulse">
+        <CardContent className="p-6 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted"></div>
+          <div className="h-4 bg-muted rounded w-3/4 mx-auto mb-2"></div>
+          <div className="h-3 bg-muted rounded w-1/2 mx-auto"></div>
+        </CardContent>
+      </Card>
+    ))
+  ), []);
+
+  // Show skeleton only during data loading, not component loading
+  if (dataLoading) {
+    return (
+      <section className="py-20 bg-gradient-to-b from-background to-accent">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
+              Explore by Category
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Discover the best businesses and services across Seychelles, organized by category
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {skeletonCards}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="py-20 bg-gradient-to-b from-background to-accent">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
+            Explore by Category
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Discover the best businesses and services across Seychelles, organized by category
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {categories.map((category, index) => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              index={index}
+              onCategoryClick={handleCategoryClick}
+            />
+          ))}
+        </div>
+        
+        {categories.length === 0 && !dataLoading && (
+          <div className="text-center py-12">
+            <div className="bg-muted/30 rounded-lg p-8">
+              <p className="text-muted-foreground mb-2">No categories available yet</p>
+              <p className="text-sm text-muted-foreground">Categories will appear here as businesses are added to the directory.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+export default OptimizedCategoryGrid;

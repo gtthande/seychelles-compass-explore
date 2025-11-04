@@ -176,35 +176,158 @@ const ProductEdit: React.FC = () => {
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
+    const startTime = performance.now();
+    const PRODUCT_IMAGES_BUCKET = import.meta.env.VITE_IMAGE_BUCKET_PRODUCTS || 'product-images';
+    
+    console.log('📤 Starting product image upload:', {
+      fileName: file.name,
+      fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+      fileType: file.type,
+      bucket: PRODUCT_IMAGES_BUCKET
+    });
+
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `product-images/${fileName}`;
+      // Verify bucket exists and is accessible
+      console.log(`🔍 Verifying bucket '${PRODUCT_IMAGES_BUCKET}' exists...`);
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .getBucket(PRODUCT_IMAGES_BUCKET);
+      
+      if (bucketError) {
+        const errorDetails = {
+          bucket: PRODUCT_IMAGES_BUCKET,
+          error: bucketError,
+          message: bucketError.message,
+          code: bucketError.statusCode || 'N/A',
+          timestamp: new Date().toISOString()
+        };
+        
+        console.error('❌ Bucket verification failed:', errorDetails);
+        
+        let errorDescription = `The '${PRODUCT_IMAGES_BUCKET}' storage bucket is not available. `;
+        
+        if (bucketError.message?.includes('not found') || bucketError.statusCode === 404) {
+          errorDescription += `Please create the bucket in Supabase Dashboard:\n1. Go to Storage in Supabase Dashboard\n2. Click "New bucket"\n3. Name it "${PRODUCT_IMAGES_BUCKET}"\n4. Set it to Public\n5. Save`;
+        } else if (bucketError.message?.includes('permission') || bucketError.statusCode === 403) {
+          errorDescription += `You don't have permission to access this bucket. Please contact an administrator.`;
+        } else {
+          errorDescription += `Error: ${bucketError.message}. Check the console for details.`;
+        }
+        
+        toast({
+          title: "Storage Error",
+          description: errorDescription,
+          variant: "destructive",
+          duration: 10000,
+        });
+        throw new Error(`Bucket '${PRODUCT_IMAGES_BUCKET}' is not accessible: ${bucketError.message}`);
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file);
+      console.log('✅ Bucket verified:', {
+        bucket: PRODUCT_IMAGES_BUCKET,
+        public: bucketData?.public || false,
+        createdAt: bucketData?.created_at || 'N/A'
+      });
 
-      if (uploadError) throw uploadError;
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
 
-      const { data } = supabase.storage
-        .from('product-images')
+      console.log(`⬆️  Uploading file to bucket:`, {
+        bucket: PRODUCT_IMAGES_BUCKET,
+        filePath,
+        fileSize: file.size
+      });
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Upload failed:', {
+          error: uploadError,
+          message: uploadError.message,
+          code: uploadError.statusCode || 'N/A',
+          bucket: PRODUCT_IMAGES_BUCKET,
+          filePath
+        });
+        throw uploadError;
+      }
+
+      console.log('✅ Upload successful:', {
+        path: uploadData?.path || filePath,
+        bucket: PRODUCT_IMAGES_BUCKET
+      });
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
         .getPublicUrl(filePath);
 
-      setImagePreview(data.publicUrl);
-      setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+      if (!urlData?.publicUrl) {
+        console.error('❌ Failed to generate public URL:', {
+          filePath,
+          bucket: PRODUCT_IMAGES_BUCKET
+        });
+        throw new Error('Failed to get public URL for uploaded image');
+      }
+
+      console.log('✅ Public URL generated:', {
+        url: urlData.publicUrl,
+        duration: `${(performance.now() - startTime).toFixed(2)}ms`
+      });
+
+      setImagePreview(urlData.publicUrl);
+      setFormData(prev => ({ ...prev, image_url: urlData.publicUrl }));
       
       toast({
         title: "Success",
         description: "Image uploaded successfully",
       });
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast({
-        title: "Error",
-        description: "Failed to upload image",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      const errorDetails = {
+        error,
+        message: error?.message || 'Unknown error',
+        code: error?.statusCode || error?.code || 'N/A',
+        bucket: PRODUCT_IMAGES_BUCKET,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        duration: `${(performance.now() - startTime).toFixed(2)}ms`
+      };
+      
+      console.error('❌ Image upload error (full details):', errorDetails);
+      
+      const errorMessage = error?.message || "Failed to upload image";
+      
+      // Provide specific error messages based on error type
+      if (errorMessage.includes('bucket') || errorMessage.includes('not found') || error?.statusCode === 404) {
+        toast({
+          title: "Bucket Not Found",
+          description: `The '${PRODUCT_IMAGES_BUCKET}' storage bucket does not exist. Please create it in the Supabase Dashboard under Storage (set to public), or run the migration to create it.`,
+          variant: "destructive",
+        });
+      } else if (errorMessage.includes('permission') || errorMessage.includes('unauthorized') || error?.statusCode === 403) {
+        toast({
+          title: "Permission Denied",
+          description: `You don't have permission to upload to the '${PRODUCT_IMAGES_BUCKET}' bucket. Please contact an administrator.`,
+          variant: "destructive",
+        });
+      } else if (errorMessage.includes('duplicate') || error?.statusCode === 409) {
+        toast({
+          title: "File Already Exists",
+          description: "A file with this name already exists. Please try again or choose a different image.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload image: ${errorMessage}. Check the console for details.`,
+          variant: "destructive",
+        });
+      }
     } finally {
       setUploading(false);
     }

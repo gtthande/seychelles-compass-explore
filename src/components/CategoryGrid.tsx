@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import OptimizedImage from "@/components/OptimizedImage";
 import { 
   Store, 
   UtensilsCrossed, 
@@ -32,6 +33,7 @@ interface Category {
   slug: string;
   description: string | null;
   is_active: boolean;
+  image_url?: string | null;
 }
 
 interface CategoryWithCount extends Category {
@@ -98,12 +100,18 @@ const getImageForCategory = (slug: string): string => {
 const CategoryGrid = () => {
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchCategoriesWithCounts();
-  }, []);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchCategoriesWithCounts = async () => {
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
     try {
       setLoading(true);
       
@@ -168,15 +176,33 @@ const CategoryGrid = () => {
       }));
 
       // Show all categories, even with zero counts for better UX
-      setCategories(categoriesWithCounts);
+      if (!signal.aborted) {
+        setCategories(categoriesWithCounts);
+      }
     } catch (error) {
+      // Don't set error if request was aborted
+      if (signal.aborted) return;
+      
       console.error('Error fetching categories:', error);
       // Set empty array as fallback
       setCategories([]);
     } finally {
-      setLoading(false);
+      if (!signal.aborted) {
+        setLoading(false);
+      }
     }
   };
+
+  useEffect(() => {
+    fetchCategoriesWithCounts();
+    
+    return () => {
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleCategoryClick = (category: CategoryWithCount) => {
     // Navigate to directory with category filter
@@ -228,7 +254,8 @@ const CategoryGrid = () => {
           {categories.map((category, index) => {
             const IconComponent = getIconForCategory(category.slug);
             const colorGradient = getColorForCategory(index);
-            const categoryImage = getImageForCategory(category.slug);
+            // Use image_url from database if available, otherwise fall back to hardcoded image
+            const categoryImage = category.image_url || getImageForCategory(category.slug);
             
             return (
               <Card 
@@ -238,15 +265,19 @@ const CategoryGrid = () => {
                 onClick={() => handleCategoryClick(category)}
               >
                 <div className="relative h-32 overflow-hidden">
-                  <img 
-                    src={categoryImage} 
+                  <OptimizedImage
+                    src={categoryImage}
                     alt={category.name}
+                    width={300}
+                    height={128}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    onError={(e) => {
-                      // Fallback to gradient background if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                    }}
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    loading="lazy"
+                    fallback={
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                        <IconComponent className="h-12 w-12 text-primary/60" />
+                      </div>
+                    }
                   />
                   <div className={`hidden w-full h-full bg-gradient-to-br ${colorGradient} flex items-center justify-center`}>
                     <IconComponent className="h-12 w-12 text-white" />

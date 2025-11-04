@@ -175,16 +175,21 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       
       try {
         // Verify bucket exists and is accessible
+        const PRODUCT_IMAGES_BUCKET = import.meta.env.VITE_IMAGE_BUCKET_PRODUCTS || 'product-images';
+        
         const { data: bucketData, error: bucketError } = await supabase.storage
-          .getBucket('product-images');
+          .getBucket(PRODUCT_IMAGES_BUCKET);
         
         if (bucketError) {
-          console.error('Product images bucket not accessible:', bucketError);
-          throw new Error('Product images storage is not available');
+          console.error('Product images bucket not accessible:', {
+            bucket: PRODUCT_IMAGES_BUCKET,
+            error: bucketError
+          });
+          throw new Error(`Product images storage bucket '${PRODUCT_IMAGES_BUCKET}' is not available`);
         }
         
         const { data, error } = await supabase.storage
-          .from('product-images')
+          .from(PRODUCT_IMAGES_BUCKET)
           .upload(fileName, file);
 
         if (error) {
@@ -192,7 +197,7 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
           throw error;
         }
         
-        const { data: publicUrlData } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        const { data: publicUrlData } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(fileName);
         
         if (!publicUrlData?.publicUrl) {
           throw new Error('Failed to get public URL for uploaded product image');

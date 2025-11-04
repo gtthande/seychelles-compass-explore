@@ -6,12 +6,19 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-const envPath = path.resolve(__dirname, '../.env.local');
+// Load environment variables - check both .env.local and .env
+const envLocalPath = path.resolve(__dirname, '../.env.local');
+const envPath = path.resolve(__dirname, '../.env');
 let supabaseUrl, supabaseAnonKey;
 
-if (fs.existsSync(envPath)) {
-  const envContent = fs.readFileSync(envPath, 'utf8');
+let envContent = '';
+if (fs.existsSync(envLocalPath)) {
+  envContent = fs.readFileSync(envLocalPath, 'utf8');
+} else if (fs.existsSync(envPath)) {
+  envContent = fs.readFileSync(envPath, 'utf8');
+}
+
+if (envContent) {
   const urlMatch = envContent.match(/VITE_SUPABASE_URL=(.+)/);
   const keyMatch = envContent.match(/VITE_SUPABASE_ANON_KEY=(.+)/);
   
@@ -23,13 +30,13 @@ console.log('🔍 Testing Supabase Connection...\n');
 
 if (!supabaseUrl || supabaseUrl === 'your-supabase-url-here') {
   console.log('❌ VITE_SUPABASE_URL not configured');
-  console.log('   Please set VITE_SUPABASE_URL in .env.local');
+  console.log('   Please set VITE_SUPABASE_URL in .env or .env.local');
   process.exit(1);
 }
 
 if (!supabaseAnonKey || supabaseAnonKey === 'your-supabase-anon-key-here') {
   console.log('❌ VITE_SUPABASE_ANON_KEY not configured');
-  console.log('   Please set VITE_SUPABASE_ANON_KEY in .env.local');
+  console.log('   Please set VITE_SUPABASE_ANON_KEY in .env or .env.local');
   process.exit(1);
 }
 

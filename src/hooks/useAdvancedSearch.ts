@@ -114,26 +114,28 @@ export const useAdvancedSearch = () => {
     setError(null);
 
     try {
-      // Basic business search using the improved pattern
+      // Basic business search using the improved pattern - optimized with specific fields and limits
       const { data: businessMatches, error: businessError } = await supabase
         .from('businesses')
-        .select('*')
+        .select('id, name, description, category, address, island, featured, status')
         .eq('status', 'active')
         .ilike('name', `%${query}%`)
-        .or(`description.ilike.%${query}%`);
+        .or(`description.ilike.%${query}%`)
+        .limit(limit);
 
       if (businessError) {
         console.error('Basic business search error:', businessError);
       }
 
-      // Basic product search using the improved pattern
+      // Basic product search using the improved pattern - optimized with specific fields and limits
       const { data: productMatches, error: productError } = await supabase
         .from('products')
-        .select('*, business:business_id(name, id, category, description, address, island)')
+        .select('id, name, description, category, price, business_id, businesses!inner(name, id, category, description, address, island)')
         .eq('status', 'active')
-        .eq('business.status', 'active')
+        .eq('businesses.status', 'active')
         .ilike('name', `%${query}%`)
-        .or(`description.ilike.%${query}%`);
+        .or(`description.ilike.%${query}%`)
+        .limit(limit);
 
       if (productError) {
         console.error('Basic product search error:', productError);

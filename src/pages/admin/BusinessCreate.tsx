@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import MinimalLocationInput from '@/components/MinimalLocationInput';
-import MapPickerModal from '@/components/MapPickerModal';
-import LocationInput from '@/components/LocationInput';
-import LocationCard from '@/components/LocationCard';
+import { Loader2 } from 'lucide-react';
+
+// Lazy load heavy map components
+const MinimalLocationInput = lazy(() => import('@/components/MinimalLocationInput'));
+const MapPickerModal = lazy(() => import('@/components/MapPickerModal'));
+const LocationInput = lazy(() => import('@/components/LocationInput'));
+const LocationCard = lazy(() => import('@/components/LocationCard'));
 import { 
   Save, 
   ArrowLeft, 
@@ -426,7 +429,16 @@ const BusinessCreate: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Google Maps Link Parser */}
-              <LocationInput onParsed={handleLocationParsed} />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-16">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading location input...</span>
+                  </div>
+                </div>
+              }>
+                <LocationInput onParsed={handleLocationParsed} />
+              </Suspense>
               
               {/* Help Instructions */}
               <div className="text-sm text-gray-500 bg-gray-50 border rounded-md p-3">
@@ -441,15 +453,24 @@ const BusinessCreate: React.FC = () => {
 
               {/* Display Location Card */}
               {formData.latitude && formData.longitude && (
-                <LocationCard
-                  address={formData.address}
-                  latitude={parseFloat(formData.latitude)}
-                  longitude={parseFloat(formData.longitude)}
-                  link={locationLink}
-                  phone={formData.phone}
-                  website={formData.website}
-                  email={formData.email}
-                />
+                <Suspense fallback={
+                  <div className="flex items-center justify-center h-20">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading location card...</span>
+                    </div>
+                  </div>
+                }>
+                  <LocationCard
+                    address={formData.address}
+                    latitude={parseFloat(formData.latitude)}
+                    longitude={parseFloat(formData.longitude)}
+                    link={locationLink}
+                    phone={formData.phone}
+                    website={formData.website}
+                    email={formData.email}
+                  />
+                </Suspense>
               )}
 
               {/* Divider */}
@@ -587,15 +608,24 @@ const BusinessCreate: React.FC = () => {
       </div>
 
       {/* Enhanced Map Picker Modal */}
-      <MapPickerModal
-        isOpen={showMapPicker}
-        onClose={() => setShowMapPicker(false)}
-        onSelect={handleMapSelect}
-        defaultCoords={formData.latitude && formData.longitude 
-          ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
-          : [-4.619, 55.451]
-        }
-      />
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-96">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <p className="text-muted-foreground">Loading map picker...</p>
+          </div>
+        </div>
+      }>
+        <MapPickerModal
+          isOpen={showMapPicker}
+          onClose={() => setShowMapPicker(false)}
+          onSelect={handleMapSelect}
+          defaultCoords={formData.latitude && formData.longitude 
+            ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
+            : [-4.619, 55.451]
+          }
+        />
+      </Suspense>
     </div>
   );
 };

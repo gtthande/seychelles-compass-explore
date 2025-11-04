@@ -1,18 +1,18 @@
-import React, { lazy, Suspense, useEffect } from "react";
+import React, { lazy, Suspense, useCallback, useMemo, useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
-import LiveCounters from "@/components/LiveCounters";
+import LiveCounters from "@/components/OptimizedLiveCounters";
 import BusinessSearch from "@/components/BusinessSearch";
-import { CategorySkeleton, FeaturedSkeleton } from "@/components/LoadingSkeleton";
+import { CategorySkeleton, FeaturedSkeleton, BusinessCardSkeletonLight } from "@/components/LoadingSkeleton";
 
-// Lazy load heavy components with error handling
-const CategoryGrid = lazy(() => import("@/components/CategoryGrid"));
-const FeaturedListings = lazy(() => import("@/components/FeaturedListings"));
+// Lazy load heavy components with error handling - Defer non-critical components
+const CategoryGrid = lazy(() => import("@/components/OptimizedCategoryGrid"));
+const FeaturedListings = lazy(() => import("@/components/OptimizedFeaturedListings"));
 const SearchFilter = lazy(() => import("@/components/SearchFilter"));
 
-// Error boundary component for lazy loading failures
-const LazyErrorBoundary = ({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) => {
+// Error boundary component for lazy loading failures - Memoized to prevent unnecessary re-renders
+const LazyErrorBoundary = React.memo(({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) => {
   const [hasError, setHasError] = React.useState(false);
 
   React.useEffect(() => {
@@ -26,42 +26,50 @@ const LazyErrorBoundary = ({ children, fallback }: { children: React.ReactNode; 
   }
 
   return <>{children}</>;
-};
+});
 
-// Performance profiling utility
-const perfLog = (label: string, startTime?: number) => {
-  if (startTime) {
-    const duration = performance.now() - startTime;
-    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
-    if (duration > 1000) {
-      console.warn(`🐌 SLOW OPERATION: ${label} took ${duration.toFixed(2)}ms`);
-    }
-  } else {
-    console.log(`🚀 Starting: ${label}`);
-    return performance.now();
-  }
-};
 
 const Index = () => {
-  const pageStartTime = perfLog('Index page render start');
+  const [showDeferredComponents, setShowDeferredComponents] = useState(false);
   
-  // Enhanced error logging for debugging
-  console.log('🏠 Index component initializing...');
-  
+  // Defer non-critical components until after main content loads
   useEffect(() => {
-    console.log('🏠 Index component mounted successfully');
-    perfLog('Index page fully loaded', pageStartTime);
+    // Preload CategoryGrid immediately for faster loading
+    const categoryGridPromise = import("@/components/OptimizedCategoryGrid");
+    
+    const timer = setTimeout(() => {
+      setShowDeferredComponents(true);
+    }, 50); // Reduced delay for faster loading
+    
+    return () => clearTimeout(timer);
   }, []);
 
-  // Add error boundary for this specific page
-  try {
-    return (
+  // Memoize the empty function to prevent SearchFilter re-renders
+  const handleFiltersChange = useCallback(() => {
+    // Empty function - no action needed for this component
+  }, []);
+  
+  // Memoize static content to prevent unnecessary re-renders
+  const staticContent = useMemo(() => (
+    <div className="text-center mb-12">
+      <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
+        Find Local Businesses & Products
+      </h2>
+      <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+        Discover trusted businesses and quality products throughout Seychelles
+      </p>
+    </div>
+  ), []);
+
+  return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <Hero />
       <div className="container mx-auto px-4 py-8">
         <LiveCounters />
       </div>
+      
+      {/* Critical content loads immediately */}
       <LazyErrorBoundary fallback={<CategorySkeleton />}>
         <Suspense fallback={<CategorySkeleton />}>
           <CategoryGrid />
@@ -71,52 +79,43 @@ const Index = () => {
       {/* Enhanced Search and Directory Section */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-              Find Local Businesses & Products
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-              Discover trusted businesses and quality products throughout Seychelles
-            </p>
-            
-            {/* Global Business Search */}
-            <div className="max-w-2xl mx-auto mb-8">
-              <BusinessSearch 
-                placeholder="Search for any business by name..."
-                className="w-full"
-              />
-            </div>
+          {staticContent}
+          
+          {/* Global Business Search */}
+          <div className="max-w-2xl mx-auto mb-8">
+            <BusinessSearch 
+              placeholder="Search for any business by name..."
+              className="w-full"
+            />
           </div>
-          <LazyErrorBoundary fallback={<div className="animate-pulse h-32 bg-muted rounded-lg"></div>}>
-            <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded-lg"></div>}>
-              <SearchFilter onFiltersChange={() => {}} />
-            </Suspense>
-          </LazyErrorBoundary>
+          
+          {/* Defer SearchFilter to reduce initial load */}
+          {showDeferredComponents ? (
+            <LazyErrorBoundary fallback={<div className="animate-pulse h-32 bg-muted rounded-lg"></div>}>
+              <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded-lg"></div>}>
+                <SearchFilter onFiltersChange={handleFiltersChange} />
+              </Suspense>
+            </LazyErrorBoundary>
+          ) : (
+            <div className="animate-pulse h-32 bg-muted rounded-lg"></div>
+          )}
         </div>
       </section>
       
-      <LazyErrorBoundary fallback={<FeaturedSkeleton />}>
-        <Suspense fallback={<FeaturedSkeleton />}>
-          <FeaturedListings />
-        </Suspense>
-      </LazyErrorBoundary>
+      {/* Defer FeaturedListings to reduce initial load */}
+      {showDeferredComponents ? (
+        <LazyErrorBoundary fallback={<FeaturedSkeleton />}>
+          <Suspense fallback={<FeaturedSkeleton />}>
+            <FeaturedListings />
+          </Suspense>
+        </LazyErrorBoundary>
+      ) : (
+        <FeaturedSkeleton />
+      )}
+      
       <Footer />
     </div>
-    );
-  } catch (error) {
-    console.error('🚨 Index component error:', error);
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Index Page Error</h1>
-          <p className="text-gray-600 mb-4">There was an error loading the main page.</p>
-          <pre className="text-sm text-gray-500 bg-gray-100 p-4 rounded">
-            {error instanceof Error ? error.message : 'Unknown error'}
-          </pre>
-        </div>
-      </div>
-    );
-  }
+  );
 };
 
 export default Index;

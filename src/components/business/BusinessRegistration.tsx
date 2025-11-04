@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Calendar, CalendarIcon, Download, Building2, Phone, Mail, Globe, Linkedin, Youtube, Facebook, Instagram, MessageCircle, Clock, CheckCircle, MapPin } from "lucide-react";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -140,7 +140,7 @@ const BusinessRegistration = () => {
               business_name: data.business_name,
               contact_person: data.contact_person,
               email: data.email,
-              preferred_date: format(data.preferred_date, 'PPP'),
+              preferred_date: formatDate(data.preferred_date, 'PPP'),
               preferred_time: data.preferred_time,
             }
           }
@@ -177,7 +177,7 @@ const BusinessRegistration = () => {
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>Business: <span className="font-medium">{form.getValues('business_name')}</span></p>
               <p>Contact: <span className="font-medium">{form.getValues('contact_person')}</span></p>
-              <p>Preferred Date: <span className="font-medium">{format(form.getValues('preferred_date'), 'PPP')}</span></p>
+              <p>Preferred Date: <span className="font-medium">{formatDate(form.getValues('preferred_date'), 'PPP')}</span></p>
               <p>Preferred Time: <span className="font-medium">{form.getValues('preferred_time')}</span></p>
             </div>
             <Button 
@@ -448,7 +448,7 @@ const BusinessRegistration = () => {
                                 )}
                               >
                                 {field.value ? (
-                                  format(field.value, "PPP")
+                                  formatDate(field.value, "PPP")
                                 ) : (
                                   <span>Pick a date</span>
                                 )}

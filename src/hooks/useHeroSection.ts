@@ -8,8 +8,6 @@ interface HeroSection {
 }
 
 export const useHeroSection = () => {
-  console.log('🎨 useHeroSection hook initializing...');
-  
   const [heroSection, setHeroSection] = useState<HeroSection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +21,10 @@ export const useHeroSection = () => {
         const { data, error: fetchError } = await supabase
           .from('app_settings')
           .select('key, value')
-          .in('key', ['HERO_TITLE', 'HERO_SUBTITLE', 'HERO_IMAGE_URL']);
+          .in('key', ['HERO_TITLE', 'HERO_SUBTITLE', 'HERO_IMAGE_URL'])
+          .limit(3); // Limit since we only need 3 specific records
 
         if (fetchError) {
-          console.warn('Could not fetch hero settings from app_settings, using defaults:', fetchError);
           // Don't throw error, just use defaults
         }
 
@@ -41,7 +39,6 @@ export const useHeroSection = () => {
           image_url: settings.HERO_IMAGE_URL || '/assets/hero-seychelles.jpg'
         });
       } catch (err) {
-        console.error('Error fetching hero section:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch hero section');
         
         // Fallback to default data if fetch fails
@@ -85,7 +82,6 @@ export const useHeroSection = () => {
       
       return { ...heroSection, ...updates };
     } catch (err) {
-      console.error('Error updating hero section:', err);
       setError(err instanceof Error ? err.message : 'Failed to update hero section');
       throw err;
     }

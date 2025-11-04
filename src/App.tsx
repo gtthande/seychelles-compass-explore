@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster as HotToaster } from "react-hot-toast";
@@ -7,33 +7,32 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MaintenanceBanner } from "@/components/MaintenanceBanner";
 import RouteGuard from "@/components/RouteGuard";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import AuthCallback from "./pages/AuthCallback";
-import PasswordReset from "./pages/PasswordReset";
-import Onboarding from "./pages/Onboarding";
-import Dashboard from "./pages/Dashboard";
-import Directory from "./pages/Directory";
-import NotFound from "./pages/NotFound";
-import BusinessPortal from "./pages/BusinessPortal";
-import BusinessDashboard from "./pages/BusinessDashboard";
-import Products from "./pages/Products";
-import Documentation from "./pages/Documentation";
-import AdminPanel from "./pages/AdminPanel";
-import BusinessEdit from "./pages/admin/BusinessEdit";
-import BusinessCreate from "./pages/admin/BusinessCreate";
-import ProductEdit from "./pages/admin/ProductEdit";
-import ProductCreate from "./pages/admin/ProductCreate";
-import BusinessDetail from "./pages/BusinessDetail";
-import PaymentTest from "./pages/PaymentTest";
-import EmailPreview from "./pages/EmailPreview";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+
+// Lazy load heavy pages and admin components
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const PasswordReset = lazy(() => import("./pages/PasswordReset"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Directory = lazy(() => import("./pages/Directory"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
+const Products = lazy(() => import("./pages/Products"));
+const Documentation = lazy(() => import("./pages/Documentation"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const BusinessEdit = lazy(() => import("./pages/admin/BusinessEdit"));
+const BusinessCreate = lazy(() => import("./pages/admin/BusinessCreate"));
+const ProductEdit = lazy(() => import("./pages/admin/ProductEdit"));
+const ProductCreate = lazy(() => import("./pages/admin/ProductCreate"));
+const BusinessDetail = lazy(() => import("./pages/BusinessDetail"));
+const PaymentTest = lazy(() => import("./pages/PaymentTest"));
+const EmailPreview = lazy(() => import("./pages/EmailPreview"));
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Enhanced error logging for debugging
-  console.log('🚀 App component initializing...');
-  
   // Add global error handlers
   window.addEventListener('error', (event) => {
     console.error('🚨 Global JavaScript Error:', event.error);
@@ -53,36 +52,38 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <MaintenanceBanner />
-        <Toaster />
-        <Sonner />
-        <HotToaster position="bottom-right" />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/auth/reset-password" element={<PasswordReset />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/directory" element={<Directory />} />
-          <Route path="/business/:id" element={<BusinessDetail />} />
-          <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/docs" element={<Documentation />} />
-          <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
-          <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
-          <Route path="/admin/businesses/create" element={<RouteGuard requiredRole="admin"><BusinessCreate /></RouteGuard>} />
-          <Route path="/admin/businesses/edit/:id" element={<RouteGuard requiredRole="admin"><BusinessEdit /></RouteGuard>} />
-          <Route path="/admin/products/create" element={<RouteGuard requiredRole="admin"><ProductCreate /></RouteGuard>} />
-          <Route path="/admin/products/edit/:id" element={<RouteGuard requiredRole="admin"><ProductEdit /></RouteGuard>} />
-          <Route path="/payments/test" element={<PaymentTest />} />
-          <Route path="/dev/email-preview" element={<EmailPreview />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <TooltipProvider>
+          <MaintenanceBanner />
+          <Toaster />
+          <Sonner />
+          <HotToaster position="bottom-right" />
+          <BrowserRouter>
+            <Suspense fallback={<LoadingSkeleton />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/auth/reset-password" element={<PasswordReset />} />
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/directory" element={<Directory />} />
+                <Route path="/business/:id" element={<BusinessDetail />} />
+                <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/docs" element={<Documentation />} />
+                <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+                <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+                <Route path="/admin/businesses/create" element={<RouteGuard requiredRole="admin"><BusinessCreate /></RouteGuard>} />
+                <Route path="/admin/businesses/edit/:id" element={<RouteGuard requiredRole="admin"><BusinessEdit /></RouteGuard>} />
+                <Route path="/admin/products/create" element={<RouteGuard requiredRole="admin"><ProductCreate /></RouteGuard>} />
+                <Route path="/admin/products/edit/:id" element={<RouteGuard requiredRole="admin"><ProductEdit /></RouteGuard>} />
+                <Route path="/payments/test" element={<PaymentTest />} />
+                <Route path="/dev/email-preview" element={<EmailPreview />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );

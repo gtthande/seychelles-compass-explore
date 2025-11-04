@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import OptimizedImage from "@/components/OptimizedImage";
 import { 
   Star, 
   MapPin, 
@@ -36,12 +37,18 @@ interface Business {
 const FeaturedListings = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchFeaturedBusinesses();
-  }, []);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchFeaturedBusinesses = async () => {
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -54,17 +61,33 @@ const FeaturedListings = () => {
 
       if (error) {
         console.error('Error fetching featured businesses:', error);
-        setBusinesses([]);
+        if (!signal.aborted) setBusinesses([]);
       } else {
-        setBusinesses(data || []);
+        if (!signal.aborted) setBusinesses(data || []);
       }
     } catch (error) {
+      // Don't set error if request was aborted
+      if (signal.aborted) return;
+      
       console.error('Error:', error);
       setBusinesses([]);
     } finally {
-      setLoading(false);
+      if (!signal.aborted) {
+        setLoading(false);
+      }
     }
   };
+
+  useEffect(() => {
+    fetchFeaturedBusinesses();
+    
+    return () => {
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const formatCategory = (category: string) => {
     return category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -144,10 +167,14 @@ const FeaturedListings = () => {
               {/* Only show cover image if business uploaded one */}
               {business.cover_image_url && (
                 <div className="relative">
-                  <img 
-                    src={business.cover_image_url} 
+                  <OptimizedImage
+                    src={business.cover_image_url}
                     alt={business.name}
+                    width={400}
+                    height={192}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    loading="lazy"
                   />
                   <div className="absolute top-4 left-4 flex gap-2">
                     {business.featured && (
@@ -191,10 +218,14 @@ const FeaturedListings = () => {
                     )}
                   </div>
                   {business.logo_url && (
-                    <img 
-                      src={business.logo_url} 
+                    <OptimizedImage
+                      src={business.logo_url}
                       alt={`${business.name} logo`}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded-lg object-cover ml-3"
+                      sizes="48px"
+                      loading="lazy"
                     />
                   )}
                 </div>

@@ -1,11 +1,14 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessAuth } from "@/hooks/useBusinessAuth";
-import BusinessRegistration from "@/components/business/BusinessRegistration";
-import BusinessDashboard from "@/components/business/BusinessDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, ArrowRight } from "lucide-react";
+import { Building2, ArrowRight, Loader2 } from "lucide-react";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+
+// Lazy load heavy business components
+const BusinessRegistration = lazy(() => import("@/components/business/BusinessRegistration"));
+const BusinessDashboard = lazy(() => import("@/components/business/BusinessDashboard"));
 
 const BusinessPortal = () => {
   const { user, loading: authLoading } = useAuth();
@@ -50,7 +53,9 @@ const BusinessPortal = () => {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <BusinessRegistration />
+          <Suspense fallback={<LoadingSkeleton />}>
+            <BusinessRegistration />
+          </Suspense>
         </div>
       </div>
     );
@@ -59,7 +64,9 @@ const BusinessPortal = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <BusinessDashboard />
+        <Suspense fallback={<LoadingSkeleton />}>
+          <BusinessDashboard />
+        </Suspense>
       </div>
     </div>
   );

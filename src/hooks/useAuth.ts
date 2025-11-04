@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,12 +22,19 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchUserProfile = async (userId: string) => {
-    console.log('🔍 useAuth: fetchUserProfile called for userId:', userId);
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
     try {
-      console.log('🔍 useAuth: Making Supabase call to fetch profile...');
-      
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
@@ -40,8 +47,6 @@ export const useAuth = () => {
         .single();
       
       const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
-      
-      console.log('🔍 useAuth: Profile fetch result:', { profile: !!profile, error: !!error });
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -63,63 +68,51 @@ export const useAuth = () => {
 
         if (createError) {
           console.error('Error creating profile:', createError);
-          setProfile(null);
+          if (!signal.aborted) setProfile(null);
         } else {
-          setProfile(newProfile);
+          if (!signal.aborted) setProfile(newProfile);
         }
       } else {
-        setProfile(profile);
+        if (!signal.aborted) setProfile(profile);
       }
     } catch (error) {
+      // Don't set error if request was aborted
+      if (signal.aborted) return;
+      
       console.error('Unexpected error fetching profile:', error);
       setProfile(null);
     }
   };
 
   useEffect(() => {
-    console.log('🔍 useAuth: useEffect starting');
-    
     // Set a fallback timeout to prevent infinite loading
     const fallbackTimeout = setTimeout(() => {
-      console.error("⚠️ Fallback reason:", { 
-        supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-        anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Present' : 'Missing',
-        profile: 'Timeout reached'
-      });
-      console.log('🔍 useAuth: Fallback timeout reached, setting loading to false');
       setLoading(false);
     }, 15000);
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔍 useAuth: Auth state change:', event, 'session:', !!session);
         clearTimeout(fallbackTimeout);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          console.log('🔍 useAuth: User found, fetching profile...');
           try {
             await fetchUserProfile(session.user.id);
           } catch (error) {
-            console.error('🔍 useAuth: Profile fetch failed:', error);
+            console.error('Profile fetch failed:', error);
             setProfile(null);
           }
         } else {
-          console.log('🔍 useAuth: No user, clearing profile');
           setProfile(null);
         }
         
-        console.log('🔍 useAuth: Setting loading to false');
         setLoading(false);
       }
     );
 
     // Check for existing session
-    console.log('🔍 useAuth: Checking for existing session...');
-    
-    // Add timeout to getSession
     const sessionTimeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Session check timeout')), 10000);
     });
@@ -130,32 +123,35 @@ export const useAuth = () => {
     ]).then(async (result: any) => {
       clearTimeout(fallbackTimeout);
       const { data: { session } } = result;
-      console.log('🔍 useAuth: getSession result:', !!session);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        console.log('🔍 useAuth: Existing user found, fetching profile...');
         try {
           await fetchUserProfile(session.user.id);
         } catch (error) {
-          console.error('🔍 useAuth: Profile fetch failed:', error);
+          console.error('Profile fetch failed:', error);
           setProfile(null);
         }
       } else {
-        console.log('🔍 useAuth: No existing user, clearing profile');
         setProfile(null);
       }
       
-      console.log('🔍 useAuth: Setting loading to false (getSession)');
       setLoading(false);
     }).catch((error) => {
-      console.error('🔍 useAuth: Session check failed:', error);
+      console.error('Session check failed:', error);
       clearTimeout(fallbackTimeout);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      clearTimeout(fallbackTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

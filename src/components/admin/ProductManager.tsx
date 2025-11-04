@@ -81,10 +81,12 @@ const ProductManager: React.FC = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
+      // Optimized query with specific fields and pagination
       const { data, error } = await supabase
         .from('products')
         .select(`
-          *,
+          id, business_id, name, description, price, image_url, category, 
+          status, searchable, created_at, updated_at,
           businesses!inner (
             id,
             name,
@@ -92,7 +94,8 @@ const ProductManager: React.FC = () => {
             island
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100); // Limit to prevent loading too many records
 
       if (error) throw error;
 

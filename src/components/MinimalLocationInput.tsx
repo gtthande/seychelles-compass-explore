@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { geocodeAddress } from '@/lib/minimal-geocode';
-import EnhancedMapLocationPicker from '@/components/EnhancedMapLocationPicker';
-import { MapPin, Map, X } from 'lucide-react';
+import { MapPin, Map, X, Loader2 } from 'lucide-react';
+
+// Lazy load heavy map component
+const EnhancedMapLocationPicker = lazy(() => import('@/components/EnhancedMapLocationPicker'));
 
 interface MinimalLocationInputProps {
   address: string;
@@ -177,12 +179,21 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
               Pick Business Location on Map
             </DialogTitle>
           </DialogHeader>
-          <EnhancedMapLocationPicker
-            lat={latitude ? parseFloat(latitude) : null}
-            lng={longitude ? parseFloat(longitude) : null}
-            onSelect={handleMapSelect}
-            onClose={() => setShowMap(false)}
-          />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-96">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <p className="text-muted-foreground">Loading map...</p>
+              </div>
+            </div>
+          }>
+            <EnhancedMapLocationPicker
+              lat={latitude ? parseFloat(latitude) : null}
+              lng={longitude ? parseFloat(longitude) : null}
+              onSelect={handleMapSelect}
+              onClose={() => setShowMap(false)}
+            />
+          </Suspense>
         </DialogContent>
       </Dialog>
     </div>

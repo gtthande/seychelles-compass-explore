@@ -1,21 +1,11 @@
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useStaticData, useServerSideData, usePaginatedData } from "@/hooks/useOptimizedData";
+import { dataFetchers } from "@/lib/data-loader";
+import { performanceLog, createPerformanceTimer } from "@/lib/performance";
 
-// Performance profiling utility
-const perfLog = (label: string, startTime?: number) => {
-  if (startTime) {
-    const duration = performance.now() - startTime;
-    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
-    if (duration > 1000) {
-      console.warn(`🐌 SLOW OPERATION: ${label} took ${duration.toFixed(2)}ms`);
-    }
-  } else {
-    console.log(`🚀 Starting: ${label}`);
-    return performance.now();
-  }
-};
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,14 +21,17 @@ import { useToast } from "@/hooks/use-toast";
 import LiveCounters from "@/components/LiveCounters";
 import BackButton from "@/components/BackButton";
 import GoogleMap from "@/components/GoogleMap";
-import ImageSearch from "@/components/ImageSearch";
+// Lazy load heavy image search component
+const ImageSearch = lazy(() => import("@/components/ImageSearch"));
 import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import BusinessSearch from "@/components/BusinessSearch";
 import BusinessTable from "@/components/BusinessTable";
 import BusinessLocationMap from "@/components/business/BusinessLocationMap";
 // import { BusinessMapPreview } from "@/components/BusinessMapPreview"; // Disabled - using static maps instead
 import BusinessCardSkeleton from "@/components/BusinessCardSkeleton";
-import MapModal from "@/components/MapModal";
+import BusinessCardLight from "@/components/BusinessCardLight";
+// Lazy load heavy map component
+const MapModal = lazy(() => import("@/components/MapModal"));
 import { geocodeAddress } from "@/lib/geocoding";
 import { getDirectionsUrl, getAddressDirectionsUrl, isValidCoordinates } from "@/lib/maps";
 import { 
@@ -47,7 +40,6 @@ import {
   Mail, 
   Globe, 
   Star, 
-  Heart,
   MessageCircle,
   Facebook,
   Instagram,
@@ -63,7 +55,8 @@ import {
   Filter,
   ExternalLink,
   ChevronDown,
-  Navigation
+  Navigation,
+  Loader2
 } from "lucide-react";
 
 interface Business {
@@ -104,11 +97,13 @@ interface CategoryGroup {
 }
 
 const Directory = () => {
+  const performanceTimer = createPerformanceTimer('Directory component mount');
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  performanceLog('Directory component initializing');
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,56 +136,57 @@ const Directory = () => {
 
   const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
 
-  // Fetch categories from database
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('businesses')
-          .select('category')
-          .eq('status', 'active')
-          .not('category', 'is', null);
+  // Use optimized data fetching for categories
+  const { data: categoriesData, loading: categoriesLoading } = useStaticData(
+    'directory_categories',
+    async () => {
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('category')
+        .eq('status', 'active')
+        .not('category', 'is', null);
 
-        if (error) throw error;
-        
-        // Get distinct categories with counts
-        const categoryMap: Record<string, { label: string; count: number }> = {};
-        
-        data?.forEach(business => {
-          const categoryValue = business.category;
-          if (categoryValue) {
-            if (!categoryMap[categoryValue]) {
-              categoryMap[categoryValue] = { label: categoryValue, count: 0 };
-            }
-            categoryMap[categoryValue].count++;
+      if (error) throw error;
+      
+      // Get distinct categories with counts
+      const categoryMap: Record<string, { label: string; count: number }> = {};
+      
+      data?.forEach(business => {
+        const categoryValue = business.category;
+        if (categoryValue) {
+          if (!categoryMap[categoryValue]) {
+            categoryMap[categoryValue] = { label: categoryValue, count: 0 };
           }
-        });
+          categoryMap[categoryValue].count++;
+        }
+      });
 
-        // Convert to array and format labels
-        const categoryOptions = Object.entries(categoryMap).map(([value, data]) => ({
-          value,
-          label: `${data.label} (${data.count})`
-        })).sort((a, b) => a.label.localeCompare(b.label));
-        
-        setCategories(categoryOptions);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        // Fallback to default categories
-        setCategories([
-          { value: "food", label: "Food & Beverages" },
-          { value: "accommodation", label: "Accommodation" },
-          { value: "tours", label: "Tours & Activities" },
-          { value: "transport", label: "Transportation" },
-          { value: "retail", label: "Retail Products" },
-          { value: "services", label: "Services" },
-          { value: "entertainment", label: "Entertainment" },
-          { value: "education", label: "Education" },
-        ]);
-      }
-    };
+      // Convert to array and format labels
+      return Object.entries(categoryMap).map(([value, data]) => ({
+        value,
+        label: `${data.label} (${data.count})`
+      })).sort((a, b) => a.label.localeCompare(b.label));
+    },
+    {
+      fallback: [
+        { value: "food", label: "Food & Beverages" },
+        { value: "accommodation", label: "Accommodation" },
+        { value: "tours", label: "Tours & Activities" },
+        { value: "transport", label: "Transportation" },
+        { value: "retail", label: "Retail Products" },
+        { value: "services", label: "Services" },
+        { value: "entertainment", label: "Entertainment" },
+        { value: "education", label: "Education" },
+      ]
+    }
+  );
 
-    fetchCategories();
-  }, []);
+  // Update categories state when data loads
+  useEffect(() => {
+    if (categoriesData) {
+      setCategories(categoriesData);
+    }
+  }, [categoriesData]);
 
   const islands = ["Mahé", "Praslin", "La Digue", "Silhouette", "Curieuse", "Bird", "Denis"];
   
@@ -217,76 +213,73 @@ const Directory = () => {
   const [cacheTimestamp, setCacheTimestamp] = React.useState<number>(0);
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  const fetchBusinesses = async () => {
-    const fetchStartTime = perfLog('Directory fetchBusinesses start');
-    
-    // Check cache first
-    const now = Date.now();
-    if (businessesCache && (now - cacheTimestamp) < CACHE_DURATION) {
-      console.log('Using cached businesses data');
-      setBusinesses(businessesCache);
-      setLoading(false);
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      console.log('Starting to fetch businesses...');
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
-      });
-      
-      const queryStartTime = perfLog('Directory Supabase query start');
-      const fetchPromise = supabase
+  // Use optimized data fetching for businesses - Prioritize first 10 for faster loading
+  const {
+    data: businessesData,
+    loading: businessesLoading,
+    error: businessesError,
+    hasMore,
+    loadNextPage,
+    refresh: refreshBusinesses
+  } = useServerSideData(
+    'directory_businesses',
+    async () => {
+      let query = supabase
         .from('businesses')
         .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
         .eq('status', 'active')
         .order('featured', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(20); // Limit results for performance
+        .limit(10); // Reduced from 20 to 10 for faster initial load
 
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-      perfLog('Directory Supabase query completed', queryStartTime);
-
-      if (error) {
-        console.error('Error fetching businesses:', error);
-        toast({
-          title: "Error",
-          description: `Failed to load businesses: ${error.message}`,
-          variant: "destructive",
-        });
-        // Set empty array to prevent infinite loading
-        setBusinesses([]);
-      } else {
-        console.log('Loaded businesses:', data?.length || 0);
-        console.log('Business names:', data?.map(b => b.name) || []);
-        const businessesData = data || [];
-        setBusinesses(businessesData);
-        // Cache the data
-        setBusinessesCache(businessesData);
-        setCacheTimestamp(now);
+      // Apply filters
+      if (selectedCategory) {
+        query = query.eq('category', selectedCategory);
       }
-    } catch (error: any) {
-      console.error('Error:', error);
+      if (selectedIsland) {
+        query = query.eq('island', selectedIsland);
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    {
+      cache: true,
+      ttl: 30000 // 30 seconds cache
+    }
+  );
+
+  // Update businesses state when data changes
+  useEffect(() => {
+    if (businessesData) {
+      performanceLog('Businesses data loaded', performanceTimer());
+      setBusinesses(businessesData);
+    }
+  }, [businessesData]);
+
+  // Update loading state
+  useEffect(() => {
+    setLoading(businessesLoading);
+  }, [businessesLoading]);
+
+  // Handle errors
+  useEffect(() => {
+    if (businessesError) {
       toast({
         title: "Error",
-        description: `An unexpected error occurred: ${error.message}`,
+        description: `Failed to load businesses: ${businessesError}`,
         variant: "destructive",
       });
-      // Set empty array to prevent infinite loading
-      setBusinesses([]);
-    } finally {
-      setLoading(false);
-      perfLog('Directory fetchBusinesses completed', fetchStartTime);
     }
-  };
+  }, [businessesError, toast]);
 
-  const fetchProducts = async () => {
+  // Memoize fetchProducts to prevent unnecessary re-renders
+  const fetchProducts = useCallback(async () => {
     try {
-      console.log('Starting to fetch products...');
-      
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -303,14 +296,13 @@ const Directory = () => {
         console.error('Error fetching products:', error);
         setProducts([]);
       } else {
-        console.log('Loaded products:', data?.length || 0);
         setProducts(data || []);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
       setProducts([]);
     }
-  };
+  }, []);
 
   // Edit business functions
   const handleEditBusiness = (business: Business) => {
@@ -352,7 +344,7 @@ const Directory = () => {
 
       setIsEditDialogOpen(false);
       setEditingBusiness(null);
-      fetchBusinesses(); // Refresh the list
+      refreshBusinesses(); // Refresh the list
     } catch (error: any) {
       console.error('Error updating business:', error);
       toast({
@@ -415,25 +407,42 @@ const Directory = () => {
     const testConnection = async () => {
       try {
         console.log('Testing Supabase connection...');
-        const { data, error } = await supabase.from('businesses').select('count').limit(1);
+        
+        // Simple connection test
+        const { data, error } = await supabase.from('businesses').select('id').limit(1);
+        
         if (error) {
           console.error('Supabase connection error:', error);
+          console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          });
           toast({
             title: "Connection Error",
-            description: "Cannot connect to database. Please check your connection.",
+            description: `Database error: ${error.message} (Code: ${error.code})`,
             variant: "destructive",
           });
           setLoading(false);
           return;
         }
-        console.log('Supabase connection successful');
-        fetchBusinesses();
+        
+        console.log('Supabase connection successful, data:', data);
+        // Refresh data using the proper methods
+        refreshBusinesses();
         fetchProducts();
       } catch (error) {
         console.error('Connection test failed:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error instanceof Error:', error instanceof Error);
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
         toast({
           title: "Connection Error",
-          description: "Cannot connect to database. Please check your connection.",
+          description: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive",
         });
         setLoading(false);
@@ -467,10 +476,10 @@ const Directory = () => {
   }, [categories]);
 
   // Debounced filter application
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      // Apply all filters
-      let filtered = businesses;
+  // Memoize filtered businesses calculation to prevent expensive re-computations
+  const filteredBusinesses = useMemo(() => {
+    // Apply all filters
+    let filtered = businesses;
     
     // Enhanced search with relevance scoring and prioritization
     if (searchTerm) {
@@ -615,11 +624,8 @@ const Directory = () => {
       filtered = filtered.filter(business => business.featured);
     }
 
-    setFilteredBusinesses(filtered);
-    }, 200); // 200ms debounce for faster response
-
-    return () => clearTimeout(timeoutId);
-  }, [businesses, searchTerm, selectedCategory, selectedIsland, hasWhatsApp, showFeatured]);
+    return filtered;
+  }, [businesses, searchTerm, selectedCategory, selectedIsland, hasWhatsApp, showFeatured, products]);
   
   const openInMaps = (business: Business) => {
     if (business.latitude && business.longitude) {
@@ -942,7 +948,7 @@ const Directory = () => {
                       // Update business location
                       const updatedBusiness = { ...business, latitude: lat, longitude: lng };
                       setBusinesses(prev => prev.map(b => b.id === business.id ? updatedBusiness : b));
-                      setFilteredBusinesses(prev => prev.map(b => b.id === business.id ? updatedBusiness : b));
+                      // Note: filteredBusinesses will automatically update via useMemo
                       
                       // Update in database
                       supabase
@@ -1008,7 +1014,13 @@ const Directory = () => {
                 </div>
                 <div className="space-y-2">
                   {businesses.map((business) => (
-                    <BusinessListingCard key={business.id} business={business} />
+                    <BusinessCardLight 
+                      key={business.id} 
+                      business={business}
+                      onEdit={isAdmin ? handleEditBusiness : undefined}
+                      onView={(business) => navigate(`/business/${business.id}`)}
+                      isOwner={isAdmin}
+                    />
                   ))}
                 </div>
               </div>
@@ -1116,7 +1128,13 @@ const Directory = () => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredBusinesses.map((business) => (
-                      <BusinessListingCard key={business.id} business={business} />
+                      <BusinessCardLight 
+                        key={business.id} 
+                        business={business}
+                        onEdit={isAdmin ? handleEditBusiness : undefined}
+                        onView={(business) => navigate(`/business/${business.id}`)}
+                        isOwner={isAdmin}
+                      />
                     ))}
                   </div>
                 )}
@@ -1162,7 +1180,16 @@ const Directory = () => {
             </div>
 
             {/* Image Search */}
-            <ImageSearch onSearchResults={handleImageSearchResults} />
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-32">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <p className="text-sm text-muted-foreground">Loading image search...</p>
+                </div>
+              </div>
+            }>
+              <ImageSearch onSearchResults={handleImageSearchResults} />
+            </Suspense>
             
             {/* Main Search */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
@@ -1551,17 +1578,26 @@ const Directory = () => {
 
       {/* Map Modal */}
       {selectedBusinessForMap && (
-        <MapModal
-          isOpen={mapModalOpen}
-          onClose={() => {
-            setMapModalOpen(false);
-            setSelectedBusinessForMap(null);
-          }}
-          businessName={selectedBusinessForMap.name}
-          lat={selectedBusinessForMap.latitude!}
-          lng={selectedBusinessForMap.longitude!}
-          address={selectedBusinessForMap.address}
-        />
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-96">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 animate-spin" />
+              <p className="text-muted-foreground">Loading map...</p>
+            </div>
+          </div>
+        }>
+          <MapModal
+            isOpen={mapModalOpen}
+            onClose={() => {
+              setMapModalOpen(false);
+              setSelectedBusinessForMap(null);
+            }}
+            businessName={selectedBusinessForMap.name}
+            lat={selectedBusinessForMap.latitude!}
+            lng={selectedBusinessForMap.longitude!}
+            address={selectedBusinessForMap.address}
+          />
+        </Suspense>
       )}
     </div>
   );

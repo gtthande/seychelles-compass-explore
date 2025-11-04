@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,11 +20,14 @@ import {
   Upload,
   UserCheck,
   Building2,
-  Package
+  Package,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDocumentationExport } from "@/hooks/useDocumentationExport";
-import VersionControl from "@/components/documentation/VersionControl";
+
+// Lazy load heavy documentation components
+const VersionControl = lazy(() => import("@/components/documentation/VersionControl"));
 
 const Documentation = () => {
   const { toast } = useToast();
@@ -502,7 +505,16 @@ const Documentation = () => {
 
           <TabsContent value="version">
             <ScrollArea className="h-[calc(100vh-200px)]">
-              <VersionControl />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-64">
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <p className="text-muted-foreground">Loading version control...</p>
+                  </div>
+                </div>
+              }>
+                <VersionControl />
+              </Suspense>
             </ScrollArea>
         </TabsContent>
 

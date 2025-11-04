@@ -1,39 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Users, Star, ArrowDown } from "lucide-react";
+import { Search, MapPin, Users, Star, ArrowDown, Loader2 } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
 import { useHeroSection } from "@/hooks/useHeroSection";
-import SearchWithTypeahead from "@/components/SearchWithTypeahead";
 import { useNavigate } from "react-router-dom";
+import OptimizedImage from "@/components/OptimizedImage";
+
+// Lazy load heavy search component
+const SearchWithTypeahead = lazy(() => import("@/components/SearchWithTypeahead"));
 
 const Hero = () => {
-  console.log('🎯 Hero component initializing...');
-  
   const { counters, loading } = useLiveCounters();
   const { heroSection, loading: heroLoading } = useHeroSection();
   const [searchValue, setSearchValue] = useState("");
   const navigate = useNavigate();
-  
-  console.log('🎯 Hero component state:', { counters, loading, heroSection, heroLoading });
 
   // Handle search navigation
   const handleSearch = (searchTerm: string) => {
-    console.log('🔍 Hero: Navigating to directory with search:', searchTerm);
     navigate(`/directory?search=${encodeURIComponent(searchTerm)}`);
   };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 md:pt-32 pb-16 md:pb-20">
-      {/* Persistent Seychelles Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ 
-          backgroundImage: `url(/assets/hero.jpg)`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed'
-        }}
-      />
+      {/* Optimized Background Image */}
+      <div className="absolute inset-0">
+        <OptimizedImage
+          src="/assets/hero.jpg"
+          alt="Seychelles beautiful landscape"
+          className="w-full h-full object-cover"
+          priority={true}
+          loading="eager"
+          sizes="100vw"
+        />
+      </div>
       
       {/* Subtle Gradient Overlay for Text Readability */}
       <div 
@@ -82,12 +81,21 @@ const Hero = () => {
           {/* Clean Search Bar - No shadows, borders, or backgrounds */}
           <div className="max-w-3xl mx-auto mb-16 mt-8">
             <div className="relative">
-              <SearchWithTypeahead
-                value={searchValue}
-                onChange={setSearchValue}
-                onSearch={handleSearch}
-                placeholder="What are you looking for in Seychelles?"
-              />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-12">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm text-white/70">Loading search...</span>
+                  </div>
+                </div>
+              }>
+                <SearchWithTypeahead
+                  value={searchValue}
+                  onChange={setSearchValue}
+                  onSearch={handleSearch}
+                  placeholder="What are you looking for in Seychelles?"
+                />
+              </Suspense>
             </div>
           </div>
           

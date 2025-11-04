@@ -45,7 +45,7 @@ interface Business {
   total_reviews: number;
   created_at: string;
   updated_at: string;
-  user_id: string;
+  owner_id: string;
 }
 
 const BusinessManager = () => {
@@ -73,10 +73,17 @@ const BusinessManager = () => {
   const fetchBusinesses = async () => {
     setLoading(true);
     try {
+      // Optimized query with specific fields and pagination
       const { data, error } = await supabase
         .from('businesses')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select(`
+          id, name, description, category, status, phone, email, website, 
+          address, island, latitude, longitude, featured, verified, 
+          logo_url, cover_image_url, average_rating, total_reviews, 
+          created_at, updated_at, owner_id
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100); // Limit to prevent loading too many records
 
       if (error) throw error;
       setBusinesses(data || []);

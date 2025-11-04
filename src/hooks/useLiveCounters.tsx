@@ -1,19 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-
-// Performance profiling utility
-const perfLog = (label: string, startTime?: number) => {
-  if (startTime) {
-    const duration = performance.now() - startTime;
-    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
-    if (duration > 1000) {
-      console.warn(`🐌 SLOW OPERATION: ${label} took ${duration.toFixed(2)}ms`);
-    }
-  } else {
-    console.log(`🚀 Starting: ${label}`);
-    return performance.now();
-  }
-};
 
 interface CounterData {
   businesses: number;
@@ -23,8 +9,6 @@ interface CounterData {
 }
 
 export const useLiveCounters = () => {
-  console.log('📊 useLiveCounters hook initializing...');
-  
   const [counters, setCounters] = useState<CounterData>({
     businesses: 0,
     products: 0,
@@ -33,40 +17,61 @@ export const useLiveCounters = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchCounts = async () => {
-    const queryStartTime = perfLog('LiveCounters fetchCounts start');
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
     try {
       setError(null);
       setLoading(true);
       
       // Use the new database function for accurate counts
-      const rpcStartTime = perfLog('LiveCounters RPC call start');
-      const { data, error } = await supabase.rpc('get_live_counters');
-      perfLog('LiveCounters RPC call completed', rpcStartTime);
+      const { data, error } = await supabase.rpc('get_live_counters', {}, {
+        signal
+      });
 
       if (error) {
-        console.error('RPC Error:', error);
+        console.error('🚨 useLiveCounters: RPC get_live_counters failed:', error);
+        console.error('RPC Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        
         // Fallback to individual queries if RPC fails - optimized for performance
-        const fallbackStartTime = perfLog('LiveCounters fallback queries start');
-        
-        // Use parallel queries for better performance
-        const [businessesResult, productsResult, usersResult, reviewsResult] = await Promise.all([
-          supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-          supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-          supabase.from('profiles').select('id', { count: 'exact', head: true }),
-          supabase.from('reviews').select('id', { count: 'exact', head: true })
-        ]);
-        
-        perfLog('LiveCounters fallback queries completed', fallbackStartTime);
+        console.log('🔄 useLiveCounters: Falling back to individual queries...');
+        try {
+          const [businessesResult, productsResult] = await Promise.all([
+            supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+            supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active')
+          ]);
 
-        const businesses = businessesResult.count || 0;
-        const products = productsResult.count || 0;
-        const users = usersResult.count || 0;
-        const reviews = reviewsResult.count || 0;
+          if (businessesResult.error) {
+            console.error('🚨 useLiveCounters: Businesses query error:', businessesResult.error);
+          }
+          if (productsResult.error) {
+            console.error('🚨 useLiveCounters: Products query error:', productsResult.error);
+          }
 
-        setCounters({ businesses, products, users, reviews });
-        return;
+          const businesses = businessesResult.count || 0;
+          const products = productsResult.count || 0;
+
+          console.log('✅ useLiveCounters: Fallback queries successful:', { businesses, products });
+          setCounters({ businesses, products, users: 0, reviews: 0 });
+          return;
+        } catch (fallbackError) {
+          console.error('🚨 useLiveCounters: Fallback queries failed:', fallbackError);
+          throw fallbackError;
+        }
       }
 
       if (data && data.length > 0) {
@@ -87,7 +92,17 @@ export const useLiveCounters = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching counts:', error);
+      // Don't set error if request was aborted
+      if (signal.aborted) return;
+      
+      console.error('🚨 useLiveCounters: Exception caught:', error);
+      console.error('Exception type:', typeof error);
+      console.error('Exception instanceof Error:', error instanceof Error);
+      if (error instanceof Error) {
+        console.error('Exception message:', error.message);
+        console.error('Exception stack:', error.stack);
+      }
+      
       setError(error instanceof Error ? error.message : 'Failed to fetch counters');
       // Set to fallback values on error to handle gracefully
       setCounters({
@@ -97,8 +112,9 @@ export const useLiveCounters = () => {
         reviews: 0,
       });
     } finally {
-      setLoading(false);
-      perfLog('LiveCounters fetchCounts completed', queryStartTime);
+      if (!signal.aborted) {
+        setLoading(false);
+      }
     }
   };
 
@@ -135,6 +151,12 @@ export const useLiveCounters = () => {
       .subscribe();
 
     return () => {
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Clean up subscriptions
       supabase.removeChannel(businessChannel);
       supabase.removeChannel(productChannel);
       supabase.removeChannel(profileChannel);

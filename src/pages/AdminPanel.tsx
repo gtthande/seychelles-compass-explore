@@ -20,16 +20,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building, UserCog, Terminal, GitBranch, Activity } from "lucide-react";
-import CategoryManager from "@/components/admin/CategoryManager";
-import HeroSectionManager from "@/components/admin/HeroSectionManager";
-import DevSyncPanel from "@/pages/admin/DevSyncPanel";
-import CodeSync from "@/pages/admin/CodeSync";
-import LazyTabContent from "@/components/admin/LazyTabContent";
-import OptimizedUserManager from "@/components/admin/OptimizedUserManager";
-import OptimizedBusinessManager from "@/components/admin/OptimizedBusinessManager";
-import ProductManager from "@/components/admin/ProductManager";
+import { lazy, Suspense } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import PerformanceMonitor from "@/components/PerformanceMonitor";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+
+// Lazy load heavy admin components
+const CategoryManager = lazy(() => import("@/components/admin/CategoryManager"));
+const HeroSectionManager = lazy(() => import("@/components/admin/HeroSectionManager"));
+const DevSyncPanel = lazy(() => import("@/pages/admin/DevSyncPanel"));
+const CodeSync = lazy(() => import("@/pages/admin/CodeSync"));
+const LazyTabContent = lazy(() => import("@/components/admin/LazyTabContent"));
+const OptimizedUserManager = lazy(() => import("@/components/admin/OptimizedUserManager"));
+const OptimizedBusinessManager = lazy(() => import("@/components/admin/OptimizedBusinessManager"));
+const ProductManager = lazy(() => import("@/components/admin/ProductManager"));
+const PerformanceMonitor = lazy(() => import("@/components/PerformanceMonitor"));
 
 const AdminPanel = () => {
   const adminStartTime = perfLog('AdminPanel component start');
@@ -197,7 +201,9 @@ const AdminPanel = () => {
         </TabsList>
 
         <TabsContent value="hero">
-          <HeroSectionManager />
+          <Suspense fallback={<LoadingSkeleton />}>
+            <HeroSectionManager />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="appointments">
@@ -226,7 +232,9 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="categories">
-          <CategoryManager />
+          <Suspense fallback={<LoadingSkeleton />}>
+            <CategoryManager />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="businesses">
@@ -238,7 +246,9 @@ const AdminPanel = () => {
               await new Promise(resolve => setTimeout(resolve, 500));
             }}
           >
-            <OptimizedBusinessManager />
+            <Suspense fallback={<LoadingSkeleton />}>
+              <OptimizedBusinessManager />
+            </Suspense>
           </LazyTabContent>
         </TabsContent>
 
@@ -276,7 +286,9 @@ const AdminPanel = () => {
               await new Promise(resolve => setTimeout(resolve, 500));
             }}
           >
-            <OptimizedUserManager />
+            <Suspense fallback={<LoadingSkeleton />}>
+              <OptimizedUserManager />
+            </Suspense>
           </LazyTabContent>
         </TabsContent>
 
@@ -289,7 +301,9 @@ const AdminPanel = () => {
               await new Promise(resolve => setTimeout(resolve, 500));
             }}
           >
-            <ProductManager />
+            <Suspense fallback={<LoadingSkeleton />}>
+              <ProductManager />
+            </Suspense>
           </LazyTabContent>
         </TabsContent>
 
@@ -319,16 +333,22 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="dev-sync">
-          <DevSyncPanel />
+          <Suspense fallback={<LoadingSkeleton />}>
+            <DevSyncPanel />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="code-sync">
-          <CodeSync />
+          <Suspense fallback={<LoadingSkeleton />}>
+            <CodeSync />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="performance">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PerformanceMonitor />
+            <Suspense fallback={<LoadingSkeleton />}>
+              <PerformanceMonitor />
+            </Suspense>
             <Card>
               <CardHeader>
                 <CardTitle>Performance Metrics</CardTitle>

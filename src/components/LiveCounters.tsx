@@ -1,49 +1,66 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Package, Users, Star } from "lucide-react";
 import { useLiveCounters } from "@/hooks/useLiveCounters";
 
-// Performance profiling utility
-const perfLog = (label: string, startTime?: number) => {
-  if (startTime) {
-    const duration = performance.now() - startTime;
-    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
-    if (duration > 1000) {
-      console.warn(`🐌 SLOW OPERATION: ${label} took ${duration.toFixed(2)}ms`);
-    }
-  } else {
-    console.log(`🚀 Starting: ${label}`);
-    return performance.now();
-  }
-};
 
 const LiveCounters = () => {
-  const componentStartTime = perfLog('LiveCounters component start');
   const { counters, loading, error } = useLiveCounters();
 
-  console.log('LiveCounters:', { counters, loading, error });
+  // Memoize counter data to prevent unnecessary re-renders
+  const counterData = useMemo(() => {
+    if (loading) return [];
+    if (error) return [];
+    
+    return [
+      {
+        title: "Verified Businesses",
+        value: counters?.businesses || 0,
+        icon: Building2,
+        color: "text-blue-600"
+      },
+      {
+        title: "Products Available",
+        value: counters?.products || 0,
+        icon: Package,
+        color: "text-green-600"
+      },
+      {
+        title: "Registered Users",
+        value: counters?.users || 0,
+        icon: Users,
+        color: "text-purple-600"
+      },
+      {
+        title: "Customer Reviews",
+        value: counters?.reviews || 0,
+        icon: Star,
+        color: "text-yellow-600"
+      }
+    ];
+  }, [counters, loading, error]);
 
-  useEffect(() => {
-    perfLog('LiveCounters data loaded', componentStartTime);
-  }, [loading, counters]);
 
-  const CounterCard = ({ 
+  // Memoized CounterCard component to prevent unnecessary re-renders
+  const CounterCard = React.memo(({ 
     title, 
     value, 
     icon: Icon, 
-    color = "text-primary" 
+    color = "text-primary",
+    loading = false
   }: { 
     title: string; 
     value: number; 
     icon: any; 
-    color?: string; 
+    color?: string;
+    loading?: boolean;
   }) => (
     <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <Icon className={`h-5 w-5 text-primary`} />
+        <Icon className={`h-5 w-5 ${color}`} />
       </CardHeader>
       <CardContent>
         <div className="text-3xl font-bold text-foreground">
@@ -62,30 +79,20 @@ const LiveCounters = () => {
         </p>
       </CardContent>
     </Card>
-  );
+  ));
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <CounterCard
-        title="Verified Businesses"
-        value={counters.businesses}
-        icon={Building2}
-      />
-      <CounterCard
-        title="Products Available"
-        value={counters.products}
-        icon={Package}
-      />
-      <CounterCard
-        title="Registered Users"
-        value={counters.users}
-        icon={Users}
-      />
-      <CounterCard
-        title="Customer Reviews"
-        value={counters.reviews}
-        icon={Star}
-      />
+      {counterData.map((counter, index) => (
+        <CounterCard
+          key={counter.title}
+          title={counter.title}
+          value={counter.value}
+          icon={counter.icon}
+          color={counter.color}
+          loading={loading}
+        />
+      ))}
     </div>
   );
 };

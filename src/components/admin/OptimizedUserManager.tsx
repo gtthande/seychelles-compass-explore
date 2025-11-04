@@ -46,21 +46,24 @@ const OptimizedUserManager: React.FC = () => {
     setError(null);
     
     try {
-      // Get total count first
+      // Get total count first (optimized)
       const { count: totalCount } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
 
       setTotalUsers(totalCount || 0);
       setTotalPages(Math.ceil((totalCount || 0) / USERS_PER_PAGE));
 
-      // Get paginated profiles
+      // Get paginated profiles with specific fields
       const from = (page - 1) * USERS_PER_PAGE;
       const to = from + USERS_PER_PAGE - 1;
 
       let query = supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          id, user_id, full_name, role, is_admin, is_business_owner, 
+          created_at, updated_at, phone, business_name
+        `)
         .order('created_at', { ascending: false })
         .range(from, to);
 

@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import BusinessLocationCard from '@/components/BusinessLocationCard';
 import LocationCard from '@/components/LocationCard';
 import { useToast } from '@/hooks/use-toast';
+import { useServerSideData } from '@/hooks/useOptimizedData';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Business {
@@ -62,7 +63,7 @@ const BusinessDetail: React.FC = () => {
             id, owner_id, name, description, category, address, latitude, longitude, island,
             phone, website, email, facebook_url, instagram_url, opening_hours,
             average_rating, total_reviews, featured, verified, logo_url, cover_image_url,
-            gallery_images, services
+            gallery_images, services, status
           `)
           .eq('id', id)
           .eq('status', 'active')
@@ -312,7 +313,6 @@ const BusinessDetail: React.FC = () => {
 
             {/* Location & Contact */}
             <LocationCard
-              id={business.id}
               latitude={business.latitude}
               longitude={business.longitude}
               address={business.address}

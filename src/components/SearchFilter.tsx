@@ -158,41 +158,45 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      // Optimized parallel queries with specific fields and limits
+      const [categoriesResult, businessesResult, productsResult] = await Promise.all([
+        // Fetch categories with specific fields
+        supabase
+          .from('categories')
+          .select('id, name, slug, description, is_active')
+          .eq('is_active', true)
+          .order('name')
+          .limit(20), // Limit categories
 
-      if (categoriesError) throw categoriesError;
+        // Fetch businesses with specific fields and limit
+        supabase
+          .from('businesses')
+          .select('id, name, description, category, status, logo_url, cover_image_url, average_rating, total_reviews, address, island, phone, website, whatsapp, featured, verified')
+          .eq('status', 'active')
+          .order('featured', { ascending: false })
+          .order('name')
+          .limit(50), // Limit businesses for performance
 
-      // Fetch businesses
-      const { data: businessesData, error: businessesError } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('status', 'active')
-        .order('featured', { ascending: false })
-        .order('name');
+        // Fetch products with business info and limit
+        supabase
+          .from('products')
+          .select(`
+            id, name, description, price, currency, category, images, business_id, status,
+            businesses!inner(name, logo_url)
+          `)
+          .eq('status', 'active')
+          .eq('businesses.status', 'active')
+          .order('name')
+          .limit(100) // Limit products for performance
+      ]);
 
-      if (businessesError) throw businessesError;
+      if (categoriesResult.error) throw categoriesResult.error;
+      if (businessesResult.error) throw businessesResult.error;
+      if (productsResult.error) throw productsResult.error;
 
-      // Fetch products with business info
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          businesses!inner(name, logo_url)
-        `)
-        .eq('status', 'active')
-        .eq('businesses.status', 'active')
-        .order('name');
-
-      if (productsError) throw productsError;
-
-      setCategories(categoriesData || []);
-      setBusinesses(businessesData || []);
-      setProducts(productsData || []);
+      setCategories(categoriesResult.data || []);
+      setBusinesses(businessesResult.data || []);
+      setProducts(productsResult.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({

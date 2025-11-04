@@ -19,7 +19,7 @@ interface Business {
   status: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
+  owner_id: string;
 }
 
 interface Category {
@@ -50,21 +50,24 @@ const OptimizedBusinessManager: React.FC = () => {
     setError(null);
     
     try {
-      // Get total count first
+      // Get total count first (optimized)
       const { count: totalCount } = await supabase
         .from('businesses')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
 
       setTotalBusinesses(totalCount || 0);
       setTotalPages(Math.ceil((totalCount || 0) / USERS_PER_PAGE));
 
-      // Get paginated businesses
+      // Get paginated businesses with specific fields
       const from = (page - 1) * USERS_PER_PAGE;
       const to = from + USERS_PER_PAGE - 1;
 
       let query = supabase
         .from('businesses')
-        .select('*')
+        .select(`
+          id, name, description, address, island, category, status, 
+          created_at, updated_at, owner_id, phone, email, website
+        `)
         .order('created_at', { ascending: false })
         .range(from, to);
 

@@ -18,7 +18,7 @@ import {
   Eye,
   Calendar
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/date-utils";
 
 interface Payment {
   id: string;
@@ -337,10 +337,10 @@ const PaymentDashboard = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {format(new Date(payment.created_at), 'MMM dd, yyyy')}
+                          {formatDate(new Date(payment.created_at), 'MMM dd, yyyy')}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {format(new Date(payment.created_at), 'HH:mm')}
+                          {formatDate(new Date(payment.created_at), 'HH:mm')}
                         </div>
                       </TableCell>
                       <TableCell>

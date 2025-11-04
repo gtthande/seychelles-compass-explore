@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useServerSideData } from "@/hooks/useOptimizedData";
 import { Separator } from "@/components/ui/separator";
 import { Search, Filter, Grid, List, MapPin, Download, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,14 +62,22 @@ const Products = () => {
     "Mahé", "Praslin", "La Digue", "Silhouette", "Curieuse", "Bird", "Denis"
   ];
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
+  // Use optimized data fetching for products
+  const {
+    data: productsData,
+    loading: productsLoading,
+    error: productsError,
+    refetch: refetchProducts
+  } = useServerSideData(
+    'products_list',
+    async () => {
+      // Optimized query with specific fields and proper pagination
       let query = supabase
         .from('products')
         .select(`
-          *,
-          business:businesses(id, name, island, address)
+          id, name, description, price, currency, category, status, in_stock, 
+          images, catalogue_url, sku, unit, tags, published_at,
+          business:businesses!inner(id, name, island, address)
         `)
         .eq('status', 'active')
         .not('published_at', 'is', null)
@@ -92,38 +101,76 @@ const Products = () => {
       }
 
       if (selectedIsland && selectedIsland !== "__all__") {
-        query = query.eq('business.island', selectedIsland);
+        query = query.eq('businesses.island', selectedIsland);
       }
 
-      // Get total count for pagination
-      const { count } = await query;
-      const totalCount = count || 0;
-      setTotalPages(Math.ceil(totalCount / pageSize));
+      // Get total count for pagination (separate optimized query)
+      const countQuery = supabase
+        .from('products')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'active')
+        .not('published_at', 'is', null);
 
-      // Apply pagination
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      // Apply same filters to count query
+      if (searchTerm) {
+        countQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+      }
+      if (selectedCategory && selectedCategory !== "__all__") {
+        countQuery.eq('category', selectedCategory);
+      }
+      if (priceRange.min) {
+        countQuery.gte('price', parseFloat(priceRange.min));
+      }
+      if (priceRange.max) {
+        countQuery.lte('price', parseFloat(priceRange.max));
+      }
+      if (selectedIsland && selectedIsland !== "__all__") {
+        countQuery.eq('businesses.island', selectedIsland);
+      }
 
-      const { data, error } = await query;
+      const [{ data, error }, { count }] = await Promise.all([
+        query.range((currentPage - 1) * pageSize, currentPage * pageSize - 1),
+        countQuery
+      ]);
 
       if (error) throw error;
-      setProducts(data || []);
-    } catch (error: any) {
-      console.error('Error fetching products:', error);
+      
+      const totalCount = count || 0;
+      setTotalPages(Math.ceil(totalCount / pageSize));
+      
+      return data || [];
+    },
+    {
+      cache: true,
+      ttl: 30000 // 30 seconds cache
+    }
+  );
+
+  // Update products state when data changes
+  useEffect(() => {
+    setProducts(productsData || []);
+  }, [productsData]);
+
+  // Update loading state
+  useEffect(() => {
+    setLoading(productsLoading);
+  }, [productsLoading]);
+
+  // Handle errors
+  useEffect(() => {
+    if (productsError) {
       toast({
         title: "Error",
-        description: "Failed to load products. Please try again.",
+        description: `Failed to load products: ${productsError}`,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [productsError, toast]);
 
+  // Refetch when filters change
   useEffect(() => {
-    fetchProducts();
-  }, [searchTerm, selectedCategory, priceRange, selectedIsland, currentPage]);
+    refetchProducts();
+  }, [searchTerm, selectedCategory, priceRange, selectedIsland, currentPage, refetchProducts]);
 
   const handleShare = (product: Product, platform?: 'facebook' | 'instagram' | 'link') => {
     const productUrl = `${window.location.origin}/products/${product.id}`;

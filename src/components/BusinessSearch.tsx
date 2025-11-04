@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,8 +46,8 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
     return () => clearTimeout(debounceTimer);
   }, [query]);
 
-  const searchBusinesses = async (searchTerm: string) => {
-    console.log('🔍 BusinessSearch: Searching for:', searchTerm);
+  // Memoize search function to prevent unnecessary re-renders
+  const searchBusinesses = useCallback(async (searchTerm: string) => {
     setIsLoading(true);
     try {
       // Enhanced search with relevance scoring
@@ -61,7 +61,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
         .limit(15); // Get more results for better scoring
 
       if (error) {
-        console.error('🔍 BusinessSearch: Search error:', error);
+        console.error('Search error:', error);
         setResults([]);
       } else {
         // Apply relevance scoring and filtering
@@ -95,26 +95,26 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
           .sort((a, b) => b.relevanceScore - a.relevanceScore)
           .slice(0, 8); // Limit to top 8 results
         
-        console.log('🔍 BusinessSearch: Found', scoredResults.length, 'relevant results');
         setResults(scoredResults);
         setIsOpen(true);
         setSelectedIndex(-1);
       }
     } catch (error) {
-      console.error('🔍 BusinessSearch: Search error:', error);
+      console.error('Search error:', error);
       setResults([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []); // Empty dependency array since we don't use any external values
 
-  const handleSelect = (business: BusinessSearchResult) => {
+  // Memoize handlers to prevent unnecessary re-renders
+  const handleSelect = useCallback((business: BusinessSearchResult) => {
     setQuery(business.name);
     setIsOpen(false);
     navigate(`/business/${business.id}`);
-  };
+  }, [navigate]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isOpen || results.length === 0) return;
 
     switch (e.key) {
@@ -139,41 +139,42 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
         setSelectedIndex(-1);
         break;
     }
-  };
+  }, [isOpen, results, selectedIndex, handleSelect]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('🔍 BusinessSearch: Input changed to:', e.target.value);
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
-  };
+  }, []);
 
-  const handleInputFocus = () => {
+  const handleInputFocus = useCallback(() => {
     if (results.length > 0) {
       setIsOpen(true);
     }
-  };
+  }, [results.length]);
 
-  const handleInputBlur = () => {
+  const handleInputBlur = useCallback(() => {
     // Delay closing to allow clicking on results
     setTimeout(() => setIsOpen(false), 200);
-  };
+  }, []);
 
-  const formatCategory = (category: string) => {
-    const categoryLabels: Record<string, string> = {
-      food: 'Food & Beverages',
-      accommodation: 'Accommodation',
-      tours: 'Tours & Activities',
-      transport: 'Transportation',
-      retail: 'Retail Products',
-      services: 'Services',
-      entertainment: 'Entertainment',
-      education: 'Education',
-      diving: 'Diving',
-      hotels: 'Hotels',
-      restaurant: 'Restaurant',
-      other: 'Other'
-    };
+  // Memoize category labels to prevent recreation on every render
+  const categoryLabels = useMemo(() => ({
+    food: 'Food & Beverages',
+    accommodation: 'Accommodation',
+    tours: 'Tours & Activities',
+    transport: 'Transportation',
+    retail: 'Retail Products',
+    services: 'Services',
+    entertainment: 'Entertainment',
+    education: 'Education',
+    diving: 'Diving',
+    hotels: 'Hotels',
+    restaurant: 'Restaurant',
+    other: 'Other'
+  }), []);
+
+  const formatCategory = useCallback((category: string) => {
     return categoryLabels[category] || category;
-  };
+  }, [categoryLabels]);
 
   return (
     <div className={`relative w-full ${className}`}>

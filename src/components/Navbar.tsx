@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useNavigate } from "react-router-dom";
@@ -18,7 +18,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
-  const navigationItems = [
+  // Memoize navigation items to prevent unnecessary re-renders
+  const navigationItems = useMemo(() => [
     {
       title: "Directory",
       items: [
@@ -38,7 +39,21 @@ const Navbar = () => {
         { title: "Other Islands", href: "/islands/others" }
       ]
     }
-  ];
+  ], []);
+
+  // Memoize navigation handlers to prevent unnecessary re-renders
+  const handleHomeClick = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+    navigate('/');
+  }, [signOut, navigate]);
+
+  const handleMobileMenuToggle = useCallback(() => {
+    setIsOpen(prev => !prev);
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/50">
@@ -56,7 +71,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/')}
+            onClick={handleHomeClick}
             className="flex items-center gap-2 text-sm font-medium hover:bg-primary/10"
           >
             <Home className="w-4 h-4" />

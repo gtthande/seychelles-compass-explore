@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/date-utils";
 
 interface Appointment {
   id: string;
@@ -172,7 +172,7 @@ const AppointmentManager = () => {
           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              {format(new Date(appointment.preferred_date), 'PPP')}
+              {formatDate(new Date(appointment.preferred_date), 'PPP')}
             </div>
             {appointment.preferred_time && (
               <div className="flex items-center gap-1">
@@ -264,7 +264,7 @@ const AppointmentManager = () => {
                       <p><strong>Business:</strong> {appointment.business_name}</p>
                       <p><strong>Contact:</strong> {appointment.contact_person}</p>
                       <p><strong>Status:</strong> <Badge className={getStatusColor(appointment.status)}>{appointment.status}</Badge></p>
-                      <p><strong>Submitted:</strong> {format(new Date(appointment.created_at), 'PPp')}</p>
+                      <p><strong>Submitted:</strong> {formatDate(new Date(appointment.created_at), 'PPp')}</p>
                     </div>
                   </div>
                   
@@ -272,7 +272,7 @@ const AppointmentManager = () => {
                     <h4 className="font-medium mb-2">Preferred Appointment</h4>
                     <div className="space-y-2 text-sm">
                       {appointment.preferred_date && (
-                        <p><strong>Date:</strong> {format(new Date(appointment.preferred_date), 'PPP')}</p>
+                        <p><strong>Date:</strong> {formatDate(new Date(appointment.preferred_date), 'PPP')}</p>
                       )}
                       {appointment.preferred_time && (
                         <p><strong>Time:</strong> {appointment.preferred_time}</p>

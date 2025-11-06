@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Eye, Edit, Trash2, Loader2, AlertCircle, RefreshCw, Plus } from 'lucide-react';
+import { Search, Eye, Edit, Trash2, Loader2, AlertCircle, RefreshCw, Plus, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import PendingCountBadge from './PendingCountBadge';
 
 interface Business {
   id: string;
@@ -236,10 +237,17 @@ const OptimizedBusinessManager: React.FC = () => {
                 Manage business listings and approvals ({totalBusinesses} total businesses)
               </CardDescription>
             </div>
-            <Button onClick={() => navigate('/admin/businesses/create')}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Business
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/admin/businesses/pending')}>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Pending Approvals
+                <PendingCountBadge className="ml-2" />
+              </Button>
+              <Button onClick={() => navigate('/admin/businesses/create')}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Business
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -260,8 +268,9 @@ const OptimizedBusinessManager: React.FC = () => {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -333,8 +342,9 @@ const OptimizedBusinessManager: React.FC = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button 

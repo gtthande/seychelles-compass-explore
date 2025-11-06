@@ -19,7 +19,7 @@ const perfLog = (label: string, startTime?: number) => {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building, UserCog, Terminal, GitBranch, Activity } from "lucide-react";
+import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building, UserCog, Terminal, GitBranch, Activity, Database } from "lucide-react";
 import { lazy, Suspense } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -34,6 +34,8 @@ const OptimizedUserManager = lazy(() => import("@/components/admin/OptimizedUser
 const OptimizedBusinessManager = lazy(() => import("@/components/admin/OptimizedBusinessManager"));
 const ProductManager = lazy(() => import("@/components/admin/ProductManager"));
 const PerformanceMonitor = lazy(() => import("@/components/PerformanceMonitor"));
+const MySQLBackup = lazy(() => import("@/pages/admin/MySQLBackup"));
+import PendingCountBadge from "@/components/admin/PendingCountBadge";
 
 const AdminPanel = () => {
   const adminStartTime = perfLog('AdminPanel component start');
@@ -153,7 +155,7 @@ const AdminPanel = () => {
         </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-11">
+        <TabsList className="grid w-full grid-cols-12">
           <TabsTrigger value="hero" className="flex items-center gap-2">
             <Image className="w-4 h-4" />
             Hero Section
@@ -166,9 +168,10 @@ const AdminPanel = () => {
             <FolderOpen className="w-4 h-4" />
             Categories
           </TabsTrigger>
-          <TabsTrigger value="businesses" className="flex items-center gap-2">
+          <TabsTrigger value="businesses" className="flex items-center gap-2 relative">
             <Building className="w-4 h-4" />
             Businesses
+            <PendingCountBadge className="ml-1" />
           </TabsTrigger>
           <TabsTrigger value="payments" className="flex items-center gap-2">
             <CreditCard className="w-4 h-4" />
@@ -197,6 +200,10 @@ const AdminPanel = () => {
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <Activity className="w-4 h-4" />
             Performance
+          </TabsTrigger>
+          <TabsTrigger value="mysql-backup" className="flex items-center gap-2">
+            <Database className="w-4 h-4" />
+            MySQL Backup
           </TabsTrigger>
         </TabsList>
 
@@ -372,6 +379,12 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="mysql-backup">
+          <Suspense fallback={<LoadingSkeleton />}>
+            <MySQLBackup />
+          </Suspense>
         </TabsContent>
       </Tabs>
       </div>

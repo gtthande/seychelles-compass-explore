@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ interface Product {
 }
 
 const BusinessDashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [business, setBusiness] = useState<Business | null>(null);
@@ -484,20 +486,21 @@ const BusinessDashboard = () => {
           <h1 className="text-3xl font-bold">Business Dashboard</h1>
           <p className="text-muted-foreground">Manage your business and products</p>
         </div>
-        <Dialog open={isBusinessDialogOpen} onOpenChange={setIsBusinessDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Building className="w-4 h-4 mr-2" />
-              {business ? "Edit Business" : "Register Business"}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{business ? "Edit Business" : "Register Your Business"}</DialogTitle>
-              <DialogDescription>
-                {business ? "Update your business information" : "Create your business profile to start listing products and services"}
-              </DialogDescription>
-            </DialogHeader>
+        {business ? (
+          <Dialog open={isBusinessDialogOpen} onOpenChange={setIsBusinessDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Building className="w-4 h-4 mr-2" />
+                Edit Business
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Business</DialogTitle>
+                <DialogDescription>
+                  Update your business information
+                </DialogDescription>
+              </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -650,6 +653,12 @@ const BusinessDashboard = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        ) : (
+          <Button onClick={() => navigate('/business/register')}>
+            <Building className="w-4 h-4 mr-2" />
+            Register Business
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
@@ -707,7 +716,7 @@ const BusinessDashboard = () => {
                 <p className="text-muted-foreground mb-4">
                   Register your business to start listing products and services.
                 </p>
-                <Button onClick={() => setIsBusinessDialogOpen(true)}>
+                <Button onClick={() => navigate('/business/register')}>
                   Register Business
                 </Button>
               </CardContent>

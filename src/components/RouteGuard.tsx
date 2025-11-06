@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Shield, AlertCircle } from 'lucide-react';
@@ -17,60 +16,19 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
   requiredRole, 
   requireActive = true 
 }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin, isBusiness, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isActive, setIsActive] = useState<boolean>(true);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const checkUserRole = async () => {
-      if (authLoading) return;
-      
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  // Determine user role from useAuth hook
+  const userRole = React.useMemo(() => {
+    if (isAdmin) return 'admin';
+    if (isBusiness) return 'business';
+    return 'user';
+  }, [isAdmin, isBusiness]);
 
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('role, is_admin, is_business_owner')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching user profile:', error);
-          setUserRole('user');
-          setIsActive(true);
-        } else {
-          // Determine role based on existing schema
-          let role = 'user';
-          if (profile?.is_admin) {
-            role = 'admin';
-          } else if (profile?.is_business_owner) {
-            role = 'business';
-          } else if (profile?.role) {
-            role = profile.role;
-          }
-          setUserRole(role);
-          setIsActive(true); // Default to active
-        }
-      } catch (error) {
-        console.error('Error checking user role:', error);
-        setUserRole('user');
-        setIsActive(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkUserRole();
-  }, [user, authLoading]);
-
-  // Show loading state
-  if (authLoading || loading) {
+  // Show loading state while auth is loading or profile is not yet loaded
+  if (authLoading || (user && !profile && requiredRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -84,7 +42,8 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
     return null;
   }
 
-  // Check if user is active
+  // Check if user is active (using profile data from useAuth)
+  const isActive = profile?.is_active !== false; // Default to true if not set
   if (requireActive && !isActive) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -113,6 +72,16 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
     const hasPermission = checkRolePermission(userRole, requiredRole);
     
     if (!hasPermission) {
+      // Log debug information
+      console.log('RouteGuard: Access denied', {
+        userRole,
+        requiredRole,
+        isAdmin,
+        isBusiness,
+        profile: profile ? { is_admin: profile.is_admin, role: profile.role } : null,
+        userId: user?.id
+      });
+      
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <Card className="w-full max-w-md">
@@ -123,12 +92,22 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
               <CardTitle>Access Denied</CardTitle>
               <CardDescription>
                 You don't have permission to access this page. Required role: {requiredRole}
+                {userRole && (
+                  <span className="block mt-2 text-sm text-muted-foreground">
+                    Your current role: {userRole}
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
               <Button asChild variant="outline" className="w-full">
                 <a href="/">Return Home</a>
               </Button>
+              {requiredRole === 'admin' && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Admin access requires <code>is_admin = true</code> or <code>role = 'admin'</code> in your profile.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -140,7 +119,10 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
 };
 
 const checkRolePermission = (userRole: string | null, requiredRole: string): boolean => {
-  if (!userRole) return false;
+  if (!userRole) {
+    console.warn('RouteGuard: userRole is null or undefined');
+    return false;
+  }
   
   const roleHierarchy = {
     'user': 1,
@@ -151,7 +133,18 @@ const checkRolePermission = (userRole: string | null, requiredRole: string): boo
   const userLevel = roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
   const requiredLevel = roleHierarchy[requiredRole as keyof typeof roleHierarchy] || 0;
   
-  return userLevel >= requiredLevel;
+  const hasPermission = userLevel >= requiredLevel;
+  
+  if (!hasPermission) {
+    console.warn('RouteGuard: Permission denied', {
+      userRole,
+      requiredRole,
+      userLevel,
+      requiredLevel
+    });
+  }
+  
+  return hasPermission;
 };
 
 export default RouteGuard;

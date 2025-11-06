@@ -99,7 +99,7 @@ interface CategoryGroup {
 const Directory = () => {
   const performanceTimer = createPerformanceTimer('Directory component mount');
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   
   performanceLog('Directory component initializing');
@@ -214,23 +214,29 @@ const Directory = () => {
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   // Use optimized data fetching for businesses - Prioritize first 10 for faster loading
+  // RLS policies will automatically filter by status, but we also filter client-side for non-admins
+  // Cache key includes isAdmin to differentiate admin vs non-admin queries
   const {
     data: businessesData,
     loading: businessesLoading,
     error: businessesError,
-    hasMore,
-    loadNextPage,
-    refresh: refreshBusinesses
+    refetch: refreshBusinesses
   } = useServerSideData(
-    'directory_businesses',
+    `directory_businesses_${isAdmin ? 'admin' : 'public'}`,
     async () => {
       let query = supabase
         .from('businesses')
         .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
-        .eq('status', 'active')
         .order('featured', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(10); // Reduced from 20 to 10 for faster initial load
+
+      // For non-admin users, filter to only show active businesses
+      // RLS will enforce this at the database level, but client-side filter improves UX
+      if (!isAdmin) {
+        query = query.eq('status', 'active');
+      }
+      // Admins can see all businesses (including pending) - RLS will allow this
 
       // Apply filters
       if (selectedCategory) {

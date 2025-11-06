@@ -27,8 +27,10 @@ const BusinessCreate = lazy(() => import("./pages/admin/BusinessCreate"));
 const ProductEdit = lazy(() => import("./pages/admin/ProductEdit"));
 const ProductCreate = lazy(() => import("./pages/admin/ProductCreate"));
 const BusinessDetail = lazy(() => import("./pages/BusinessDetail"));
+const BusinessRegister = lazy(() => import("./pages/BusinessRegister"));
 const PaymentTest = lazy(() => import("./pages/PaymentTest"));
 const EmailPreview = lazy(() => import("./pages/EmailPreview"));
+const PendingBusinesses = lazy(() => import("./pages/admin/PendingBusinesses"));
 
 const queryClient = new QueryClient();
 
@@ -69,12 +71,14 @@ const App = () => {
                 <Route path="/directory" element={<Directory />} />
                 <Route path="/business/:id" element={<BusinessDetail />} />
                 <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
+                <Route path="/business/register" element={<BusinessRegister />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/docs" element={<Documentation />} />
                 <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
                 <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
                 <Route path="/admin/businesses/create" element={<RouteGuard requiredRole="admin"><BusinessCreate /></RouteGuard>} />
                 <Route path="/admin/businesses/edit/:id" element={<RouteGuard requiredRole="admin"><BusinessEdit /></RouteGuard>} />
+                <Route path="/admin/businesses/pending" element={<RouteGuard requiredRole="admin"><PendingBusinesses /></RouteGuard>} />
                 <Route path="/admin/products/create" element={<RouteGuard requiredRole="admin"><ProductCreate /></RouteGuard>} />
                 <Route path="/admin/products/edit/:id" element={<RouteGuard requiredRole="admin"><ProductEdit /></RouteGuard>} />
                 <Route path="/payments/test" element={<PaymentTest />} />

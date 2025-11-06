@@ -6,3 +6,4 @@ ADD COLUMN IF NOT EXISTS image_url TEXT;
 COMMENT ON COLUMN public.categories.image_url IS 'URL or path to the category image for display on the frontend';
 
 
+

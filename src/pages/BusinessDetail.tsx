@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,9 @@ const BusinessDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
 
+  // Memoize user ID to prevent unnecessary re-fetches
+  const userId = useMemo(() => user?.id, [user?.id]);
+
   useEffect(() => {
     const fetchBusiness = async () => {
       if (!id) {
@@ -57,6 +60,7 @@ const BusinessDetail: React.FC = () => {
 
       try {
         setLoading(true);
+        setError(null);
         const { data, error: fetchError } = await supabase
           .from('businesses')
           .select(`
@@ -72,22 +76,34 @@ const BusinessDetail: React.FC = () => {
         if (fetchError) {
           console.error('Error fetching business:', fetchError);
           setError('Business not found');
+          setLoading(false);
+          return;
+        }
+
+        if (!data) {
+          setError('Business not found');
+          setLoading(false);
           return;
         }
 
         setBusiness(data);
         
-        // Check if current user is the owner
-        if (user && data.owner_id) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
-          
-          if (profile && profile.id === data.owner_id) {
-            setIsOwner(true);
+        // Check if current user is the owner (only if user exists and business has owner_id)
+        if (userId && data.owner_id) {
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', userId)  // Fixed: use id (primary key) not user_id
+              .single();
+            
+            setIsOwner(profile?.id === data.owner_id);
+          } catch (profileError) {
+            // Silently fail owner check - not critical
+            setIsOwner(false);
           }
+        } else {
+          setIsOwner(false);
         }
       } catch (err) {
         console.error('Error fetching business:', err);
@@ -98,16 +114,21 @@ const BusinessDetail: React.FC = () => {
     };
 
     fetchBusiness();
-  }, [id, user]);
+  }, [id, userId]);
 
-  const formatCategory = (category: string) => {
-    return category
+  // Memoize category formatting
+  const formattedCategory = useMemo(() => {
+    if (!business?.category) return '';
+    return business.category
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-  };
+  }, [business?.category]);
 
-  const handleShare = async () => {
+  // Memoize share handler
+  const handleShare = useCallback(async () => {
+    if (!business) return;
+    
     if (navigator.share && business) {
       try {
         await navigator.share({
@@ -116,17 +137,33 @@ const BusinessDetail: React.FC = () => {
           url: window.location.href,
         });
       } catch (err) {
+        // User cancelled or error - ignore
         console.log('Error sharing:', err);
       }
     } else {
       // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      toast({
-        title: "Link Copied",
-        description: "Business link copied to clipboard",
-      });
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast({
+          title: "Link Copied",
+          description: "Business link copied to clipboard",
+        });
+      } catch (err) {
+        console.error('Failed to copy to clipboard:', err);
+      }
     }
-  };
+  }, [business, toast]);
+
+  // Memoize navigation handlers
+  const handleBack = useCallback(() => {
+    navigate('/directory');
+  }, [navigate]);
+
+  const handleEdit = useCallback(() => {
+    if (business) {
+      navigate(`/business-dashboard?edit=${business.id}`);
+    }
+  }, [business, navigate]);
 
   if (loading) {
     return (
@@ -173,7 +210,7 @@ const BusinessDetail: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/directory')}
+            onClick={handleBack}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -181,7 +218,7 @@ const BusinessDetail: React.FC = () => {
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-foreground">{business.name}</h1>
             <div className="flex items-center gap-2 mt-2">
-              <Badge variant="secondary">{formatCategory(business.category)}</Badge>
+              <Badge variant="secondary">{formattedCategory}</Badge>
               {business.featured && (
                 <Badge variant="default">Featured</Badge>
               )}
@@ -195,7 +232,7 @@ const BusinessDetail: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => navigate(`/business-dashboard?edit=${business.id}`)}
+                onClick={handleEdit}
               >
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Business

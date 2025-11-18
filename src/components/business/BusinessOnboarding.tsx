@@ -142,7 +142,7 @@ const BusinessOnboarding = ({ onComplete }: BusinessOnboardingProps) => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('id', user.id)  // Fixed: use id (primary key) not user_id
         .single();
 
       if (!profile) {

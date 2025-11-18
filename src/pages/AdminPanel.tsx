@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,13 +38,10 @@ const MySQLBackup = lazy(() => import("@/pages/admin/MySQLBackup"));
 import PendingCountBadge from "@/components/admin/PendingCountBadge";
 
 const AdminPanel = () => {
-  const adminStartTime = perfLog('AdminPanel component start');
-  console.log('🔍 AdminPanel: Component starting to render');
-  const { user, profile, loading: authLoading, isAdmin } = useAuth();
-  console.log('🔍 AdminPanel: Auth state:', { user: !!user, profile: !!profile, authLoading, isAdmin });
+  // All hooks must be called unconditionally at top level
+  const { user, profile, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
   
   // Determine default tab based on URL
   const getDefaultTab = () => {
@@ -56,87 +53,25 @@ const AdminPanel = () => {
   
   const [activeTab, setActiveTab] = useState(getDefaultTab());
 
-  useEffect(() => {
-    const effectStartTime = perfLog('AdminPanel useEffect start');
-    console.log('🔍 AdminPanel: useEffect triggered, authLoading:', authLoading);
-    if (!authLoading) {
-      console.log('🔍 AdminPanel: Setting loading to false');
-      setLoading(false);
-      perfLog('AdminPanel useEffect completed', effectStartTime);
-    }
-  }, [authLoading]);
-
   // Update active tab when URL changes
   useEffect(() => {
     setActiveTab(getDefaultTab());
   }, [location.pathname]);
 
-  const handleTabChange = (value: string) => {
+  const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
     if (value === 'settings') {
       navigate('/admin/settings');
     } else {
       navigate('/admin');
     }
-  };
+  }, [navigate]);
 
-  if (authLoading || loading) {
-    console.log('🔍 AdminPanel: Showing loading state, authLoading:', authLoading, 'loading:', loading);
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="h-64 bg-muted rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto text-center">
-          <CardHeader>
-            <Shield className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <CardTitle>Admin Panel</CardTitle>
-            <CardDescription>
-              Please log in to access the admin panel
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <a href="/auth">
-                Log In
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto text-center">
-          <CardHeader>
-            <Shield className="w-16 h-16 mx-auto mb-4 text-destructive" />
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
-              You don't have permission to access the admin panel.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline">
-              <a href="/">
-                Return Home
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // RouteGuard handles all auth/loading checks, so by the time we reach here:
+  // - User is authenticated
+  // - Profile exists and is loaded
+  // - User has admin role
+  // If any of these fail, RouteGuard will redirect or show error
 
   return (
     <ErrorBoundary

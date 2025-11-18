@@ -139,7 +139,7 @@ const PendingBusinesses = () => {
 
       toast({
         title: "Success",
-        description: `${businessName} has been approved and is now active.`,
+        description: `${businessName} has been activated and is now visible to the public.`,
       });
 
       // Remove from list
@@ -170,8 +170,8 @@ const PendingBusinesses = () => {
       }
 
       toast({
-        title: "Business Rejected",
-        description: `${businessName} has been rejected.`,
+        title: "Business Suspended",
+        description: `${businessName} has been suspended.`,
       });
 
       // Remove from list

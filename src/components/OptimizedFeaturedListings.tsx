@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import OptimizedImage from "@/components/OptimizedImage";
+import { Business } from "@/types/business";
 import { 
   Star, 
   MapPin, 
@@ -13,26 +14,6 @@ import {
   MessageCircle,
   Verified
 } from "lucide-react";
-
-interface Business {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  address: string;
-  island: string;
-  phone: string;
-  email: string;
-  website: string;
-  facebook_url: string;
-  whatsapp: string;
-  logo_url: string;
-  cover_image_url: string;
-  average_rating: number;
-  total_reviews: number;
-  featured: boolean;
-  verified: boolean;
-}
 
 // Memoized BusinessCard component
 const BusinessCard = React.memo(({ 
@@ -109,9 +90,11 @@ const BusinessCard = React.memo(({
             <h3 className="text-xl font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
               {business.name}
             </h3>
-            <Badge variant="outline" className="text-xs">
-              {formatCategory(business.category)}
-            </Badge>
+            {business.category && (
+              <Badge variant="outline" className="text-xs">
+                {formatCategory(business.category)}
+              </Badge>
+            )}
             {!business.cover_image_url && (
               <div className="flex gap-1 mt-2">
                 {business.featured && (
@@ -141,15 +124,17 @@ const BusinessCard = React.memo(({
           )}
         </div>
         
-        {business.average_rating > 0 && (
+        {business.average_rating && business.average_rating > 0 && (
           <div className="flex items-center gap-2 mb-3">
             <div className="flex items-center gap-1">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
               <span className="font-medium text-foreground">{business.average_rating.toFixed(1)}</span>
             </div>
-            <span className="text-muted-foreground text-sm">
-              ({business.total_reviews} review{business.total_reviews !== 1 ? 's' : ''})
-            </span>
+            {business.total_reviews && business.total_reviews > 0 && (
+              <span className="text-muted-foreground text-sm">
+                ({business.total_reviews} review{business.total_reviews !== 1 ? 's' : ''})
+              </span>
+            )}
           </div>
         )}
         
@@ -250,13 +235,39 @@ const OptimizedFeaturedListings = () => {
     
     try {
       setDataLoading(true);
+      setLoading(true);
+      
+      // Use lean query with only required fields
       const { data, error } = await supabase
         .from('businesses')
-        .select('*')
+        .select(`
+          id,
+          name,
+          category,
+          status,
+          address,
+          island,
+          latitude,
+          longitude,
+          featured,
+          verified,
+          logo_url,
+          cover_image_url,
+          average_rating,
+          total_reviews,
+          description,
+          phone,
+          whatsapp,
+          email,
+          website,
+          facebook_url
+        `)
         .eq('status', 'active')
         .eq('featured', true)
-        .order('average_rating', { ascending: false })
-        .limit(6);
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (signal.aborted) return;
 
       if (error) {
         console.error('🚨 FeaturedListings: Query failed:', error);
@@ -266,10 +277,10 @@ const OptimizedFeaturedListings = () => {
           details: error.details,
           hint: error.hint
         });
-        if (!signal.aborted) setBusinesses([]);
+        setBusinesses([]);
       } else {
         console.log('✅ FeaturedListings: Query successful, data:', data);
-        if (!signal.aborted) setBusinesses(data || []);
+        setBusinesses(data || []);
       }
 
       const endTime = performance.now();
@@ -279,8 +290,6 @@ const OptimizedFeaturedListings = () => {
       if (signal.aborted) return;
       
       console.error('🚨 FeaturedListings: Exception caught:', error);
-      console.error('Exception type:', typeof error);
-      console.error('Exception instanceof Error:', error instanceof Error);
       if (error instanceof Error) {
         console.error('Exception message:', error.message);
         console.error('Exception stack:', error.stack);
@@ -315,9 +324,9 @@ const OptimizedFeaturedListings = () => {
     window.location.href = '/directory';
   }, []);
 
-  // Memoized skeleton component
+  // Memoized skeleton component - show 8 skeletons to match limit
   const skeletonCards = useMemo(() => (
-    [...Array(3)].map((_, i) => (
+    [...Array(8)].map((_, i) => (
       <Card key={i} className="animate-pulse">
         <CardContent className="p-6">
           <div className="h-4 bg-muted rounded w-3/4 mb-4"></div>
@@ -332,7 +341,7 @@ const OptimizedFeaturedListings = () => {
   ), []);
 
   // Show skeleton only during data loading
-  if (dataLoading) {
+  if (loading || dataLoading) {
     return (
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4">
@@ -345,7 +354,7 @@ const OptimizedFeaturedListings = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {skeletonCards}
           </div>
         </div>
@@ -362,7 +371,7 @@ const OptimizedFeaturedListings = () => {
               Featured Businesses
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Featured businesses will appear here as they join our directory
+              No featured businesses yet. Featured businesses will appear here as they join our directory.
             </p>
           </div>
         </div>

@@ -366,7 +366,7 @@ export const dataFetchers = {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)  // Fixed: use id (primary key) not user_id
       .single();
     
     if (error) throw error;

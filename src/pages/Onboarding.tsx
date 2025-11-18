@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin, Upload, X, Building2 } from "lucide-react";
+import LocationInput from "@/components/LocationInput";
 import {
   Form,
   FormControl,
@@ -215,7 +216,7 @@ const Onboarding = () => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('id', user.id)  // Fixed: use id (primary key) not user_id
         .single();
 
       if (profileError || !profile) {
@@ -513,34 +514,43 @@ const Onboarding = () => {
 
                   <div className="space-y-4">
                     <Label>GPS Coordinates</Label>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={getCurrentLocation}
-                      disabled={locationLoading}
-                      className="w-full"
-                    >
-                      {locationLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <MapPin className="w-4 h-4 mr-2" />
-                      )}
-                      {locationLoading ? "Getting location..." : "Get Current Location"}
-                    </Button>
                     
+                    {/* LocationInput for pasting coordinates or Google Maps links */}
+                    <LocationInput
+                      onParsed={(lat, lon, link) => {
+                        form.setValue("latitude", lat);
+                        form.setValue("longitude", lon);
+                      }}
+                    />
+                    
+                    {/* Display current coordinates */}
+                    {(form.watch("latitude") !== 0 || form.watch("longitude") !== 0) && (
+                      <div className="p-3 bg-muted rounded-md text-sm">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-primary" />
+                          <span className="font-medium">Current Coordinates:</span>
+                          <span className="text-muted-foreground">
+                            {form.watch("latitude").toFixed(6)}, {form.watch("longitude").toFixed(6)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Manual input fields as fallback */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="latitude"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Latitude</FormLabel>
+                            <FormLabel>Latitude (or edit manually)</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
                                 step="any"
                                 placeholder="-4.619143"
                                 {...field}
+                                value={field.value || ''}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                               />
                             </FormControl>
@@ -554,13 +564,14 @@ const Onboarding = () => {
                         name="longitude"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Longitude</FormLabel>
+                            <FormLabel>Longitude (or edit manually)</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
                                 step="any"
                                 placeholder="55.451315"
                                 {...field}
+                                value={field.value || ''}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                               />
                             </FormControl>
@@ -570,22 +581,21 @@ const Onboarding = () => {
                       />
                     </div>
                     
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleGeocodeAddress}
-                        disabled={geoLoading}
-                        className="flex-1"
-                      >
-                        {geoLoading ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <MapPin className="w-4 h-4 mr-2" />
-                        )}
-                        Auto-Fill GPS from Address
-                      </Button>
-                     </div>
+                    {/* Optional: Get current location button */}
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={getCurrentLocation}
+                      disabled={locationLoading}
+                      className="w-full"
+                    >
+                      {locationLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <MapPin className="w-4 h-4 mr-2" />
+                      )}
+                      {locationLoading ? "Getting location..." : "Or Get Current Location (GPS)"}
+                    </Button>
                    </div>
                  </div>
 

@@ -39,7 +39,7 @@ const PendingCountBadge: React.FC<PendingCountBadgeProps> = ({
         setPendingCount(prev => prev + 1);
       },
       () => {
-        // Pending business updated (might have been approved/rejected)
+        // Pending business updated (might have been activated or suspended)
         // Refetch count to be accurate
         getPendingBusinessesCount().then(count => setPendingCount(count));
       }

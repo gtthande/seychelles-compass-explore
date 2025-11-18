@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useStaticData, useServerSideData, usePaginatedData } from "@/hooks/useOptimizedData";
 import { dataFetchers } from "@/lib/data-loader";
 import { performanceLog, createPerformanceTimer } from "@/lib/performance";
+import { testSupabaseConnection } from "@/utils/test-supabase-connection";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -222,36 +223,169 @@ const Directory = () => {
     error: businessesError,
     refetch: refreshBusinesses
   } = useServerSideData(
-    `directory_businesses_${isAdmin ? 'admin' : 'public'}`,
+    `directory_businesses_${isAdmin ? 'admin' : 'public'}_${selectedCategory}_${selectedIsland}_${searchTerm}`,
     async () => {
-      let query = supabase
-        .from('businesses')
-        .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
-        .order('featured', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(10); // Reduced from 20 to 10 for faster initial load
+      try {
+        let query = supabase
+          .from('businesses')
+          .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
+          .order('featured', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(100); // Increased limit to get more results, will deduplicate
 
-      // For non-admin users, filter to only show active businesses
-      // RLS will enforce this at the database level, but client-side filter improves UX
-      if (!isAdmin) {
-        query = query.eq('status', 'active');
-      }
-      // Admins can see all businesses (including pending) - RLS will allow this
+        // For non-admin users, filter to only show active businesses
+        // RLS will enforce this at the database level, but client-side filter improves UX
+        if (!isAdmin) {
+          query = query.eq('status', 'active');
+        }
+        // Admins can see all businesses (including pending) - RLS will allow this
 
-      // Apply filters
-      if (selectedCategory) {
-        query = query.eq('category', selectedCategory);
-      }
-      if (selectedIsland) {
-        query = query.eq('island', selectedIsland);
-      }
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-      }
+        // Apply filters
+        if (selectedCategory) {
+          query = query.eq('category', selectedCategory);
+        }
+        if (selectedIsland) {
+          query = query.eq('island', selectedIsland);
+        }
+        if (searchTerm) {
+          query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+        // Execute query with retry logic for network errors
+        let lastError: any = null;
+        let data: Business[] | null = null;
+        let error: any = null;
+        let status: number | null = null;
+        
+        // Try up to 3 times for network errors
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const result = await query;
+            data = result.data;
+            error = result.error;
+            status = result.status;
+            
+            if (!error) {
+              break; // Success, exit retry loop
+            }
+            
+            // If it's a network error and we have retries left, wait and retry
+            const isNetworkError = error.message?.includes('Failed to fetch') || 
+                                   error.message?.includes('NetworkError') ||
+                                   error.name === 'TypeError' ||
+                                   error.code === 'PGRST301';
+            
+            if (attempt < 3 && isNetworkError) {
+              console.warn(`⚠️ Directory: Network error on attempt ${attempt}, retrying in ${attempt}s...`);
+              lastError = error;
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+              // Recreate query for retry (queries can't be reused after execution)
+              query = supabase
+                .from('businesses')
+                .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
+                .order('featured', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(100);
+              
+              if (!isAdmin) {
+                query = query.eq('status', 'active');
+              }
+              if (selectedCategory) {
+                query = query.eq('category', selectedCategory);
+              }
+              if (selectedIsland) {
+                query = query.eq('island', selectedIsland);
+              }
+              if (searchTerm) {
+                query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+              }
+              continue;
+            }
+            
+            break; // Non-network error or last attempt
+          } catch (fetchError: any) {
+            // Catch network errors that might not be in error object
+            const isFetchError = fetchError.message?.includes('Failed to fetch') ||
+                                 fetchError.name === 'TypeError' ||
+                                 fetchError.message?.includes('NetworkError');
+            
+            if (attempt < 3 && isFetchError) {
+              console.warn(`⚠️ Directory: Fetch error on attempt ${attempt}, retrying in ${attempt}s...`);
+              lastError = fetchError;
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+              // Recreate query for retry
+              query = supabase
+                .from('businesses')
+                .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
+                .order('featured', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(100);
+              
+              if (!isAdmin) {
+                query = query.eq('status', 'active');
+              }
+              if (selectedCategory) {
+                query = query.eq('category', selectedCategory);
+              }
+              if (selectedIsland) {
+                query = query.eq('island', selectedIsland);
+              }
+              if (searchTerm) {
+                query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+              }
+              continue;
+            }
+            throw fetchError; // Re-throw if not a retryable error
+          }
+        }
+        
+        // Log detailed error information
+        if (error || lastError) {
+          const finalError = error || lastError;
+          console.error('❌ Directory: Failed to load businesses after retries', {
+            error: finalError,
+            message: finalError.message,
+            details: finalError.details,
+            hint: finalError.hint,
+            code: finalError.code,
+            status,
+            isAdmin,
+            filters: { selectedCategory, selectedIsland, searchTerm },
+            supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+            hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+          });
+          
+          // Check if it's a network/fetch error
+          if (finalError.message?.includes('Failed to fetch') || 
+              finalError.message?.includes('NetworkError') || 
+              finalError.name === 'TypeError' ||
+              finalError.code === 'PGRST301') {
+            throw new Error(`Network error: Unable to connect to Supabase. Please check your internet connection and Supabase configuration.`);
+          }
+          
+          throw new Error(`Failed to load businesses: ${finalError.message}${finalError.details ? ` (${finalError.details})` : ''}${finalError.hint ? ` - ${finalError.hint}` : ''}`);
+        }
+
+        // Deduplicate businesses by ID to prevent duplicates
+        const uniqueBusinesses = (data || []).reduce((acc: Business[], business: Business) => {
+          if (!acc.find(b => b.id === business.id)) {
+            acc.push(business);
+          }
+          return acc;
+        }, []);
+
+        console.log(`✅ Directory: Loaded ${uniqueBusinesses.length} unique businesses (from ${data?.length || 0} total)`);
+        return uniqueBusinesses;
+      } catch (err: any) {
+        console.error('❌ Directory: Error in businesses fetch', {
+          error: err,
+          message: err?.message,
+          stack: err?.stack,
+          isAdmin,
+          filters: { selectedCategory, selectedIsland, searchTerm }
+        });
+        throw err;
+      }
     },
     {
       cache: true,
@@ -259,29 +393,113 @@ const Directory = () => {
     }
   );
 
-  // Update businesses state when data changes
+  // Update businesses state when data changes - with deduplication
   useEffect(() => {
     if (businessesData) {
       performanceLog('Businesses data loaded', performanceTimer());
-      setBusinesses(businessesData);
+      
+      // Additional deduplication check to prevent duplicates from multiple sources
+      const uniqueBusinesses = businessesData.reduce((acc: Business[], business: Business) => {
+        if (!acc.find(b => b.id === business.id)) {
+          acc.push(business);
+        }
+        return acc;
+      }, []);
+      
+      // Only update if the data actually changed (prevent unnecessary re-renders)
+      // Use a ref to track previous length to avoid dependency on businesses array
+      setBusinesses(prevBusinesses => {
+        if (prevBusinesses.length === uniqueBusinesses.length && 
+            prevBusinesses.every((b, i) => b.id === uniqueBusinesses[i]?.id)) {
+          return prevBusinesses; // No change, return previous to prevent re-render
+        }
+        return uniqueBusinesses;
+      });
     }
-  }, [businessesData]);
+  }, [businessesData]); // Only depend on businessesData to prevent loops
 
   // Update loading state
   useEffect(() => {
     setLoading(businessesLoading);
   }, [businessesLoading]);
 
-  // Handle errors
+  // Handle errors with detailed logging and helpful messages
   useEffect(() => {
     if (businessesError) {
+      console.error('❌ Directory: Business loading error', {
+        error: businessesError,
+        isAdmin,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Check if it's a "Failed to fetch" error (network/CORS issue) or timeout
+      const isNetworkError = businessesError.includes('Failed to fetch') || 
+                             businessesError.includes('NetworkError') ||
+                             businessesError.includes('TypeError') ||
+                             businessesError.includes('Network error') ||
+                             businessesError.includes('timeout') ||
+                             businessesError.includes('Request timeout') ||
+                             businessesError.includes('took too long');
+      
+      let errorDescription = businessesError;
+      let helpText = '';
+      
+      if (isNetworkError) {
+        if (businessesError.includes('timeout') || businessesError.includes('took too long')) {
+          errorDescription = 'Connection timeout: Supabase is taking too long to respond.';
+          helpText = 'This could be: 1) Slow network connection, 2) Supabase project is paused/slow, 3) CORS blocking the request, 4) Firewall/VPN blocking Supabase. Try the connection test below.';
+        } else {
+          errorDescription = 'Unable to connect to Supabase. This is usually a network or configuration issue.';
+          helpText = 'Please check: 1) Your internet connection, 2) Supabase project is active, 3) CORS settings in Supabase dashboard, 4) Run: npm run verify-supabase';
+        }
+      } else if (businessesError.includes('permission') || businessesError.includes('policy')) {
+        errorDescription = 'Permission denied. You may not have access to view businesses.';
+        helpText = 'Contact an administrator if you believe this is an error.';
+      }
+      
       toast({
-        title: "Error",
-        description: `Failed to load businesses: ${businessesError}`,
+        title: "Failed to Load Businesses",
+        description: (
+          <div>
+            <p>{errorDescription}</p>
+            {helpText && <p className="text-xs mt-1 opacity-90">{helpText}</p>}
+            <p className="text-xs mt-1 opacity-75">Error: {businessesError}</p>
+            {isNetworkError && (
+              <div className="mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    console.log('Running connection test...');
+                    const result = await testSupabaseConnection();
+                    if (result.success) {
+                      toast({
+                        title: "Connection Test Passed",
+                        description: "Supabase connection is working. Try refreshing the page.",
+                      });
+                      // Reload after a short delay
+                      setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                      toast({
+                        title: "Connection Test Failed",
+                        description: result.error || "Check browser console for details",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className="mt-2"
+                >
+                  🔍 Test Connection
+                </Button>
+              </div>
+            )}
+          </div>
+        ) as any,
         variant: "destructive",
+        duration: 10000,
       });
     }
-  }, [businessesError, toast]);
+  }, [businessesError, toast, isAdmin]);
 
   // Memoize fetchProducts to prevent unnecessary re-renders
   const fetchProducts = useCallback(async () => {
@@ -1599,8 +1817,8 @@ const Directory = () => {
               setSelectedBusinessForMap(null);
             }}
             businessName={selectedBusinessForMap.name}
-            lat={selectedBusinessForMap.latitude!}
-            lng={selectedBusinessForMap.longitude!}
+            latitude={selectedBusinessForMap.latitude!}
+            longitude={selectedBusinessForMap.longitude!}
             address={selectedBusinessForMap.address}
           />
         </Suspense>

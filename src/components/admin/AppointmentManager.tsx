@@ -74,7 +74,7 @@ const AppointmentManager = () => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('is_admin')
-        .eq('user_id', user.id)
+        .eq('id', user.id)  // Fixed: use id (primary key) not user_id
         .single();
       
       setIsAdmin(profile?.is_admin || false);

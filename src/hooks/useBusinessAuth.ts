@@ -39,7 +39,7 @@ export const useBusinessAuth = () => {
         const { data: profile } = await supabase
           .from('profiles')
           .select('id, is_business_owner')
-          .eq('user_id', user.id)
+          .eq('id', user.id)  // Fixed: use id (primary key) not user_id
           .single();
 
         if (profile) {

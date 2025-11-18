@@ -175,7 +175,7 @@ const OptimizedUserManager: React.FC = () => {
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
-        .eq('user_id', userId);
+        .eq('id', userId);  // Fixed: use id (primary key) not user_id
 
       if (profileError) throw profileError;
 

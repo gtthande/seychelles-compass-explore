@@ -15,7 +15,6 @@ import Footer from '@/components/Footer';
 
 // Lazy load heavy map components
 const LocationInput = lazy(() => import('@/components/LocationInput'));
-const MapPickerModal = lazy(() => import('@/components/MapPickerModal'));
 
 interface Category {
   id: string;
@@ -32,7 +31,6 @@ const BusinessRegister = () => {
   const [uploading, setUploading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
-  const [showMapPicker, setShowMapPicker] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
@@ -94,19 +92,6 @@ const BusinessRegister = () => {
     }
   };
 
-  const handleMapSelect = (lat: number, lng: number, address?: string) => {
-    setFormData(prev => ({
-      ...prev,
-      latitude: lat.toString(),
-      longitude: lng.toString(),
-      address: address || prev.address
-    }));
-    setShowMapPicker(false);
-    toast({
-      title: "Location Selected",
-      description: `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}${address ? ` - ${address}` : ''}`
-    });
-  };
 
   const handleCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -256,7 +241,7 @@ const BusinessRegister = () => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('id', user.id)  // Fixed: use id (primary key) not user_id
         .single();
 
       if (profileError || !profile) {
@@ -573,15 +558,9 @@ const BusinessRegister = () => {
                       <MapPin className="w-4 h-4" />
                       Use Current Location
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowMapPicker(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      Pick on Map
-                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      💡 Tip: Use the coordinate input above to paste coordinates from Google Maps
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -722,18 +701,6 @@ const BusinessRegister = () => {
         </form>
       </div>
 
-      {/* Map Picker Modal */}
-      <Suspense fallback={null}>
-        <MapPickerModal
-          isOpen={showMapPicker}
-          onClose={() => setShowMapPicker(false)}
-          onSelect={handleMapSelect}
-          defaultCoords={formData.latitude && formData.longitude 
-            ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
-            : [-4.619, 55.451]
-          }
-        />
-      </Suspense>
 
       <Footer />
     </div>

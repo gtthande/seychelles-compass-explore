@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import BusinessStatusBadge from '@/components/ui/BusinessStatusBadge';
 import MinimalLocationInput from '@/components/MinimalLocationInput';
+import { sanitizeBusinessPayload } from '@/lib/sanitizeBusinessPayload';
 import { 
   Save, 
   ArrowLeft, 
@@ -58,13 +59,17 @@ const BusinessEdit: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
+  
+  // Use ref to track if we've already fetched to prevent re-fetch loops
+  const hasFetchedRef = useRef(false);
 
   // Form state
+  // CRITICAL: status default must be 'pending' not 'draft' (draft is not a valid enum)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: '',
-    status: 'draft',
+    status: 'pending',
     phone: '',
     email: '',
     website: '',
@@ -88,56 +93,100 @@ const BusinessEdit: React.FC = () => {
     'Bird', 'Denis', 'Fregate', 'North Island', 'Desroches'
   ];
 
+  // CRITICAL: Status must match database enum: 'active', 'pending', 'suspended', 'closed'
+  // Note: 'draft' is NOT a valid enum value - use 'pending' instead
   const statusOptions = [
-    { value: 'draft', label: 'Draft' },
     { value: 'pending', label: 'Pending' },
     { value: 'active', label: 'Active' },
-    { value: 'suspended', label: 'Suspended' }
+    { value: 'suspended', label: 'Suspended' },
+    { value: 'closed', label: 'Closed' }
   ];
 
   useEffect(() => {
-    if (id) {
+    // Only fetch once per id change, using ref to prevent re-fetch loops
+    if (id && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
       fetchBusiness();
     }
-  }, [id]);
+    // Reset ref when id changes
+    return () => {
+      if (id) {
+        hasFetchedRef.current = false;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only depend on id to prevent re-fetch loops
 
   const fetchBusiness = async () => {
-    if (!id) return;
+    if (!id || (hasFetchedRef.current && business)) {
+      // Don't fetch if we already have the data
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     try {
+      console.debug('🔍 [BusinessEdit] Fetching business:', id);
+      
       const { data, error } = await supabase
         .from('businesses')
         .select('*')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [BusinessEdit] Supabase fetch error:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          businessId: id,
+        });
+        throw error;
+      }
 
-      setBusiness(data);
-      setFormData({
-        name: data.name || '',
-        description: data.description || '',
-        category: data.category || '',
-        status: data.status || 'draft',
-        phone: data.phone || '',
-        email: data.email || '',
-        website: data.website || '',
-        address: data.address || '',
-        island: data.island || '',
-        latitude: data.latitude?.toString() || '',
-        longitude: data.longitude?.toString() || '',
-        verification_notes: data.verification_notes || ''
+      console.debug('🔍 [BusinessEdit] Business data received:', {
+        hasData: !!data,
+        businessId: data?.id,
+        name: data?.name,
       });
 
-      if (data.logo_url) {
-        setLogoPreview(data.logo_url);
+      // Only update if we got new data
+      if (data) {
+        setBusiness(data);
+        setFormData({
+          name: data.name || '',
+          description: data.description || '',
+          category: data.category || '',
+          // CRITICAL: Default to 'pending' not 'draft' (draft is not a valid enum)
+          status: data.status || 'pending',
+          phone: data.phone || '',
+          email: data.email || '',
+          website: data.website || '',
+          address: data.address || '',
+          island: data.island || '',
+          latitude: data.latitude?.toString() || '',
+          longitude: data.longitude?.toString() || '',
+          verification_notes: data.verification_notes || ''
+        });
+
+        if (data.logo_url) {
+          setLogoPreview(data.logo_url);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching business:', error);
+    } catch (error: any) {
+      console.error('❌ [BusinessEdit] Error fetching business:', {
+        error,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+        businessId: id,
+      });
       toast({
         title: "Error",
-        description: "Failed to load business data",
+        description: `Failed to load business data: ${error?.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -146,14 +195,32 @@ const BusinessEdit: React.FC = () => {
   };
 
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = React.useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
+    setErrors(prev => {
+      if (prev[field]) {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      }
+      return prev;
+    });
+  }, []); // Stable callback to prevent re-renders
+
+  // Memoize location input callbacks to prevent re-renders
+  const handleAddressChange = React.useCallback((address: string) => {
+    handleInputChange('address', address);
+  }, [handleInputChange]);
+
+  const handleLatitudeChange = React.useCallback((latitude: string) => {
+    handleInputChange('latitude', latitude);
+  }, [handleInputChange]);
+
+  const handleLongitudeChange = React.useCallback((longitude: string) => {
+    handleInputChange('longitude', longitude);
+  }, [handleInputChange]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -234,35 +301,255 @@ const BusinessEdit: React.FC = () => {
 
     setSaving(true);
     try {
-      const updateData = {
-        ...formData,
-        latitude: formData.latitude ? Number(formData.latitude) : null,
-        longitude: formData.longitude ? Number(formData.longitude) : null,
+      // Validate and convert latitude/longitude
+      // Handle both separate fields and comma-separated format (e.g., "lat,lng")
+      let lat: number | null = null;
+      let lng: number | null = null;
+      
+      // Helper function to parse coordinate string (handles whitespace, tabs, commas)
+      const parseCoordinate = (value: string | null | undefined): number | null => {
+        if (!value) return null;
+        
+        // Remove all whitespace (spaces, tabs, newlines)
+        const cleaned = value.trim().replace(/\s+/g, '');
+        if (!cleaned) return null;
+        
+        // Try parsing as number directly
+        const num = Number(cleaned);
+        if (!isNaN(num)) return num;
+        
+        // If that fails, try splitting by comma (for "lat,lng" format)
+        const parts = cleaned.split(',').map(p => p.trim()).filter(p => p);
+        if (parts.length === 1) {
+          // Single value, try parsing again
+          const singleNum = Number(parts[0]);
+          if (!isNaN(singleNum)) return singleNum;
+        }
+        
+        return null;
+      };
+      
+      // Parse latitude - check both latitude field and if it contains comma-separated coords
+      const latInput = formData.latitude?.trim() || '';
+      if (latInput) {
+        // Check if input contains comma (might be "lat,lng" format)
+        if (latInput.includes(',')) {
+          const parts = latInput.split(',').map(p => p.trim()).filter(p => p);
+          if (parts.length >= 1) {
+            lat = parseCoordinate(parts[0]);
+          }
+          // If longitude is empty but we have comma-separated, use second part
+          if (!formData.longitude?.trim() && parts.length >= 2) {
+            lng = parseCoordinate(parts[1]);
+          }
+        } else {
+          lat = parseCoordinate(latInput);
+        }
+        
+        if (lat === null) {
+          throw new Error('Invalid latitude value. Please enter a valid number or "latitude,longitude" format.');
+        }
+        if (lat < -90 || lat > 90) {
+          throw new Error('Latitude must be between -90 and 90');
+        }
+      }
+      
+      // Parse longitude - only if not already set from comma-separated format
+      if (lng === null) {
+        const lngInput = formData.longitude?.trim() || '';
+        if (lngInput) {
+          // Check if input contains comma (might be "lat,lng" format)
+          if (lngInput.includes(',')) {
+            const parts = lngInput.split(',').map(p => p.trim()).filter(p => p);
+            if (parts.length >= 1) {
+              lng = parseCoordinate(parts[0]);
+            }
+            // If latitude is empty but we have comma-separated, use second part
+            if (!lat && parts.length >= 2) {
+              lat = parseCoordinate(parts[1]);
+            }
+          } else {
+            lng = parseCoordinate(lngInput);
+          }
+          
+          if (lng === null) {
+            throw new Error('Invalid longitude value. Please enter a valid number or "latitude,longitude" format.');
+          }
+          if (lng < -180 || lng > 180) {
+            throw new Error('Longitude must be between -180 and 180');
+          }
+        }
+      }
+      
+      // Prepare update data - exclude string lat/lng, use numeric values
+      const { latitude: _lat, longitude: _lng, ...restFormData } = formData;
+      
+      // Build raw payload
+      const rawPayload: any = {
+        ...restFormData,
+        latitude: lat,
+        longitude: lng,
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      // Sanitize the payload to ensure all fields comply with database constraints
+      const updateData = sanitizeBusinessPayload(rawPayload);
+
+      // Log update attempt for debugging
+      console.debug('💾 [BusinessEdit] Attempting to update business', {
+        businessId: id,
+        rawPayload,
+        sanitizedPayload: updateData,
+        timestamp: new Date().toISOString()
+      });
+
+      // Get current user to verify admin status
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
+
+      // Verify admin status before update
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin, role')
+        .or(`id.eq.${currentUser.id},user_id.eq.${currentUser.id}`)
+        .maybeSingle();
+
+      const isAdmin = profile?.is_admin === true || profile?.role === 'admin';
+      
+      if (!isAdmin) {
+        // Check if user owns the business
+        const { data: business } = await supabase
+          .from('businesses')
+          .select('owner_id')
+          .eq('id', id)
+          .single();
+        
+        if (business?.owner_id !== currentUser.id && business?.owner_id !== profile?.id) {
+          throw new Error('Permission denied. You must be an admin or the business owner to update this business.');
+        }
+      }
+
+      const { data, error, status } = await supabase
         .from('businesses')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      // CRITICAL: Always log the update response
+      console.debug('📥 [BusinessEdit] Update response', {
+        status,
+        hasData: !!data,
+        hasError: !!error,
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        businessId: id,
+      });
+
+      if (error) {
+        // CRITICAL: Comprehensive error logging - MUST appear in console
+        console.error('Business update error:', error);
+        console.error('❌ [BusinessEdit] Supabase update error', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          status,
+          businessId: id,
+          updateData,
+          sanitizedPayload: updateData,
+          payloadKeys: Object.keys(updateData),
+          payloadValues: Object.values(updateData),
+        });
+        throw error;
+      }
+
+      if (!data) {
+        console.error('❌ [BusinessEdit] Update returned no data', {
+          status,
+          businessId: id,
+          updateData,
+        });
+        throw new Error('Update succeeded but no data returned. Please refresh and try again.');
+      }
+
+      console.debug('✅ [BusinessEdit] Business updated successfully', {
+        businessId: id,
+        updatedName: data.name,
+      });
+
+      // Update local state with saved data (but don't trigger re-fetch)
+      if (data) {
+        setBusiness(data);
+        // Only update lat/lng in formData to avoid triggering unnecessary re-renders
+        setFormData(prev => ({
+          ...prev,
+          latitude: data.latitude?.toString() || '',
+          longitude: data.longitude?.toString() || '',
+        }));
+      }
 
       toast({
         title: "Success",
         description: "Business updated successfully",
+        duration: 3000,
       });
 
-      navigate('/admin');
-    } catch (error) {
-      console.error('Error updating business:', error);
+      // Navigate immediately after showing toast (no delay to prevent refresh loops)
+      // Use replace to avoid adding to history stack
+      navigate('/admin', { replace: true });
+    } catch (error: any) {
+      // CRITICAL: Always log errors and ensure saving state is cleared
+      console.error('Business update error:', error);
+      console.error('❌ [BusinessEdit] Error updating business', {
+        error,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+        stack: error?.stack,
+        businessId: id,
+        formData: {
+          ...formData,
+          latitude: lat,
+          longitude: lng
+        },
+        rawPayload: {
+          ...formData,
+          latitude: lat,
+          longitude: lng,
+        }
+      });
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to update business";
+      if (error?.code === '42501') {
+        errorMessage = "Permission denied. You may not have permission to update this business.";
+      } else if (error?.code === '23505') {
+        errorMessage = "A business with this information already exists.";
+      } else if (error?.code === '23502') {
+        errorMessage = "Required field is missing. Please check all required fields.";
+      } else if (error?.code === '23503') {
+        errorMessage = "Invalid reference. Please check foreign key relationships.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.details) {
+        errorMessage = error.details;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to update business",
+        description: errorMessage,
         variant: "destructive",
+        duration: 6000,
       });
     } finally {
+      // CRITICAL: Always clear saving state, even on error
       setSaving(false);
+      console.debug('🔍 [BusinessEdit] Save operation completed, saving state cleared');
     }
   };
 
@@ -272,25 +559,64 @@ const BusinessEdit: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error, status } = await supabase
         .from('businesses')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select(); // Return deleted row to verify deletion
 
-      if (error) throw error;
+      // Log detailed error information
+      if (error) {
+        console.error('❌ BusinessEdit: Failed to delete business', {
+          businessId: id,
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          status
+        });
+        
+        // Check if it's an RLS policy issue
+        if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy')) {
+          throw new Error('You do not have permission to delete this business. Only admins or business owners can delete businesses.');
+        }
+        
+        throw new Error(error.message || 'Failed to delete business');
+      }
 
-      toast({
-        title: "Success",
-        description: "Business deleted successfully",
+      // Verify deletion
+      if (!data || data.length === 0) {
+        console.warn('⚠️ BusinessEdit: Delete returned no data, business may not exist', { businessId: id });
+        toast({
+          title: "Warning",
+          description: "Business may have already been deleted or does not exist.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Business deleted successfully",
+        });
+      }
+
+      // Navigate away after a short delay to show the toast
+      setTimeout(() => {
+        navigate('/admin');
+      }, 1000);
+    } catch (error: any) {
+      console.error('❌ BusinessEdit: Error deleting business', {
+        businessId: id,
+        error,
+        message: error?.message,
+        stack: error?.stack
       });
-
-      navigate('/admin');
-    } catch (error) {
-      console.error('Error deleting business:', error);
+      
       toast({
-        title: "Error",
-        description: "Failed to delete business",
+        title: "Failed to Delete Business",
+        description: error?.message || "An error occurred while deleting the business. Please try again.",
         variant: "destructive",
+        duration: 5000,
       });
     }
   };
@@ -377,8 +703,13 @@ const BusinessEdit: React.FC = () => {
                   <Label htmlFor="name">Business Name *</Label>
                   <Input
                     id="name"
+                    type="text"
                     value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleInputChange('name', e.target.value);
+                    }}
                     className={errors.name ? 'border-red-500' : ''}
                   />
                   {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
@@ -406,7 +737,11 @@ const BusinessEdit: React.FC = () => {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleInputChange('description', e.target.value);
+                  }}
                   rows={4}
                   placeholder="Describe your business..."
                 />
@@ -441,8 +776,13 @@ const BusinessEdit: React.FC = () => {
                   <Label htmlFor="phone">Phone</Label>
                   <Input
                     id="phone"
+                    type="text"
                     value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleInputChange('phone', e.target.value);
+                    }}
                     placeholder="+248 123 4567"
                   />
                 </div>
@@ -452,7 +792,11 @@ const BusinessEdit: React.FC = () => {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleInputChange('email', e.target.value);
+                    }}
                     className={errors.email ? 'border-red-500' : ''}
                     placeholder="business@example.com"
                   />
@@ -464,8 +808,13 @@ const BusinessEdit: React.FC = () => {
                 <Label htmlFor="website">Website</Label>
                 <Input
                   id="website"
+                  type="text"
                   value={formData.website}
-                  onChange={(e) => handleInputChange('website', e.target.value)}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleInputChange('website', e.target.value);
+                  }}
                   className={errors.website ? 'border-red-500' : ''}
                   placeholder="https://www.example.com"
                 />
@@ -487,9 +836,9 @@ const BusinessEdit: React.FC = () => {
                 address={formData.address}
                 latitude={formData.latitude}
                 longitude={formData.longitude}
-                onAddressChange={(address) => handleInputChange('address', address)}
-                onLatitudeChange={(latitude) => handleInputChange('latitude', latitude)}
-                onLongitudeChange={(longitude) => handleInputChange('longitude', longitude)}
+                onAddressChange={handleAddressChange}
+                onLatitudeChange={handleLatitudeChange}
+                onLongitudeChange={handleLongitudeChange}
               />
 
               <div className="space-y-2">
@@ -519,7 +868,11 @@ const BusinessEdit: React.FC = () => {
             <CardContent>
               <Textarea
                 value={formData.verification_notes}
-                onChange={(e) => handleInputChange('verification_notes', e.target.value)}
+                onChange={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleInputChange('verification_notes', e.target.value);
+                }}
                 rows={3}
                 placeholder="Add verification notes..."
               />
@@ -593,7 +946,12 @@ const BusinessEdit: React.FC = () => {
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Button
-                  onClick={handleSave}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSave();
+                  }}
                   disabled={saving}
                   className="w-full"
                 >

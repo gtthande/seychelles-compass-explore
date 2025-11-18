@@ -137,7 +137,7 @@ const UserManager = () => {
           role: newRole,
           is_business_owner: newRole === 'business'
         })
-        .eq('user_id', userId);
+        .eq('id', userId);  // Fixed: use id (primary key) not user_id
 
       if (error) throw error;
       
@@ -161,7 +161,7 @@ const UserManager = () => {
       const { error } = await supabase
         .from('profiles')
         .update({ is_active: !currentActive })
-        .eq('user_id', userId);
+        .eq('id', userId);  // Fixed: use id (primary key) not user_id
 
       if (error) throw error;
       

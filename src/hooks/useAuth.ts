@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,134 +22,112 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchUserProfile = async (userId: string) => {
-    // Cancel previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Create new AbortController for this request
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
-    
     try {
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
-      });
-      
-      const profilePromise = supabase
+      // Try fetching by user_id first
+      let { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
-      
-      const { data: profile, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        // If profile doesn't exist, create one with default role
-        const { data: newProfile, error: createError } = await supabase
+      // If not found by user_id, try by id
+      if ((error && error.code === 'PGRST116') || !profile) {
+        const { data: altProfile, error: altError } = await supabase
           .from('profiles')
-          .insert({
-            user_id: userId,
-            email: user?.email || '',
-            full_name: user?.user_metadata?.full_name || '',
-            phone: '',
-            business_name: '',
-            is_business_owner: false,
-            is_admin: false,
-            role: 'user' // Default role for new users
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Error creating profile:', createError);
-          if (!signal.aborted) setProfile(null);
-        } else {
-          if (!signal.aborted) setProfile(newProfile);
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (altProfile) {
+          profile = altProfile;
+          error = null;
+        } else if (altError && altError.code !== 'PGRST116') {
+          error = altError;
         }
+      }
+
+      if (error && error.code !== 'PGRST116') {
+        // Real error (not "not found")
+        console.error('Error fetching profile:', error);
+        setProfile(null);
+        return;
+      }
+
+      if (profile) {
+        setProfile(profile);
       } else {
-        if (!signal.aborted) setProfile(profile);
+        // Profile doesn't exist - don't auto-create here, let RouteGuard handle it
+        // This ensures proper role assignment based on route requirements
+        setProfile(null);
       }
     } catch (error) {
-      // Don't set error if request was aborted
-      if (signal.aborted) return;
-      
       console.error('Unexpected error fetching profile:', error);
       setProfile(null);
     }
   };
 
   useEffect(() => {
-    // Set a fallback timeout to prevent infinite loading
-    const fallbackTimeout = setTimeout(() => {
-      setLoading(false);
-    }, 15000);
+    let mounted = true;
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        clearTimeout(fallbackTimeout);
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          try {
-            await fetchUserProfile(session.user.id);
-          } catch (error) {
-            console.error('Profile fetch failed:', error);
-            setProfile(null);
-          }
+          await fetchUserProfile(session.user.id);
         } else {
           setProfile(null);
         }
         
+        // Always set loading to false after auth state change
         setLoading(false);
       }
     );
 
-    // Check for existing session
-    const sessionTimeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Session check timeout')), 10000);
-    });
-    
-    Promise.race([
-      supabase.auth.getSession(),
-      sessionTimeoutPromise
-    ]).then(async (result: any) => {
-      clearTimeout(fallbackTimeout);
-      const { data: { session } } = result;
+    // Check for existing session - ensure loading always resolves
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (!mounted) return;
+      
+      // Always set loading to false, even if there's an error
+      if (error) {
+        console.error('Error getting session:', error);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        try {
-          await fetchUserProfile(session.user.id);
-        } catch (error) {
-          console.error('Profile fetch failed:', error);
-          setProfile(null);
-        }
+        await fetchUserProfile(session.user.id);
       } else {
         setProfile(null);
       }
       
+      // Always set loading to false
       setLoading(false);
     }).catch((error) => {
-      console.error('Session check failed:', error);
-      clearTimeout(fallbackTimeout);
-      setLoading(false);
+      // Catch any unexpected errors and ensure loading resolves
+      console.error('Unexpected error in getSession:', error);
+      if (mounted) {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
     });
 
     return () => {
-      // Cancel any pending requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      clearTimeout(fallbackTimeout);
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);

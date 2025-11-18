@@ -4,9 +4,10 @@
  * API-free location display component
  */
 
-import React from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { MapPin, Navigation, Phone, Globe, Mail, ExternalLink } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { MapPin, Navigation, Phone, Globe, Mail, ExternalLink, Copy, Check } from 'lucide-react';
 
 interface LocationCardProps {
   address?: string;
@@ -29,19 +30,60 @@ const LocationCard: React.FC<LocationCardProps> = ({
   email,
   className = ''
 }) => {
-  // Generate Google Maps URLs
-  const mapsLink = link || (latitude && longitude ? `https://www.google.com/maps?q=${latitude},${longitude}` : '#');
-  const dirLink = latitude && longitude ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}` : '#';
+  const { toast } = useToast();
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Format coordinates for display
-  const formatCoordinates = (lat: number, lng: number) => {
-    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-  };
+  // Memoize Google Maps URLs to prevent recalculation on every render
+  const mapsLink = useMemo(() => {
+    return link || (latitude && longitude ? `https://www.google.com/maps?q=${latitude},${longitude}` : '#');
+  }, [link, latitude, longitude]);
 
-  // Validate coordinates are in Seychelles range
-  const isValidSeychellesLocation = (lat: number, lng: number) => {
-    return lat >= -10 && lat <= -4 && lng >= 55 && lng <= 56;
-  };
+  const dirLink = useMemo(() => {
+    return latitude && longitude ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}` : '#';
+  }, [latitude, longitude]);
+
+  // Memoize formatted coordinates
+  const formattedCoordinates = useMemo(() => {
+    if (!latitude || !longitude) return null;
+    return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  }, [latitude, longitude]);
+
+  // Memoize validation check
+  const isValidSeychellesLocation = useMemo(() => {
+    if (!latitude || !longitude) return false;
+    return latitude >= -10 && latitude <= -4 && longitude >= 55 && longitude <= 56;
+  }, [latitude, longitude]);
+
+  // Handle button clicks to prevent event propagation
+  const handleMapsClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Allow default behavior (opening in new tab) but prevent any parent handlers
+    e.stopPropagation();
+  }, []);
+
+  const handleDirectionsClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Allow default behavior (opening in new tab) but prevent any parent handlers
+    e.stopPropagation();
+  }, []);
+
+  // Handle copying coordinates
+  const handleCopyCoordinates = useCallback(async () => {
+    if (!formattedCoordinates) return;
+    try {
+      await navigator.clipboard.writeText(formattedCoordinates);
+      setCopiedField('coords');
+      toast({
+        title: '✅ Copied',
+        description: 'Coordinates copied to clipboard',
+      });
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      toast({
+        title: 'Copy Failed',
+        description: 'Failed to copy coordinates',
+        variant: 'destructive',
+      });
+    }
+  }, [formattedCoordinates, toast]);
 
   return (
     <div className={`border rounded-xl p-4 bg-white shadow-sm space-y-3 ${className}`}>
@@ -59,12 +101,28 @@ const LocationCard: React.FC<LocationCardProps> = ({
       )}
 
       {/* Coordinates */}
-      {latitude && longitude && (
-        <div className="text-sm text-gray-600">
-          <strong>Coordinates:</strong> {formatCoordinates(latitude, longitude)}
-          {!isValidSeychellesLocation(latitude, longitude) && (
-            <span className="ml-2 text-orange-600 text-xs">⚠️ Outside Seychelles</span>
-          )}
+      {formattedCoordinates && (
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <strong>Coordinates:</strong> {formattedCoordinates}
+            {!isValidSeychellesLocation && (
+              <span className="text-orange-600 text-xs">⚠️ Outside Seychelles</span>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleCopyCoordinates}
+            className="h-6 px-2"
+            title="Copy coordinates to clipboard"
+          >
+            {copiedField === 'coords' ? (
+              <Check className="w-3 h-3 text-green-600" />
+            ) : (
+              <Copy className="w-3 h-3" />
+            )}
+          </Button>
         </div>
       )}
 
@@ -80,6 +138,7 @@ const LocationCard: React.FC<LocationCardProps> = ({
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center gap-1"
+            onClick={handleMapsClick}
           >
             <ExternalLink className="w-3 h-3" />
             View in Maps
@@ -97,6 +156,7 @@ const LocationCard: React.FC<LocationCardProps> = ({
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-1"
+              onClick={handleDirectionsClick}
             >
               <Navigation className="w-3 h-3" />
               Get Directions
@@ -163,4 +223,5 @@ const LocationCard: React.FC<LocationCardProps> = ({
   );
 };
 
-export default LocationCard;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(LocationCard);

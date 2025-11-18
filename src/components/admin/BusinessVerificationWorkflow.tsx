@@ -54,9 +54,9 @@ interface Business {
 
 interface VerificationAction {
   businessId: string;
-  action: 'approve' | 'reject' | 'request_changes';
+  action: 'approve' | 'reject' | 'request_changes'; // UI action names - maps to status: 'active' | 'suspended'
   notes: string;
-  status: string;
+  status: 'active' | 'suspended' | 'pending' | 'closed'; // Valid business_status enum values
 }
 
 const BusinessVerificationWorkflow: React.FC = () => {
@@ -140,9 +140,15 @@ const BusinessVerificationWorkflow: React.FC = () => {
 
       if (error) throw error;
 
+      const actionMessage = action.action === 'approve' 
+        ? 'activated' 
+        : action.action === 'reject' 
+        ? 'suspended' 
+        : 'updated';
+      
       toast({
         title: "Success",
-        description: `Business ${action.action} successfully`,
+        description: `Business ${actionMessage} successfully`,
       });
 
       // Refresh data
@@ -160,12 +166,12 @@ const BusinessVerificationWorkflow: React.FC = () => {
   };
 
   const getStatusCounts = () => {
-    const counts = {
+      const counts = {
       all: businesses.length,
       pending: businesses.filter(b => b.status === 'pending').length,
       active: businesses.filter(b => b.status === 'active').length,
       suspended: businesses.filter(b => b.status === 'suspended').length,
-      draft: businesses.filter(b => b.status === 'draft').length,
+      closed: businesses.filter(b => b.status === 'closed').length,
     };
     return counts;
   };
@@ -222,8 +228,8 @@ const BusinessVerificationWorkflow: React.FC = () => {
               <div className="text-sm text-muted-foreground">Suspended</div>
             </div>
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-600">{statusCounts.draft}</div>
-              <div className="text-sm text-muted-foreground">Draft</div>
+              <div className="text-2xl font-bold text-gray-600">{statusCounts.closed}</div>
+              <div className="text-sm text-muted-foreground">Closed</div>
             </div>
           </div>
         </CardContent>
@@ -254,7 +260,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="suspended">Suspended</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -12,7 +12,6 @@ import { Loader2 } from 'lucide-react';
 
 // Lazy load heavy map components
 const MinimalLocationInput = lazy(() => import('@/components/MinimalLocationInput'));
-const MapPickerModal = lazy(() => import('@/components/MapPickerModal'));
 const LocationInput = lazy(() => import('@/components/LocationInput'));
 const LocationCard = lazy(() => import('@/components/LocationCard'));
 import { 
@@ -33,7 +32,6 @@ const BusinessCreate: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
-  const [showMapPicker, setShowMapPicker] = useState(false);
   const [showLocationOptions, setShowLocationOptions] = useState(false);
   const [locationLink, setLocationLink] = useState('');
 
@@ -83,19 +81,6 @@ const BusinessCreate: React.FC = () => {
     }
   };
 
-  const handleMapSelect = (lat: number, lng: number, address?: string) => {
-    setFormData(prev => ({
-      ...prev,
-      latitude: lat.toString(),
-      longitude: lng.toString(),
-      address: address || prev.address
-    }));
-    setShowMapPicker(false);
-    toast({
-      title: "Location Selected",
-      description: `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}${address ? ` - ${address}` : ''}`
-    });
-  };
 
   const handleLocationParsed = (lat: number, lng: number, link: string) => {
     setFormData(prev => ({
@@ -489,15 +474,9 @@ const BusinessCreate: React.FC = () => {
                     <MapPin className="w-4 h-4" />
                     Use Current Location
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowMapPicker(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    Pick on Map
-                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    💡 Tip: Use the coordinate input above to paste coordinates from Google Maps
+                  </p>
                 </div>
               </div>
 
@@ -607,25 +586,6 @@ const BusinessCreate: React.FC = () => {
         </div>
       </div>
 
-      {/* Enhanced Map Picker Modal */}
-      <Suspense fallback={
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 animate-spin" />
-            <p className="text-muted-foreground">Loading map picker...</p>
-          </div>
-        </div>
-      }>
-        <MapPickerModal
-          isOpen={showMapPicker}
-          onClose={() => setShowMapPicker(false)}
-          onSelect={handleMapSelect}
-          defaultCoords={formData.latitude && formData.longitude 
-            ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
-            : [-4.619, 55.451]
-          }
-        />
-      </Suspense>
     </div>
   );
 };

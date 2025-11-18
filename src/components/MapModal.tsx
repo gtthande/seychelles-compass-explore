@@ -8,8 +8,8 @@ interface MapModalProps {
   isOpen: boolean;
   onClose: () => void;
   businessName: string;
-  lat: number;
-  lng: number;
+  latitude: number;
+  longitude: number;
   address?: string;
 }
 
@@ -17,17 +17,17 @@ const MapModal: React.FC<MapModalProps> = ({
   isOpen,
   onClose,
   businessName,
-  lat,
-  lng,
+  latitude,
+  longitude,
   address
 }) => {
   const handleGetDirections = () => {
-    const url = getDirectionsUrl(lat, lng);
+    const url = getDirectionsUrl(latitude, longitude);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleViewInGoogleMaps = () => {
-    const url = getViewUrl(lat, lng);
+    const url = getViewUrl(latitude, longitude);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -35,7 +35,7 @@ const MapModal: React.FC<MapModalProps> = ({
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   
   // Create Google Maps embed URL using utility function
-  const embedUrl = apiKey ? getEmbedUrl(lat, lng, apiKey) : null;
+  const embedUrl = apiKey ? getEmbedUrl(latitude, longitude, apiKey) : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -82,7 +82,7 @@ const MapModal: React.FC<MapModalProps> = ({
                     Google Maps API key not configured
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Location: {formatCoordinates(lat, lng)}
+                    Location: {formatCoordinates(latitude, longitude)}
                   </p>
                 </div>
               </div>
@@ -114,7 +114,7 @@ const MapModal: React.FC<MapModalProps> = ({
           <div className="mt-4 p-3 bg-muted rounded-lg">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="w-4 h-4" />
-              <span>Coordinates: {formatCoordinates(lat, lng)}</span>
+              <span>Coordinates: {formatCoordinates(latitude, longitude)}</span>
             </div>
           </div>
         </div>

@@ -41,30 +41,51 @@ const EnhancedMapLocationPicker: React.FC<EnhancedMapLocationPickerProps> = ({
         setIsLoading(true);
         
         // Try Google Maps first
-        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_KEY;
         
-        if (apiKey && apiKey !== 'your_key_here') {
+        if (apiKey && apiKey !== 'your_key_here' && apiKey !== 'your-google-maps-api-key-here') {
           try {
+            console.log('🗺️ Attempting to load Google Maps...');
             const maps = await loadGoogleMaps(apiKey);
             await initGoogleMap(maps);
             setMapType('google');
+            console.log('✅ Google Maps loaded successfully');
             return;
-          } catch (error) {
-            console.warn('Google Maps failed, falling back to Leaflet:', error);
+          } catch (error: any) {
+            console.warn('⚠️ Google Maps failed, falling back to Leaflet:', {
+              error: error?.message,
+              code: error?.code,
+              details: error
+            });
+            
+            // Show helpful error message
+            if (error?.message?.includes('API key') || error?.message?.includes('InvalidKeyMapError')) {
+              toast({
+                title: "Google Maps API Key Issue",
+                description: "Invalid or missing Google Maps API key. Using OpenStreetMap instead.",
+                variant: "default",
+                duration: 4000,
+              });
+            }
           }
+        } else {
+          console.log('ℹ️ No Google Maps API key configured, using Leaflet');
         }
         
         // Fallback to Leaflet
+        console.log('🗺️ Loading Leaflet/OpenStreetMap...');
         await initLeafletMap();
         setMapType('leaflet');
+        console.log('✅ Leaflet map loaded successfully');
         
-      } catch (error) {
-        console.error('Both Google Maps and Leaflet failed:', error);
+      } catch (error: any) {
+        console.error('❌ Both Google Maps and Leaflet failed:', error);
         setMapType('error');
         toast({
           title: "Map Loading Error",
-          description: "Unable to load map. Please check your internet connection.",
+          description: "Unable to load map. You can still enter coordinates manually below.",
           variant: "destructive",
+          duration: 6000,
         });
       } finally {
         setIsLoading(false);

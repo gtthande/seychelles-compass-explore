@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MapPin, ExternalLink } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface LocationInputProps {
   onParsed: (lat: number, lon: number, link: string) => void;
@@ -16,17 +16,21 @@ interface LocationInputProps {
 }
 
 const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' }) => {
+  const { toast } = useToast();
   const [input, setInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
 
   const parseLocation = async () => {
     if (!input.trim()) {
-      toast.error('Please enter a Google Maps link or coordinates');
+      toast({
+        title: 'Input Required',
+        description: 'Please enter a Google Maps link or coordinates',
+        variant: 'destructive',
+      });
       return;
     }
 
     setIsParsing(true);
-    toast.loading('Parsing location...', { id: 'parse' });
 
     try {
       let lat: number, lon: number;
@@ -40,12 +44,22 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
         
         // Validate coordinate ranges (Seychelles approximate bounds)
         if (lat < -10 || lat > -4 || lon < 55 || lon > 56) {
-          toast.error('Coordinates appear to be outside Seychelles. Please verify.', { id: 'parse' });
+          toast({
+            title: 'Coordinates Outside Seychelles',
+            description: 'Coordinates appear to be outside Seychelles. Please verify.',
+            variant: 'destructive',
+          });
+          setIsParsing(false);
           return;
         }
         
-        toast.success('Coordinates parsed successfully!', { id: 'parse' });
+        toast({
+          title: '✅ Coordinates Parsed',
+          description: 'Coordinates parsed successfully!',
+        });
         onParsed(lat, lon, parsedLink);
+        setIsParsing(false);
+        setInput(''); // Clear input after successful parse
         return;
       }
 
@@ -55,8 +69,13 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
         lat = parseFloat(urlMatch[1]);
         lon = parseFloat(urlMatch[2]);
         
-        toast.success('Google Maps link parsed successfully!', { id: 'parse' });
+        toast({
+          title: '✅ Google Maps Link Parsed',
+          description: 'Google Maps link parsed successfully!',
+        });
         onParsed(lat, lon, parsedLink);
+        setIsParsing(false);
+        setInput(''); // Clear input after successful parse
         return;
       }
 
@@ -66,24 +85,42 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
         lat = parseFloat(queryMatch[1]);
         lon = parseFloat(queryMatch[2]);
         
-        toast.success('Google Maps query parsed successfully!', { id: 'parse' });
+        toast({
+          title: '✅ Google Maps Link Parsed',
+          description: 'Google Maps query parsed successfully!',
+        });
         onParsed(lat, lon, parsedLink);
+        setIsParsing(false);
+        setInput(''); // Clear input after successful parse
         return;
       }
 
       // Pattern 4: Google Maps short URL (goo.gl, maps.app.goo.gl)
       if (input.includes('goo.gl') || input.includes('maps.app.goo.gl')) {
-        toast.error('Short URLs cannot be parsed automatically. Please use the full Google Maps URL or paste coordinates directly.', { id: 'parse' });
+        toast({
+          title: 'Short URL Not Supported',
+          description: 'Short URLs cannot be parsed automatically. Please use the full Google Maps URL or paste coordinates directly.',
+          variant: 'destructive',
+        });
+        setIsParsing(false);
         return;
       }
 
       // No pattern matched
-      toast.error('Could not parse coordinates. Please paste a Google Maps link or raw coordinates (e.g., -4.6515, 55.4863)', { id: 'parse' });
+      toast({
+        title: 'Could Not Parse',
+        description: 'Could not parse coordinates. Please paste a Google Maps link or raw coordinates (e.g., -4.6515, 55.4863)',
+        variant: 'destructive',
+      });
+      setIsParsing(false);
       
     } catch (error) {
       console.error('Location parsing error:', error);
-      toast.error('Error parsing location. Please try again.', { id: 'parse' });
-    } finally {
+      toast({
+        title: 'Parsing Error',
+        description: 'Error parsing location. Please try again.',
+        variant: 'destructive',
+      });
       setIsParsing(false);
     }
   };

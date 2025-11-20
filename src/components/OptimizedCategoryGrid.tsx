@@ -281,7 +281,9 @@ const OptimizedCategoryGrid = () => {
         const [categoriesResult, businessCountsResult, productCountsResult] = await Promise.all([
           supabase.from('categories').select('*').eq('is_active', true).order('name'),
           supabase.from('businesses').select('category').eq('status', 'active'),
-          supabase.from('products').select('category, business_id').eq('status', 'active')
+          supabase.from('business_products')
+            .select('product:products!inner(category)')
+            .eq('is_active', true)
         ]);
 
         // Log individual query errors

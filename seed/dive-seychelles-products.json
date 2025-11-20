@@ -1,0 +1,133 @@
+[
+  {
+    "name": "Discover Scuba Diving",
+    "title": "Discover Scuba Diving Experience",
+    "description": "Perfect introduction to scuba diving for beginners. Experience the underwater world with a certified instructor. Includes equipment, briefing, and guided dive.",
+    "price": 120.00,
+    "category": "training",
+    "duration": "Half Day (3-4 hours)",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Open Water Diver Course",
+    "title": "PADI Open Water Diver Certification",
+    "description": "Complete PADI Open Water Diver certification course. Learn essential scuba diving skills and earn your first diving certification. Includes theory, confined water, and open water dives.",
+    "price": 450.00,
+    "category": "certification",
+    "duration": "3-4 Days",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Advanced Open Water Course",
+    "title": "PADI Advanced Open Water Diver",
+    "description": "Take your diving to the next level with the Advanced Open Water course. Includes deep diving, navigation, and three adventure dives of your choice.",
+    "price": 380.00,
+    "category": "certification",
+    "duration": "2-3 Days",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Adventurer Course",
+    "title": "PADI Advanced Adventurer",
+    "description": "Fast-track advanced training program. Complete five adventure dives including deep, navigation, and three specialty dives.",
+    "price": 350.00,
+    "category": "certification",
+    "duration": "2 Days",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Nitrox Diver Course",
+    "title": "PADI Enriched Air (Nitrox) Diver",
+    "description": "Learn to dive with enriched air nitrox for longer bottom times and shorter surface intervals. Perfect for multi-dive days.",
+    "price": 180.00,
+    "category": "certification",
+    "duration": "1 Day",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Rescue Diver Course",
+    "title": "PADI Rescue Diver Certification",
+    "description": "Learn to prevent and manage diving emergencies. This challenging course builds confidence and develops your ability to help others.",
+    "price": 420.00,
+    "category": "certification",
+    "duration": "3-4 Days",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Single Dive",
+    "title": "Single Tank Dive",
+    "description": "One guided dive to explore Seychelles' beautiful reefs and marine life. Perfect for certified divers. Includes equipment and guide.",
+    "price": 65.00,
+    "category": "activities",
+    "duration": "2-3 hours",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Two Tank Dive",
+    "title": "Two Tank Dive Package",
+    "description": "Two guided dives in one day. Explore multiple dive sites and maximize your underwater adventure. Includes equipment and guide.",
+    "price": 110.00,
+    "category": "activities",
+    "duration": "Half Day (4-5 hours)",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Four Dive Package",
+    "title": "Four Dive Package",
+    "description": "Four dives over two days. Perfect for diving enthusiasts who want to explore multiple sites. Includes equipment and guide.",
+    "price": 200.00,
+    "category": "activities",
+    "duration": "2 Days",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Night Dive",
+    "title": "Night Diving Experience",
+    "description": "Discover the underwater world after dark. See nocturnal marine life and experience diving in a completely different environment. Includes equipment and lights.",
+    "price": 75.00,
+    "category": "activities",
+    "duration": "2-3 hours",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Boat Charter",
+    "title": "Private Boat Charter",
+    "description": "Private boat charter for diving, snorkeling, or island hopping. Customize your itinerary and enjoy exclusive access to pristine dive sites.",
+    "price": 500.00,
+    "category": "tours",
+    "duration": "Full Day (6-8 hours)",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Snorkeling Trip",
+    "title": "Guided Snorkeling Adventure",
+    "description": "Explore Seychelles' vibrant coral reefs and marine life from the surface. Perfect for non-divers. Includes equipment, guide, and boat transfer.",
+    "price": 45.00,
+    "category": "activities",
+    "duration": "Half Day (3-4 hours)",
+    "status": "active",
+    "searchable": true
+  },
+  {
+    "name": "Dive Equipment Rental",
+    "title": "Full Dive Equipment Rental",
+    "description": "Complete scuba diving equipment rental including BCD, regulator, wetsuit, mask, fins, and weights. Perfect for certified divers traveling light.",
+    "price": 35.00,
+    "category": "equipment",
+    "duration": "Per Day",
+    "status": "active",
+    "searchable": true
+  }
+]
+

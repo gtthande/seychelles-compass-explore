@@ -37,16 +37,17 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
       let parsedLink = input.trim();
 
       // Pattern 1: Raw coordinates (lat, lon or lat lon)
-      const coordMatch = input.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+      // Match: -4.6515, 55.4863 or -4.6515 55.4863
+      const coordMatch = input.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
       if (coordMatch) {
         lat = parseFloat(coordMatch[1]);
         lon = parseFloat(coordMatch[2]);
         
-        // Validate coordinate ranges (Seychelles approximate bounds)
-        if (lat < -10 || lat > -4 || lon < 55 || lon > 56) {
+        // Validate coordinate ranges
+        if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
           toast({
-            title: 'Coordinates Outside Seychelles',
-            description: 'Coordinates appear to be outside Seychelles. Please verify.',
+            title: 'Invalid Coordinates',
+            description: 'Coordinates must be valid: latitude between -90 and 90, longitude between -180 and 180.',
             variant: 'destructive',
           });
           setIsParsing(false);

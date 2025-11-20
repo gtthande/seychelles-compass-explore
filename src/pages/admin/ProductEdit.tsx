@@ -10,142 +10,92 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { 
+  updateBusinessProduct,
+  deleteBusinessProduct,
+  fetchBusinessProducts,
+  type BusinessProduct
+} from '@/lib/products-api';
+import { 
   Save, 
   ArrowLeft, 
-  Upload, 
-  X, 
+  Trash2,
   Package, 
   DollarSign, 
-  Tag, 
   Building,
-  Trash2,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
-
-interface Product {
-  id: string;
-  business_id: string;
-  name: string;
-  description: string;
-  price: number;
-  image_url: string;
-  category: string;
-  status: string;
-  searchable: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Business {
-  id: string;
-  name: string;
-  address: string;
-  island: string;
-}
 
 const ProductEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [product, setProduct] = useState<Product | null>(null);
-  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [businessProduct, setBusinessProduct] = useState<BusinessProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
 
-  // Form state
+  // Form state for business-product link
   const [formData, setFormData] = useState({
-    business_id: '',
-    name: '',
-    description: '',
-    price: '',
-    category: '',
-    status: 'active',
-    searchable: true
+    title_override: '',
+    description_override: '',
+    price_from: '',
+    price_to: '',
+    currency_code: 'SCR',
+    duration_minutes: '',
+    booking_url: '',
+    notes: '',
+    is_active: true
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const categories = [
-    'tours', 'equipment', 'food', 'accommodation', 'transport', 
-    'activities', 'souvenirs', 'services', 'entertainment', 'health',
-    'education', 'training', 'certification'
-  ];
-
-  const statusOptions = [
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-    { value: 'draft', label: 'Draft' }
-  ];
-
   useEffect(() => {
     if (id) {
-      fetchProduct();
-      fetchBusinesses();
+      fetchBusinessProduct();
     }
   }, [id]);
 
-  const fetchProduct = async () => {
+  const fetchBusinessProduct = async () => {
     if (!id) return;
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-
-      setProduct(data);
-      setFormData({
-        business_id: data.business_id || '',
-        name: data.name || '',
-        description: data.description || '',
-        price: data.price?.toString() || '',
-        category: data.category || '',
-        status: data.status || 'active',
-        searchable: data.searchable ?? true
-      });
-
-      if (data.image_url) {
-        setImagePreview(data.image_url);
+      const result = await fetchBusinessProducts({ limit: 1 });
+      const bp = result.businessProducts.find(p => p.id === id);
+      
+      if (!bp) {
+        throw new Error('Business product not found');
       }
-    } catch (error) {
-      console.error('Error fetching product:', error);
+
+      setBusinessProduct(bp);
+      setFormData({
+        title_override: bp.title_override || '',
+        description_override: bp.description_override || '',
+        price_from: bp.price_from?.toString() || '',
+        price_to: bp.price_to?.toString() || '',
+        currency_code: bp.currency_code || 'SCR',
+        duration_minutes: bp.duration_minutes?.toString() || '',
+        booking_url: bp.booking_url || '',
+        notes: bp.notes || '',
+        is_active: bp.is_active ?? true
+      });
+    } catch (error: any) {
+      console.error('Error fetching business product:', error);
       toast({
         title: "Error",
-        description: "Failed to load product data",
+        description: error?.message || "Failed to load product data",
         variant: "destructive",
       });
+      navigate('/admin');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchBusinesses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('businesses')
-        .select('id, name, address, island')
-        .eq('status', 'active')
-        .order('name');
-
-      if (error) throw error;
-      setBusinesses(data || []);
-    } catch (error) {
-      console.error('Error fetching businesses:', error);
     }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -154,183 +104,16 @@ const ProductEdit: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.business_id) {
-      newErrors.business_id = 'Business is required';
+    if (!formData.price_from || isNaN(Number(formData.price_from)) || Number(formData.price_from) <= 0) {
+      newErrors.price_from = 'Valid minimum price is required';
     }
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Product name is required';
-    }
-
-    if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      newErrors.price = 'Valid price is required';
-    }
-
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
+    if (formData.price_to && (isNaN(Number(formData.price_to)) || Number(formData.price_to) < Number(formData.price_from))) {
+      newErrors.price_to = 'Maximum price must be greater than minimum price';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleImageUpload = async (file: File) => {
-    setUploading(true);
-    const startTime = performance.now();
-    const PRODUCT_IMAGES_BUCKET = import.meta.env.VITE_IMAGE_BUCKET_PRODUCTS || 'product-images';
-    
-    console.log('📤 Starting product image upload:', {
-      fileName: file.name,
-      fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-      fileType: file.type,
-      bucket: PRODUCT_IMAGES_BUCKET
-    });
-
-    try {
-      // Verify bucket exists and is accessible
-      console.log(`🔍 Verifying bucket '${PRODUCT_IMAGES_BUCKET}' exists...`);
-      const { data: bucketData, error: bucketError } = await supabase.storage
-        .getBucket(PRODUCT_IMAGES_BUCKET);
-      
-      if (bucketError) {
-        const errorDetails = {
-          bucket: PRODUCT_IMAGES_BUCKET,
-          error: bucketError,
-          message: bucketError.message,
-          code: bucketError.statusCode || 'N/A',
-          timestamp: new Date().toISOString()
-        };
-        
-        console.error('❌ Bucket verification failed:', errorDetails);
-        
-        let errorDescription = `The '${PRODUCT_IMAGES_BUCKET}' storage bucket is not available. `;
-        
-        if (bucketError.message?.includes('not found') || bucketError.statusCode === 404) {
-          errorDescription += `Please create the bucket in Supabase Dashboard:\n1. Go to Storage in Supabase Dashboard\n2. Click "New bucket"\n3. Name it "${PRODUCT_IMAGES_BUCKET}"\n4. Set it to Public\n5. Save`;
-        } else if (bucketError.message?.includes('permission') || bucketError.statusCode === 403) {
-          errorDescription += `You don't have permission to access this bucket. Please contact an administrator.`;
-        } else {
-          errorDescription += `Error: ${bucketError.message}. Check the console for details.`;
-        }
-        
-        toast({
-          title: "Storage Error",
-          description: errorDescription,
-          variant: "destructive",
-          duration: 10000,
-        });
-        throw new Error(`Bucket '${PRODUCT_IMAGES_BUCKET}' is not accessible: ${bucketError.message}`);
-      }
-
-      console.log('✅ Bucket verified:', {
-        bucket: PRODUCT_IMAGES_BUCKET,
-        public: bucketData?.public || false,
-        createdAt: bucketData?.created_at || 'N/A'
-      });
-
-      const fileExt = file.name.split('.').pop()?.toLowerCase();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      console.log(`⬆️  Uploading file to bucket:`, {
-        bucket: PRODUCT_IMAGES_BUCKET,
-        filePath,
-        fileSize: file.size
-      });
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(PRODUCT_IMAGES_BUCKET)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('❌ Upload failed:', {
-          error: uploadError,
-          message: uploadError.message,
-          code: uploadError.statusCode || 'N/A',
-          bucket: PRODUCT_IMAGES_BUCKET,
-          filePath
-        });
-        throw uploadError;
-      }
-
-      console.log('✅ Upload successful:', {
-        path: uploadData?.path || filePath,
-        bucket: PRODUCT_IMAGES_BUCKET
-      });
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(PRODUCT_IMAGES_BUCKET)
-        .getPublicUrl(filePath);
-
-      if (!urlData?.publicUrl) {
-        console.error('❌ Failed to generate public URL:', {
-          filePath,
-          bucket: PRODUCT_IMAGES_BUCKET
-        });
-        throw new Error('Failed to get public URL for uploaded image');
-      }
-
-      console.log('✅ Public URL generated:', {
-        url: urlData.publicUrl,
-        duration: `${(performance.now() - startTime).toFixed(2)}ms`
-      });
-
-      setImagePreview(urlData.publicUrl);
-      setFormData(prev => ({ ...prev, image_url: urlData.publicUrl }));
-      
-      toast({
-        title: "Success",
-        description: "Image uploaded successfully",
-      });
-    } catch (error: any) {
-      const errorDetails = {
-        error,
-        message: error?.message || 'Unknown error',
-        code: error?.statusCode || error?.code || 'N/A',
-        bucket: PRODUCT_IMAGES_BUCKET,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        duration: `${(performance.now() - startTime).toFixed(2)}ms`
-      };
-      
-      console.error('❌ Image upload error (full details):', errorDetails);
-      
-      const errorMessage = error?.message || "Failed to upload image";
-      
-      // Provide specific error messages based on error type
-      if (errorMessage.includes('bucket') || errorMessage.includes('not found') || error?.statusCode === 404) {
-        toast({
-          title: "Bucket Not Found",
-          description: `The '${PRODUCT_IMAGES_BUCKET}' storage bucket does not exist. Please create it in the Supabase Dashboard under Storage (set to public), or run the migration to create it.`,
-          variant: "destructive",
-        });
-      } else if (errorMessage.includes('permission') || errorMessage.includes('unauthorized') || error?.statusCode === 403) {
-        toast({
-          title: "Permission Denied",
-          description: `You don't have permission to upload to the '${PRODUCT_IMAGES_BUCKET}' bucket. Please contact an administrator.`,
-          variant: "destructive",
-        });
-      } else if (errorMessage.includes('duplicate') || error?.statusCode === 409) {
-        toast({
-          title: "File Already Exists",
-          description: "A file with this name already exists. Please try again or choose a different image.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Upload Failed",
-          description: `Failed to upload image: ${errorMessage}. Check the console for details.`,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setUploading(false);
-    }
   };
 
   const handleSave = async () => {
@@ -343,33 +126,36 @@ const ProductEdit: React.FC = () => {
       return;
     }
 
+    if (!id) return;
+
     setSaving(true);
     try {
-      const updateData = {
-        ...formData,
-        price: Number(formData.price),
-        image_url: imagePreview || null,
-        updated_at: new Date().toISOString()
-      };
+      const updated = await updateBusinessProduct(id, {
+        title_override: formData.title_override || null,
+        description_override: formData.description_override || null,
+        price_from: Number(formData.price_from),
+        price_to: formData.price_to ? Number(formData.price_to) : null,
+        currency_code: formData.currency_code,
+        duration_minutes: formData.duration_minutes ? Number(formData.duration_minutes) : null,
+        booking_url: formData.booking_url || null,
+        notes: formData.notes || null,
+        is_active: formData.is_active
+      });
 
-      const { error } = await supabase
-        .from('products')
-        .update(updateData)
-        .eq('id', id);
+      if (!updated) {
+        throw new Error('Failed to update business product');
+      }
 
-      if (error) throw error;
-
+      setBusinessProduct(updated);
       toast({
         title: "Success",
         description: "Product updated successfully",
       });
-
-      navigate('/admin');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating product:', error);
       toast({
         title: "Error",
-        description: "Failed to update product",
+        description: error?.message || "Failed to update product",
         variant: "destructive",
       });
     } finally {
@@ -378,64 +164,56 @@ const ProductEdit: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+    if (!id) return;
+    
+    if (!confirm('Are you sure you want to remove this product from the business? This will not delete the master product.')) {
       return;
     }
 
+    setSaving(true);
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      });
-
-      navigate('/admin');
-    } catch (error) {
+      const success = await deleteBusinessProduct(id);
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Product removed from business successfully",
+        });
+        navigate('/admin');
+      } else {
+        throw new Error('Failed to delete business product');
+      }
+    } catch (error: any) {
       console.error('Error deleting product:', error);
       toast({
         title: "Error",
-        description: "Failed to delete product",
+        description: error?.message || "Failed to remove product",
         variant: "destructive",
       });
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Loading Product...</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-muted rounded w-3/4"></div>
-              <div className="h-4 bg-muted rounded w-1/2"></div>
-              <div className="h-4 bg-muted rounded w-2/3"></div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading product...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!product) {
+  if (!businessProduct) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
-          <CardHeader>
-            <CardTitle>Product Not Found</CardTitle>
-            <CardDescription>The product you're looking for doesn't exist.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => navigate('/admin')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
+          <CardContent className="text-center py-12">
+            <p className="text-muted-foreground">Product not found</p>
+            <Button onClick={() => navigate('/admin')} className="mt-4">
               Back to Admin
             </Button>
           </CardContent>
@@ -443,6 +221,10 @@ const ProductEdit: React.FC = () => {
       </div>
     );
   }
+
+  const productName = businessProduct.product?.name || 'Unknown Product';
+  const displayTitle = businessProduct.title_override || businessProduct.product?.title || productName;
+  const displayDescription = businessProduct.description_override || businessProduct.product?.description || '';
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
@@ -454,210 +236,216 @@ const ProductEdit: React.FC = () => {
             Back to Admin
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Edit Product</h1>
-            <p className="text-muted-foreground">Update product information and settings</p>
+            <h1 className="text-2xl font-bold">Edit Product: {displayTitle}</h1>
+            <p className="text-muted-foreground">Update business-specific product configuration</p>
           </div>
         </div>
         <Button
           variant="destructive"
           onClick={handleDelete}
-          className="flex items-center gap-2"
+          disabled={saving}
         >
-          <Trash2 className="w-4 h-4" />
-          Delete
+          <Trash2 className="w-4 h-4 mr-2" />
+          Remove from Business
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Form */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
+          {/* Product Info (Read-only) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="w-5 h-5" />
-                Product Information
+                Master Product Information
               </CardTitle>
+              <CardDescription>
+                This information comes from the master product catalogue
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="business_id">Business *</Label>
-                  <Select 
-                    value={formData.business_id} 
-                    onValueChange={(value) => handleInputChange('business_id', value)}
-                  >
-                    <SelectTrigger className={errors.business_id ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select business" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {businesses.map(business => (
-                        <SelectItem key={business.id} value={business.id}>
-                          {business.name} - {business.island}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.business_id && <p className="text-sm text-red-500">{errors.business_id}</p>}
+              <div>
+                <Label>Product Name</Label>
+                <p className="text-sm font-medium">{productName}</p>
+              </div>
+              {businessProduct.product?.title && (
+                <div>
+                  <Label>Product Title</Label>
+                  <p className="text-sm">{businessProduct.product.title}</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="name">Product Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className={errors.name ? 'border-red-500' : ''}
-                    placeholder="Enter product name"
+              )}
+              {businessProduct.product?.description && (
+                <div>
+                  <Label>Product Description</Label>
+                  <p className="text-sm text-muted-foreground">{businessProduct.product.description}</p>
+                </div>
+              )}
+              {businessProduct.product?.category && (
+                <div>
+                  <Label>Category</Label>
+                  <p className="text-sm">{businessProduct.product.category}</p>
+                </div>
+              )}
+              {businessProduct.product?.image_url && (
+                <div>
+                  <Label>Product Image</Label>
+                  <img
+                    src={businessProduct.product.image_url}
+                    alt={productName}
+                    className="w-full h-48 object-cover rounded-lg border mt-2"
                   />
-                  {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Business-Specific Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="w-5 h-5" />
+                Business-Specific Configuration
+              </CardTitle>
+              <CardDescription>
+                Customize pricing, duration, and other details for this business
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Business</Label>
+                <p className="text-sm font-medium">{businessProduct.business?.name}</p>
+                {businessProduct.business?.island && (
+                  <p className="text-sm text-muted-foreground">{businessProduct.business.island}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  rows={4}
-                  placeholder="Describe the product..."
+                <Label htmlFor="title_override">Custom Title (Optional)</Label>
+                <Input
+                  id="title_override"
+                  value={formData.title_override}
+                  onChange={(e) => handleInputChange('title_override', e.target.value)}
+                  placeholder="Override product title for this business"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to use master product title: {businessProduct.product?.title || productName}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description_override">Custom Description (Optional)</Label>
+                <Textarea
+                  id="description_override"
+                  value={formData.description_override}
+                  onChange={(e) => handleInputChange('description_override', e.target.value)}
+                  rows={4}
+                  placeholder="Override product description for this business"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to use master product description
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price (SCR) *</Label>
+                  <Label htmlFor="price_from">Price From *</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      id="price"
+                      id="price_from"
                       type="number"
                       step="0.01"
-                      value={formData.price}
-                      onChange={(e) => handleInputChange('price', e.target.value)}
-                      className={`pl-10 ${errors.price ? 'border-red-500' : ''}`}
+                      value={formData.price_from}
+                      onChange={(e) => handleInputChange('price_from', e.target.value)}
+                      className={`pl-10 ${errors.price_from ? 'border-red-500' : ''}`}
                       placeholder="0.00"
                     />
                   </div>
-                  {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
+                  {errors.price_from && <p className="text-sm text-red-500">{errors.price_from}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  <Select 
-                    value={formData.category} 
-                    onValueChange={(value) => handleInputChange('category', value)}
-                  >
-                    <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.category && <p className="text-sm text-red-500">{errors.category}</p>}
+                  <Label htmlFor="price_to">Price To (Optional)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="price_to"
+                      type="number"
+                      step="0.01"
+                      value={formData.price_to}
+                      onChange={(e) => handleInputChange('price_to', e.target.value)}
+                      className={`pl-10 ${errors.price_to ? 'border-red-500' : ''}`}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  {errors.price_to && <p className="text-sm text-red-500">{errors.price_to}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="currency_code">Currency</Label>
                   <Select 
-                    value={formData.status} 
-                    onValueChange={(value) => handleInputChange('status', value)}
+                    value={formData.currency_code} 
+                    onValueChange={(value) => handleInputChange('currency_code', value)}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {statusOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="SCR">SCR (Seychelles Rupee)</SelectItem>
+                      <SelectItem value="USD">USD (US Dollar)</SelectItem>
+                      <SelectItem value="EUR">EUR (Euro)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Image Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Product Image</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {imagePreview && (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Product preview"
-                    className="w-full h-32 object-cover rounded-lg border"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={() => {
-                      setImagePreview('');
-                      setFormData(prev => ({ ...prev, image_url: '' }));
-                    }}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-              
               <div className="space-y-2">
-                <Label htmlFor="image">Upload Image</Label>
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setImageFile(file);
-                      const reader = new FileReader();
-                      reader.onload = (e) => {
-                        setImagePreview(e.target?.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-                {imageFile && (
-                  <Button
-                    onClick={() => handleImageUpload(imageFile)}
-                    disabled={uploading}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploading ? 'Uploading...' : 'Upload Image'}
-                  </Button>
-                )}
+                <Label htmlFor="duration_minutes">Duration (Minutes)</Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="duration_minutes"
+                    type="number"
+                    value={formData.duration_minutes}
+                    onChange={(e) => handleInputChange('duration_minutes', e.target.value)}
+                    className="pl-10"
+                    placeholder="e.g., 120 for 2 hours"
+                  />
+                </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Product Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="booking_url">Booking URL (Optional)</Label>
+                  <Input
+                    id="booking_url"
+                    type="url"
+                    value={formData.booking_url}
+                    onChange={(e) => handleInputChange('booking_url', e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes / Conditions (Optional)</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    rows={2}
+                    placeholder="Special conditions, offers, etc."
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="searchable"
-                  checked={formData.searchable}
-                  onCheckedChange={(checked) => handleInputChange('searchable', checked)}
+                  id="is_active"
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => handleInputChange('is_active', checked)}
                 />
-                <Label htmlFor="searchable">Make product searchable</Label>
+                <Label htmlFor="is_active">Active (visible to public)</Label>
               </div>
             </CardContent>
           </Card>
@@ -681,10 +469,28 @@ const ProductEdit: React.FC = () => {
                   variant="outline"
                   onClick={() => navigate('/admin')}
                   className="w-full"
+                  disabled={saving}
                 >
                   Cancel
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">About This Product</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-2 text-muted-foreground">
+              <p>
+                This is a business-specific instance of a master product. 
+                Changes here only affect how this product appears for this business.
+              </p>
+              <p>
+                The master product information (name, description, category, image) 
+                is shared across all businesses and cannot be edited here.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -694,4 +500,3 @@ const ProductEdit: React.FC = () => {
 };
 
 export default ProductEdit;
-

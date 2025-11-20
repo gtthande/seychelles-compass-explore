@@ -1,6 +1,6 @@
 // Performance monitoring utilities
 export const performanceLog = (message: string, startTime?: number) => {
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.DEV) {
     if (startTime) {
       const duration = performance.now() - startTime;
       console.log(`⚡ ${message} - ${duration.toFixed(2)}ms`);
@@ -11,7 +11,7 @@ export const performanceLog = (message: string, startTime?: number) => {
 };
 
 export const measurePerformance = (name: string, fn: () => void) => {
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.DEV) {
     const start = performance.now();
     fn();
     const end = performance.now();
@@ -25,7 +25,7 @@ export const createPerformanceTimer = (name: string) => {
   const start = performance.now();
   return () => {
     const duration = performance.now() - start;
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.log(`⚡ ${name} completed in ${duration.toFixed(2)}ms`);
     }
     return duration;

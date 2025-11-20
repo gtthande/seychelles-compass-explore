@@ -4,26 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Eye, Edit, Trash2, Loader2, AlertCircle, RefreshCw, Plus, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PendingCountBadge from './PendingCountBadge';
+import { fetchBusinesses, BusinessRow } from '@/lib/business-api';
 
-interface Business {
-  id: string;
-  name: string;
-  description: string;
-  address: string;
-  island: string;
-  category: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  owner_id: string | null;
+interface Business extends BusinessRow {
+  description?: string | null;
+  address?: string | null;
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  updated_at?: string;
+  owner_id?: string | null;
 }
 
 interface Category {
@@ -99,200 +95,49 @@ const OptimizedBusinessManager: React.FC = () => {
   const USERS_PER_PAGE = 10;
   const islands = ["Mahé", "Praslin", "La Digue", "Silhouette", "Curieuse", "Bird", "Denis"];
 
-  const fetchBusinesses = async (page: number = 1) => {
-    const fetchStartTime = performance.now();
-    console.debug('🔍 [fetchBusinesses] Starting fetch for page:', page);
-    console.debug('🔍 [fetchBusinesses] Filters:', { statusFilter, categoryFilter, islandFilter, searchTerm });
+  const loadBusinesses = async () => {
+    console.debug("[OptimizedBusinessManager] Loading businesses...", {
+      searchTerm,
+      statusFilter,
+      categoryFilter,
+      islandFilter,
+      currentPage
+    });
     
     setLoading(true);
     setError(null);
     
-    // Timeout protection - prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      console.error('⏱️ [fetchBusinesses] Query timeout after 30 seconds');
-      setError('Query timeout: The request took too long. Please try again.');
-      setLoading(false);
-      toast({
-        title: "Timeout",
-        description: "The request took too long. Please try again.",
-        variant: "destructive",
-      });
-    }, 30000);
-    
     try {
-      // Get total count first (optimized)
-      console.debug('🔍 [fetchBusinesses] Fetching total count...');
-      const countQuery = supabase
-        .from('businesses')
-        .select('id', { count: 'exact', head: true });
-      
-      const { count: totalCount, error: countError } = await countQuery;
-      
-      if (countError) {
-        console.error('❌ [fetchBusinesses] Count query error:', {
-          error: countError,
-          message: countError.message,
-          details: countError.details,
-          hint: countError.hint,
-          code: countError.code,
-        });
-        throw countError;
-      }
-      
-      console.debug('🔍 [fetchBusinesses] Total count:', totalCount);
-      setTotalBusinesses(totalCount || 0);
-      setTotalPages(Math.ceil((totalCount || 0) / USERS_PER_PAGE));
-
-      // Get paginated businesses with specific fields
-      const from = (page - 1) * USERS_PER_PAGE;
-      const to = from + USERS_PER_PAGE - 1;
-
-      console.debug('🔍 [fetchBusinesses] Building query with range:', { from, to });
-      
-      // CRITICAL: Select all required fields matching database schema
-      // Use exact column names: latitude/longitude (NOT lat/lng/coords/location_lat/location_lng)
-      let query = supabase
-        .from('businesses')
-        .select(`
-          id,
-          owner_id,
-          name,
-          description,
-          category,
-          status,
-          phone,
-          whatsapp,
-          email,
-          website,
-          facebook_url,
-          instagram_url,
-          linkedin_url,
-          youtube_url,
-          address,
-          latitude,
-          longitude,
-          island,
-          opening_hours,
-          featured,
-          verified,
-          logo_url,
-          cover_image_url,
-          gallery_images,
-          average_rating,
-          total_reviews,
-          services,
-          created_at,
-          updated_at
-        `)
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      // Apply filters
-      if (statusFilter !== "all") {
-        console.debug('🔍 [fetchBusinesses] Applying status filter:', statusFilter);
-        query = query.eq('status', statusFilter);
-      }
-      if (categoryFilter !== "all") {
-        console.debug('🔍 [fetchBusinesses] Applying category filter:', categoryFilter);
-        query = query.eq('category', categoryFilter);
-      }
-      if (islandFilter !== "all") {
-        console.debug('🔍 [fetchBusinesses] Applying island filter:', islandFilter);
-        query = query.eq('island', islandFilter);
-      }
-
-      console.debug('🔍 [fetchBusinesses] Executing query...');
-      const { data, error: businessesError } = await query;
-      
-      const fetchDuration = performance.now() - fetchStartTime;
-      console.debug(`🔍 [fetchBusinesses] Query completed in ${fetchDuration.toFixed(2)}ms`);
-
-      if (businessesError) {
-        // CRITICAL: Log SELECT query errors - MUST appear in console
-        console.error('❌ [fetchBusinesses] Fetch businesses error:', businessesError);
-        console.error('❌ [fetchBusinesses] Supabase query error details:', {
-          error: businessesError,
-          message: businessesError.message,
-          details: businessesError.details,
-          hint: businessesError.hint,
-          code: businessesError.code,
-        });
-        
-        // Return empty array instead of throwing to prevent UI hanging
-        setBusinesses([]);
-        setError(businessesError.message || 'Failed to load businesses');
-        clearTimeout(timeoutId);
-        setLoading(false);
-        toast({
-          title: "Error",
-          description: `Failed to load businesses: ${businessesError.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.debug('🔍 [fetchBusinesses] Raw data received:', {
-        dataType: Array.isArray(data) ? 'array' : typeof data,
-        dataLength: Array.isArray(data) ? data.length : 'N/A',
-        data: data,
-      });
-
-      // Sanitize all businesses before setting state
-      const rawBusinesses = data || [];
-      console.debug('🔍 [fetchBusinesses] Sanitizing', rawBusinesses.length, 'businesses...');
-      
-      const sanitizedBusinesses = rawBusinesses
-        .map((raw: any) => sanitizeBusiness(raw))
-        .filter((business: Business | null): business is Business => business !== null);
-      
-      const skippedCount = rawBusinesses.length - sanitizedBusinesses.length;
-      if (skippedCount > 0) {
-        console.warn(`⚠️ [fetchBusinesses] Skipped ${skippedCount} invalid businesses`);
-      }
-      
-      console.debug('🔍 [fetchBusinesses] Sanitized businesses:', sanitizedBusinesses.length);
-
-      // Apply search filter
-      let filteredBusinesses = sanitizedBusinesses;
-      if (searchTerm) {
-        console.debug('🔍 [fetchBusinesses] Applying search filter:', searchTerm);
-        filteredBusinesses = sanitizedBusinesses.filter(business =>
-          business.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          business.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          business.address?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        console.debug('🔍 [fetchBusinesses] Search results:', filteredBusinesses.length);
-      }
-
-      setBusinesses(filteredBusinesses);
-      console.debug('✅ [fetchBusinesses] Successfully loaded', filteredBusinesses.length, 'businesses');
-      
-      clearTimeout(timeoutId);
-    } catch (error: any) {
-      clearTimeout(timeoutId);
-      const fetchDuration = performance.now() - fetchStartTime;
-      console.error('❌ [fetchBusinesses] Error after', fetchDuration.toFixed(2), 'ms:', {
-        error,
-        message: error?.message,
-        details: error?.details,
-        hint: error?.hint,
-        code: error?.code,
-        stack: error?.stack,
+      const { businesses, total } = await fetchBusinesses({
+        search: searchTerm || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        category: categoryFilter !== "all" ? categoryFilter : undefined,
+        island: islandFilter !== "all" ? islandFilter : undefined,
+        page: currentPage,
+        pageSize: USERS_PER_PAGE,
       });
       
-      // Return empty array instead of leaving UI hanging
+      console.debug("[OptimizedBusinessManager] Businesses loaded:", {
+        count: businesses.length,
+        total
+      });
+      
+      setBusinesses(businesses as Business[]);
+      setTotalBusinesses(total);
+      setTotalPages(Math.ceil(total / USERS_PER_PAGE));
+    } catch (err: any) {
+      console.error("[OptimizedBusinessManager] Failed to load businesses", err);
+      setError("Failed to load businesses. Please try again.");
       setBusinesses([]);
-      const errorMessage = error?.message || 'Unknown error occurred while fetching businesses';
-      setError(errorMessage);
+      setTotalBusinesses(0);
       toast({
         title: "Error",
-        description: `Failed to load businesses: ${errorMessage}`,
+        description: err?.message || "Failed to load businesses. Please try again.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
-      const totalDuration = performance.now() - fetchStartTime;
-      console.debug(`🔍 [fetchBusinesses] Fetch completed in ${totalDuration.toFixed(2)}ms`);
+      console.debug("[OptimizedBusinessManager] Loading complete");
     }
   };
 
@@ -333,7 +178,7 @@ const OptimizedBusinessManager: React.FC = () => {
         description: "Business status updated successfully",
       });
 
-      fetchBusinesses(currentPage);
+      loadBusinesses();
     } catch (error: any) {
       console.error("Error updating business status:", error);
       toast({
@@ -397,7 +242,7 @@ const OptimizedBusinessManager: React.FC = () => {
       }
 
       // Refresh the list
-      await fetchBusinesses(currentPage);
+      await loadBusinesses();
     } catch (error: any) {
       console.error("❌ OptimizedBusinessManager: Error deleting business", {
         businessId,
@@ -421,12 +266,13 @@ const OptimizedBusinessManager: React.FC = () => {
     if (searchTerm) {
       // Debounce search
       const timeoutId = setTimeout(() => {
-        fetchBusinesses(currentPage);
+        loadBusinesses();
       }, 500);
       return () => clearTimeout(timeoutId);
     } else {
-      fetchBusinesses(currentPage);
+      loadBusinesses();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter, categoryFilter, islandFilter, searchTerm]);
 
   useEffect(() => {
@@ -456,7 +302,7 @@ const OptimizedBusinessManager: React.FC = () => {
           <div className="flex gap-2">
             <Button onClick={() => {
               setError(null);
-              fetchBusinesses(currentPage);
+              loadBusinesses();
             }} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Retry
@@ -464,7 +310,7 @@ const OptimizedBusinessManager: React.FC = () => {
             <Button onClick={() => {
               setError(null);
               setCurrentPage(1);
-              fetchBusinesses(1);
+              loadBusinesses();
             }} variant="outline">
               Reset & Retry
             </Button>
@@ -549,96 +395,118 @@ const OptimizedBusinessManager: React.FC = () => {
             </Select>
           </div>
 
+          {/* Error State */}
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Businesses Table */}
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              Loading businesses...
+              <span>Loading businesses...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+              <p className="text-destructive font-medium mb-2">Failed to load businesses</p>
+              <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              <Button onClick={loadBusinesses} variant="outline">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          ) : businesses.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No businesses found</p>
+              {searchTerm || statusFilter !== "all" || categoryFilter !== "all" || islandFilter !== "all" ? (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Try adjusting your filters or search term.
+                </p>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-2">
-              {businesses.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No businesses found</p>
-                </div>
-              ) : (
-                businesses.map((business) => {
-                  // Safe date parsing
-                  let createdDate = 'Unknown';
-                  try {
-                    if (business.created_at) {
-                      createdDate = new Date(business.created_at).toLocaleDateString();
-                    }
-                  } catch (e) {
-                    console.debug('🔍 [render] Invalid date for business:', business.id, business.created_at);
+              {businesses.map((business) => {
+                // Safe date parsing
+                let createdDate = 'Unknown';
+                try {
+                  if (business.created_at) {
+                    createdDate = new Date(business.created_at).toLocaleDateString();
                   }
+                } catch (e) {
+                  console.debug('🔍 [render] Invalid date for business:', business.id, business.created_at);
+                }
 
-                  return (
-                    <div key={business.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium">{business.name || 'Unnamed Business'}</h3>
-                          <Badge className={
-                            business.status === 'active' ? 'bg-green-500 text-white' :
-                            business.status === 'pending' ? 'bg-yellow-400 text-black' :
-                            business.status === 'suspended' ? 'bg-red-500 text-white' :
-                            business.status === 'draft' ? 'bg-gray-300 text-gray-700' :
-                            'bg-gray-300 text-gray-700'
-                          }>
-                            {business.status || 'pending'}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {business.description || 'No description available'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {business.address || 'No address'}, {business.island || 'Unknown'} • {business.category || 'uncategorized'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Created: {createdDate}
-                        </p>
+                return (
+                  <div key={business.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{business.name || 'Unnamed Business'}</h3>
+                        <Badge className={
+                          business.status === 'active' ? 'bg-green-500 text-white' :
+                          business.status === 'pending' ? 'bg-yellow-400 text-black' :
+                          business.status === 'suspended' ? 'bg-red-500 text-white' :
+                          business.status === 'draft' ? 'bg-gray-300 text-gray-700' :
+                          'bg-gray-300 text-gray-700'
+                        }>
+                          {business.status || 'pending'}
+                        </Badge>
                       </div>
-                  <div className="flex gap-2">
-                    <Select 
-                      value={business.status} 
-                      onValueChange={(value) => handleStatusChange(business.id, value)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                        <SelectItem value="closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/business/${business.id}`)}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/admin/businesses/edit/${business.id}`)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleDeleteBusiness(business.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                      <p className="text-sm text-muted-foreground">
+                        {business.description || 'No description available'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {business.address || 'No address'}, {business.island || 'Unknown'} • {business.category || 'uncategorized'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Created: {createdDate}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Select 
+                        value={business.status} 
+                        onValueChange={(value) => handleStatusChange(business.id, value)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="suspended">Suspended</SelectItem>
+                          <SelectItem value="closed">Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate(`/business/${business.id}`)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate(`/admin/businesses/edit/${business.id}`)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteBusiness(business.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                  );
-                })
-              )}
+                );
+              })}
             </div>
           )}
 

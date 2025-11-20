@@ -5,6 +5,9 @@ import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import mkcert from "vite-plugin-mkcert";
 
+// Note: Environment variable validation is handled by scripts/verify-env.ts
+// Vite loads .env files automatically, so we don't validate here to avoid false errors during HMR
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {

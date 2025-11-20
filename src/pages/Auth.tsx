@@ -98,29 +98,61 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Debug logging
+    console.debug("[Auth] SignIn attempt", email);
+    console.debug("[Auth] Supabase URL:", import.meta.env.VITE_SUPABASE_URL ? "Loaded" : "Missing");
+    
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error("[Auth] Error", error);
+        console.error("[Auth] response.error:", error.message);
+        console.error("[Auth] Sign in failed:", {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        // Bubble up error message from Supabase
         toast({
           title: "Sign in failed",
-          description: error.message,
+          description: error.message || "Invalid login credentials",
           variant: "destructive",
         });
       } else {
+        console.log("[Auth] Sign in successful:", {
+          userId: data.user?.id,
+          email: data.user?.email,
+          sessionExists: !!data.session
+        });
+        
+        // Verify session was created
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("[Auth] Session verified:", {
+            userId: session.user.id,
+            expiresAt: session.expires_at
+          });
+        } else {
+          console.warn("[Auth] Warning: Session not found after sign in");
+        }
+        
         toast({
           title: "Welcome back!",
           description: "You have successfully signed in.",
         });
-        navigate("/");
+        // Redirect to /admin for admin users, / for regular users
+        navigate("/admin");
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("[Auth] Unexpected error:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error?.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {

@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import BusinessStatusBadge from '@/components/ui/BusinessStatusBadge';
 import MinimalLocationInput from '@/components/MinimalLocationInput';
-import { sanitizeBusinessPayload } from '@/lib/sanitizeBusinessPayload';
 import { 
   Save, 
   ArrowLeft, 
@@ -301,105 +300,52 @@ const BusinessEdit: React.FC = () => {
 
     setSaving(true);
     try {
-      // Validate and convert latitude/longitude
-      // Handle both separate fields and comma-separated format (e.g., "lat,lng")
-      let lat: number | null = null;
-      let lng: number | null = null;
-      
-      // Helper function to parse coordinate string (handles whitespace, tabs, commas)
+      // Parse and validate latitude/longitude - only from formData fields
+      // These are already validated by the form, but we ensure they're numbers or null
       const parseCoordinate = (value: string | null | undefined): number | null => {
-        if (!value) return null;
-        
-        // Remove all whitespace (spaces, tabs, newlines)
-        const cleaned = value.trim().replace(/\s+/g, '');
-        if (!cleaned) return null;
-        
-        // Try parsing as number directly
-        const num = Number(cleaned);
-        if (!isNaN(num)) return num;
-        
-        // If that fails, try splitting by comma (for "lat,lng" format)
-        const parts = cleaned.split(',').map(p => p.trim()).filter(p => p);
-        if (parts.length === 1) {
-          // Single value, try parsing again
-          const singleNum = Number(parts[0]);
-          if (!isNaN(singleNum)) return singleNum;
-        }
-        
-        return null;
+        if (!value || !value.trim()) return null;
+        const num = Number(value.trim());
+        return isNaN(num) ? null : num;
       };
-      
-      // Parse latitude - check both latitude field and if it contains comma-separated coords
-      const latInput = formData.latitude?.trim() || '';
-      if (latInput) {
-        // Check if input contains comma (might be "lat,lng" format)
-        if (latInput.includes(',')) {
-          const parts = latInput.split(',').map(p => p.trim()).filter(p => p);
-          if (parts.length >= 1) {
-            lat = parseCoordinate(parts[0]);
-          }
-          // If longitude is empty but we have comma-separated, use second part
-          if (!formData.longitude?.trim() && parts.length >= 2) {
-            lng = parseCoordinate(parts[1]);
-          }
-        } else {
-          lat = parseCoordinate(latInput);
-        }
-        
-        if (lat === null) {
-          throw new Error('Invalid latitude value. Please enter a valid number or "latitude,longitude" format.');
-        }
-        if (lat < -90 || lat > 90) {
-          throw new Error('Latitude must be between -90 and 90');
-        }
+
+      const latitude = parseCoordinate(formData.latitude);
+      const longitude = parseCoordinate(formData.longitude);
+
+      // Validate ranges if coordinates are provided
+      if (latitude !== null && (latitude < -90 || latitude > 90)) {
+        throw new Error('Latitude must be between -90 and 90');
       }
-      
-      // Parse longitude - only if not already set from comma-separated format
-      if (lng === null) {
-        const lngInput = formData.longitude?.trim() || '';
-        if (lngInput) {
-          // Check if input contains comma (might be "lat,lng" format)
-          if (lngInput.includes(',')) {
-            const parts = lngInput.split(',').map(p => p.trim()).filter(p => p);
-            if (parts.length >= 1) {
-              lng = parseCoordinate(parts[0]);
-            }
-            // If latitude is empty but we have comma-separated, use second part
-            if (!lat && parts.length >= 2) {
-              lat = parseCoordinate(parts[1]);
-            }
-          } else {
-            lng = parseCoordinate(lngInput);
-          }
-          
-          if (lng === null) {
-            throw new Error('Invalid longitude value. Please enter a valid number or "latitude,longitude" format.');
-          }
-          if (lng < -180 || lng > 180) {
-            throw new Error('Longitude must be between -180 and 180');
-          }
-        }
+      if (longitude !== null && (longitude < -180 || longitude > 180)) {
+        throw new Error('Longitude must be between -180 and 180');
       }
-      
-      // Prepare update data - exclude string lat/lng, use numeric values
-      const { latitude: _lat, longitude: _lng, ...restFormData } = formData;
-      
-      // Build raw payload
-      const rawPayload: any = {
-        ...restFormData,
-        latitude: lat,
-        longitude: lng,
+
+      // Prepare update data - only use valid database fields
+      // NEVER use undefined - use null for optional fields
+      // NEVER use empty strings - convert to null
+      const updateData: Record<string, any> = {
+        name: formData.name,
+        description: formData.description?.trim() || null,
+        category: formData.category,
+        status: formData.status,
+        phone: formData.phone?.trim() || null,
+        email: formData.email?.trim() || null,
+        website: formData.website?.trim() || null,
+        address: formData.address?.trim() || null,
+        island: formData.island?.trim() || null,
+        verification_notes: formData.verification_notes?.trim() || null,
         updated_at: new Date().toISOString()
       };
 
-      // Sanitize the payload to ensure all fields comply with database constraints
-      const updateData = sanitizeBusinessPayload(rawPayload);
+      // Only include latitude/longitude - these are the ONLY coordinate fields
+      // If both are null, we still include them as null (clears coordinates)
+      // NEVER use lat, lng, location_lat, location_lng, coords, etc.
+      updateData.latitude = latitude;
+      updateData.longitude = longitude;
 
       // Log update attempt for debugging
       console.debug('💾 [BusinessEdit] Attempting to update business', {
         businessId: id,
-        rawPayload,
-        sanitizedPayload: updateData,
+        updateData,
         timestamp: new Date().toISOString()
       });
 
@@ -484,7 +430,7 @@ const BusinessEdit: React.FC = () => {
       // Update local state with saved data (but don't trigger re-fetch)
       if (data) {
         setBusiness(data);
-        // Only update lat/lng in formData to avoid triggering unnecessary re-renders
+        // Only update latitude/longitude in formData to avoid triggering unnecessary re-renders
         setFormData(prev => ({
           ...prev,
           latitude: data.latitude?.toString() || '',
@@ -514,13 +460,13 @@ const BusinessEdit: React.FC = () => {
         businessId: id,
         formData: {
           ...formData,
-          latitude: lat,
-          longitude: lng
+          latitude: latitude,
+          longitude: longitude
         },
         rawPayload: {
           ...formData,
-          latitude: lat,
-          longitude: lng,
+          latitude: latitude,
+          longitude: longitude,
         }
       });
       
@@ -839,6 +785,11 @@ const BusinessEdit: React.FC = () => {
                 onAddressChange={handleAddressChange}
                 onLatitudeChange={handleLatitudeChange}
                 onLongitudeChange={handleLongitudeChange}
+                onIslandChange={(island) => handleInputChange('island', island)}
+                onCoordinateSourceChange={(source) => {
+                  // Optional: track coordinate source for debugging
+                  console.debug('[BusinessEdit] Coordinate source changed:', source);
+                }}
               />
 
               <div className="space-y-2">

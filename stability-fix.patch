@@ -1,0 +1,84 @@
+# iCompass Permanent Stability System - Patch Summary
+# This file documents all changes made for the stability system
+
+## Migration Files Added
+- supabase/migrations/20250101000000_add_verification_notes.sql
+  * Adds verification_notes column to businesses table using idempotent DO block
+
+## Scripts Added
+- scripts/prestart.js
+  * Pre-start validation and type regeneration
+- scripts/regenerate-supabase-types.ps1
+  * PowerShell script to regenerate Supabase types
+- scripts/stability-check.ps1
+  * Comprehensive stability validation script
+
+## Configuration Files Modified
+- env.example
+  * Updated with empty placeholders for required variables
+  * Set VITE_SITE_URL default to http://localhost:5173
+
+## Source Files Modified
+
+### Core Infrastructure
+- src/integrations/supabase/client.ts
+  * Fixed to use import.meta.env
+  * Set persistSession: false and autoRefreshToken: false
+  * Added explicit error handling
+
+- src/integrations/supabase/generated-types.d.ts (NEW)
+  * Placeholder for auto-generated types
+
+### Admin Components
+- src/pages/AdminPanel.tsx
+  * Added session check with useEffect
+  * Added console.debug("AdminPanel mounted")
+  * Non-blocking session validation
+
+- src/components/admin/OptimizedBusinessManager.tsx
+  * Added console debug guards
+  * Improved error handling
+  * Better loading state management
+
+### Location Components
+- src/components/LocationInput.tsx
+  * Fixed coordinate parsing regex
+  * Improved validation
+  * No geocoding on paste
+
+- src/components/MinimalLocationInput.tsx
+  * Already correct - no duplicate coordinates
+  * No geocoding on paste
+
+- src/components/MapLocationPicker.tsx
+  * Added API key validation before loading
+
+- src/components/BusinessMapPreview.tsx
+  * Added API key check with graceful fallback
+
+### Utility Files
+- src/utils/geocode.ts
+  * Improved error handling
+  * Better API key validation
+
+- src/lib/performance.ts
+  * Converted process.env to import.meta.env
+
+- src/components/LocationCard.tsx
+  * Converted process.env to import.meta.env
+
+- src/pages/api/debug/health.ts
+  * Converted process.env to import.meta.env
+
+## Package Configuration
+- package.json
+  * Added refresh:types script
+  * Updated dev script to run prestart
+
+## Notes
+- All environment variables now use import.meta.env (Vite convention)
+- No throwOnError() usage found (good)
+- All Supabase queries use proper error handling
+- Vite cache cleared
+- Migration uses idempotent DO block
+

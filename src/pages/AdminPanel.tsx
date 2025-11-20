@@ -42,6 +42,7 @@ const AdminPanel = () => {
   const { user, profile, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
   
   // Determine default tab based on URL
   const getDefaultTab = () => {
@@ -52,6 +53,46 @@ const AdminPanel = () => {
   };
   
   const [activeTab, setActiveTab] = useState(getDefaultTab());
+
+  // RouteGuard handles session checking, so we just verify user exists and set ready
+  // This is a lightweight check since RouteGuard already validated the session
+  useEffect(() => {
+    let active = true;
+    
+    console.debug("[AdminPanel] RouteGuard passed - verifying user...");
+    
+    // Since RouteGuard already checked, we can trust that user exists
+    // Just do a quick verification
+    const verifyUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!active) return;
+        
+        if (session?.user) {
+          console.log("[Auth OK]");
+          console.log("[AdminPanel mounted]");
+          console.log("[Session: user.id=" + session.user.id + "]");
+          setReady(true);
+        } else {
+          // This shouldn't happen if RouteGuard is working, but handle gracefully
+          console.warn("[AdminPanel] No session found - RouteGuard should have redirected");
+          // RouteGuard will handle redirect
+        }
+      } catch (err) {
+        console.error("[AdminPanel] User verification failed:", err);
+        // RouteGuard will handle redirect if needed
+      }
+    };
+    
+    // Small delay to ensure RouteGuard has completed
+    const timer = setTimeout(verifyUser, 50);
+    
+    return () => { 
+      active = false;
+      clearTimeout(timer);
+    };
+  }, []);
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -72,6 +113,17 @@ const AdminPanel = () => {
   // - Profile exists and is loaded
   // - User has admin role
   // If any of these fail, RouteGuard will redirect or show error
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-muted-foreground text-sm mb-2">Loading admin panel…</div>
+          <div className="text-xs text-muted-foreground">Checking session and permissions</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary

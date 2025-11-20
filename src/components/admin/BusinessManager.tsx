@@ -73,20 +73,13 @@ const BusinessManager = () => {
   const fetchBusinesses = async () => {
     setLoading(true);
     try {
-      // Optimized query with specific fields and pagination
-      const { data, error } = await supabase
-        .from('businesses')
-        .select(`
-          id, name, description, category, status, phone, email, website, 
-          address, island, latitude, longitude, featured, verified, 
-          logo_url, cover_image_url, average_rating, total_reviews, 
-          created_at, updated_at, owner_id
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100); // Limit to prevent loading too many records
-
-      if (error) throw error;
-      setBusinesses(data || []);
+      const { fetchBusinesses: fetchBusinessesAPI } = await import('@/lib/business-api');
+      const businesses = await fetchBusinessesAPI({
+        limit: 100,
+        orderBy: 'created_at',
+        ascending: false,
+      });
+      setBusinesses(businesses);
     } catch (error) {
       console.error('Error fetching businesses:', error);
       toast({
@@ -94,6 +87,7 @@ const BusinessManager = () => {
         description: "Failed to load businesses",
         variant: "destructive",
       });
+      setBusinesses([]); // Ensure we set empty array on error
     } finally {
       setLoading(false);
     }

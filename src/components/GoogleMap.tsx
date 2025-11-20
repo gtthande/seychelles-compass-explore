@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { normalizeBusinessCoords } from '@/types/business';
 
 interface Business {
   id: string;
@@ -37,13 +38,21 @@ interface GoogleMapProps {
 }
 
 const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMapProps) => {
-  // Filter businesses with valid coordinates
-  const businessesWithCoords = businesses.filter(b => b.latitude && b.longitude);
+  // Normalize coordinates for all businesses
+  const businessesWithCoords = businesses
+    .map(b => {
+      const coords = normalizeBusinessCoords(b);
+      return coords ? { ...b, normalizedCoords: coords } : null;
+    })
+    .filter((b): b is Business & { normalizedCoords: { lat: number; lng: number } } => b !== null);
   
   // Calculate center point for the map
   const getMapCenter = () => {
-    if (selectedBusiness && selectedBusiness.latitude && selectedBusiness.longitude) {
-      return { lat: selectedBusiness.latitude, lng: selectedBusiness.longitude };
+    if (selectedBusiness) {
+      const coords = normalizeBusinessCoords(selectedBusiness);
+      if (coords) {
+        return coords;
+      }
     }
     
     if (businessesWithCoords.length === 0) {
@@ -51,8 +60,8 @@ const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMap
     }
     
     // Calculate average position
-    const avgLat = businessesWithCoords.reduce((sum, b) => sum + (b.latitude || 0), 0) / businessesWithCoords.length;
-    const avgLng = businessesWithCoords.reduce((sum, b) => sum + (b.longitude || 0), 0) / businessesWithCoords.length;
+    const avgLat = businessesWithCoords.reduce((sum, b) => sum + b.normalizedCoords.lat, 0) / businessesWithCoords.length;
+    const avgLng = businessesWithCoords.reduce((sum, b) => sum + b.normalizedCoords.lng, 0) / businessesWithCoords.length;
     return { lat: avgLat, lng: avgLng };
   };
 
@@ -66,18 +75,21 @@ const GoogleMap = ({ businesses, selectedBusiness, onBusinessSelect }: GoogleMap
     
     // Create markers for all businesses
     const markers = businessesWithCoords.map(b => 
-      `markers=color:red|${b.latitude},${b.longitude}`
+      `markers=color:red|${b.normalizedCoords.lat},${b.normalizedCoords.lng}`
     ).join('&');
     
     return `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=10&size=800x400&${markers}`;
   };
 
   const openInGoogleMaps = () => {
-    if (selectedBusiness && selectedBusiness.latitude && selectedBusiness.longitude) {
-      window.open(`https://www.google.com/maps?q=${selectedBusiness.latitude},${selectedBusiness.longitude}`, '_blank');
-    } else {
-      window.open(`https://www.google.com/maps?q=${center.lat},${center.lng}`, '_blank');
+    if (selectedBusiness) {
+      const coords = normalizeBusinessCoords(selectedBusiness);
+      if (coords) {
+        window.open(`https://www.google.com/maps?q=${coords.lat},${coords.lng}`, '_blank');
+        return;
+      }
     }
+    window.open(`https://www.google.com/maps?q=${center.lat},${center.lng}`, '_blank');
   };
 
   return (

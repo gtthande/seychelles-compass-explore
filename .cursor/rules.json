@@ -1,0 +1,31 @@
+{
+  "protect": [
+    "supabase/migrations/**",
+    "src/integrations/supabase/**",
+    "src/types/**",
+    "scripts/prestart.mjs",
+    ".env"
+  ],
+  "never_delete": [
+    "supabase/**",
+    "src/types/supabase.types.ts"
+  ],
+  "always_regenerate": [
+    "src/types/supabase.types.ts"
+  ],
+  "auto_fix_on_start": [
+    "npm run prestart"
+  ],
+  "warnings": {
+    "before_deleting": [
+      "supabase/migrations/*.sql",
+      "src/types/*.ts",
+      "scripts/prestart.mjs"
+    ],
+    "before_modifying": [
+      "src/integrations/supabase/client.ts",
+      ".env"
+    ]
+  }
+}
+

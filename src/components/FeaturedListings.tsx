@@ -33,44 +33,17 @@ const FeaturedListings = () => {
     try {
       setLoading(true);
       
-      // Use lean query with only required fields
-      const { data, error } = await supabase
-        .from('businesses')
-        .select(`
-          id,
-          name,
-          category,
-          status,
-          address,
-          island,
-          latitude,
-          longitude,
-          featured,
-          verified,
-          logo_url,
-          cover_image_url,
-          average_rating,
-          total_reviews,
-          description,
-          phone,
-          whatsapp,
-          email,
-          website,
-          facebook_url
-        `)
-        .eq('status', 'active')
-        .eq('featured', true)
-        .order('created_at', { ascending: false })
-        .limit(8);
+      // Use centralized API - no timeout, let Supabase handle it
+      const { fetchBusinesses: fetchBusinessesAPI } = await import('@/lib/business-api');
+      const result = await fetchBusinessesAPI({
+        status: 'active',
+        featured: true,
+        page: 1,
+        pageSize: 8,
+      });
 
       if (signal.aborted) return;
-
-      if (error) {
-        console.error('Error fetching featured businesses:', error);
-        setBusinesses([]);
-      } else {
-        setBusinesses(data || []);
-      }
+      setBusinesses(result.businesses);
     } catch (error) {
       // Don't set error if request was aborted
       if (signal.aborted) return;

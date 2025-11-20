@@ -29,10 +29,18 @@ export const BusinessMapPreview: React.FC<BusinessMapPreviewProps> = ({
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
+    if (!apiKey) {
+      console.warn("Google Maps API key not configured. Map preview will not be available.");
+      setMapError(true);
+      return;
+    }
     const initializeMap = async () => {
-      // If we already have coordinates, use them
-      if (business.lat && business.lng) {
-        setCoordinates({ lat: business.lat, lng: business.lng });
+      // Use normalizeBusinessCoords to get coordinates from any format
+      const { normalizeBusinessCoords } = await import('@/types/business');
+      const coords = normalizeBusinessCoords(business);
+      
+      if (coords) {
+        setCoordinates(coords);
         return;
       }
 

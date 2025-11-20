@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  fetchBusinessProducts,
+  createBusinessProduct,
+  updateBusinessProduct,
+  deleteBusinessProduct,
+  fetchAllProducts,
+  type BusinessProduct,
+  type Product
+} from '@/lib/products-api';
 import { 
   Search, 
   Package, 
@@ -19,25 +29,12 @@ import {
   Tag,
   Building,
   MapPin,
-  Calendar
+  Calendar,
+  Clock,
+  Grid3x3,
+  List as ListIcon,
+  X
 } from 'lucide-react';
-
-interface Product {
-  id: string;
-  business_id: string;
-  name: string;
-  description: string;
-  price: number;
-  image_url: string;
-  category: string;
-  status: string;
-  searchable: boolean;
-  created_at: string;
-  updated_at: string;
-  business_name?: string;
-  business_address?: string;
-  business_island?: string;
-}
 
 interface Business {
   id: string;
@@ -47,68 +44,54 @@ interface Business {
 }
 
 const ProductManager: React.FC = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [businessProducts, setBusinessProducts] = useState<BusinessProduct[]>([]);
+  const [masterProducts, setMasterProducts] = useState<Product[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<BusinessProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [businessFilter, setBusinessFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   const categories = [
     'tours', 'equipment', 'food', 'accommodation', 'transport', 
-    'activities', 'souvenirs', 'services', 'entertainment', 'health'
+    'activities', 'souvenirs', 'services', 'entertainment', 'health',
+    'education', 'training', 'certification'
   ];
 
   const statusOptions = [
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-    { value: 'draft', label: 'Draft' }
+    { value: 'active', label: 'Active', color: 'bg-green-500' },
+    { value: 'inactive', label: 'Inactive', color: 'bg-red-500' }
   ];
 
   useEffect(() => {
-    fetchProducts();
+    fetchBusinessProductsData();
     fetchBusinesses();
+    fetchMasterProducts();
   }, []);
 
   useEffect(() => {
     applyFilters();
-  }, [products, searchTerm, categoryFilter, businessFilter, statusFilter, priceRange]);
+  }, [businessProducts, searchTerm, categoryFilter, businessFilter, statusFilter, priceRange]);
 
-  const fetchProducts = async () => {
+  const fetchBusinessProductsData = async () => {
     setLoading(true);
     try {
-      // Optimized query with specific fields and pagination
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          id, business_id, name, description, price, image_url, category, 
-          status, searchable, created_at, updated_at,
-          businesses!inner (
-            id,
-            name,
-            address,
-            island
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100); // Limit to prevent loading too many records
+      const result = await fetchBusinessProducts({
+        limit: 200,
+        isActive: statusFilter === 'all' ? undefined : statusFilter === 'active'
+      });
 
-      if (error) throw error;
-
-      const formattedProducts = data?.map(product => ({
-        ...product,
-        business_name: product.businesses?.name,
-        business_address: product.businesses?.address,
-        business_island: product.businesses?.island
-      })) || [];
-
-      setProducts(formattedProducts);
+      setBusinessProducts(result.businessProducts);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching business products:', error);
       toast({
         title: "Error",
         description: "Failed to fetch products",
@@ -116,6 +99,15 @@ const ProductManager: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMasterProducts = async () => {
+    try {
+      const products = await fetchAllProducts();
+      setMasterProducts(products);
+    } catch (error) {
+      console.error('Error fetching master products:', error);
     }
   };
 
@@ -135,60 +127,62 @@ const ProductManager: React.FC = () => {
   };
 
   const applyFilters = () => {
-    let filtered = products;
+    let filtered = [...businessProducts];
 
     if (searchTerm) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.business_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(bp => {
+        const productName = bp.product?.name || '';
+        const title = bp.title_override || bp.product?.title || productName;
+        const description = bp.description_override || bp.product?.description || '';
+        const businessName = bp.business?.name || '';
+        return (
+          productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          businessName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      });
     }
 
     if (categoryFilter !== 'all') {
-      filtered = filtered.filter(product => product.category === categoryFilter);
+      filtered = filtered.filter(bp => bp.product?.category === categoryFilter);
     }
 
     if (businessFilter !== 'all') {
-      filtered = filtered.filter(product => product.business_id === businessFilter);
+      filtered = filtered.filter(bp => bp.business_id === businessFilter);
     }
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(product => product.status === statusFilter);
+      filtered = filtered.filter(bp => bp.is_active === (statusFilter === 'active'));
     }
 
     if (priceRange.min) {
-      filtered = filtered.filter(product => product.price >= Number(priceRange.min));
+      filtered = filtered.filter(bp => (bp.price_from || 0) >= Number(priceRange.min));
     }
 
     if (priceRange.max) {
-      filtered = filtered.filter(product => product.price <= Number(priceRange.max));
+      filtered = filtered.filter(bp => {
+        const maxPrice = bp.price_to || bp.price_from || 0;
+        return maxPrice <= Number(priceRange.max);
+      });
     }
 
     setFilteredProducts(filtered);
+    setCurrentPage(1);
   };
 
-  const handleStatusChange = async (productId: string, newStatus: string) => {
+  const handleStatusChange = async (id: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({ status: newStatus })
-        .eq('id', productId);
-
-      if (error) throw error;
-
-      setProducts(prev => 
-        prev.map(product => 
-          product.id === productId 
-            ? { ...product, status: newStatus }
-            : product
-        )
-      );
-
-      toast({
-        title: "Success",
-        description: "Product status updated",
-      });
+      const updated = await updateBusinessProduct(id, { is_active: isActive });
+      if (updated) {
+        setBusinessProducts(prev => 
+          prev.map(bp => bp.id === id ? updated : bp)
+        );
+        toast({
+          title: "Success",
+          description: "Product status updated",
+        });
+      }
     } catch (error) {
       console.error('Error updating product status:', error);
       toast({
@@ -199,66 +193,88 @@ const ProductManager: React.FC = () => {
     }
   };
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) {
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this product from the business?')) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) throw error;
-
-      setProducts(prev => prev.filter(product => product.id !== productId));
-
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      });
+      const success = await deleteBusinessProduct(id);
+      if (success) {
+        setBusinessProducts(prev => prev.filter(bp => bp.id !== id));
+        toast({
+          title: "Success",
+          description: "Product removed successfully",
+        });
+      }
     } catch (error) {
       console.error('Error deleting product:', error);
       toast({
         title: "Error",
-        description: "Failed to delete product",
+        description: "Failed to remove product",
         variant: "destructive",
       });
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500 text-white';
-      case 'inactive': return 'bg-red-500 text-white';
-      case 'draft': return 'bg-gray-300 text-gray-700';
-      default: return 'bg-gray-300 text-gray-700';
+  const formatPrice = (priceFrom: number | null, priceTo: number | null, currency: string = 'SCR') => {
+    if (!priceFrom) return "Price on request";
+    const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₨";
+    if (priceTo && priceTo !== priceFrom) {
+      return `${symbol}${priceFrom.toLocaleString()} - ${symbol}${priceTo.toLocaleString()}`;
     }
+    return `${symbol}${priceFrom.toLocaleString()}`;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-SC', {
-      style: 'currency',
-      currency: 'SCR'
-    }).format(price);
+  const formatDuration = (minutes: number | null) => {
+    if (!minutes) return null;
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (mins === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+    return `${hours}h ${mins}m`;
   };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('all');
+    setBusinessFilter('all');
+    setStatusFilter('all');
+    setPriceRange({ min: '', max: '' });
+  };
+
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Product Management</CardTitle>
-          <CardDescription>Loading products...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-4 bg-muted rounded w-1/2"></div>
-            <div className="h-4 bg-muted rounded w-2/3"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Product Management
+            </CardTitle>
+            <CardDescription>Loading products...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="h-32 bg-muted rounded"></div>
+                    <div className="h-4 bg-muted rounded w-3/4"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -269,17 +285,17 @@ const ProductManager: React.FC = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Package className="w-6 h-6" />
                 Product Management
               </CardTitle>
-              <CardDescription>
-                Manage product catalog and inventory ({filteredProducts.length} of {products.length} products)
+              <CardDescription className="mt-1">
+                Manage business-product links • {filteredProducts.length} of {businessProducts.length} products
               </CardDescription>
             </div>
-            <Button onClick={() => window.location.href = '/admin/products/create'}>
+            <Button onClick={() => navigate('/admin/products/create')} size="lg">
               <Plus className="w-4 h-4 mr-2" />
-              Add Product
+              Link Product to Business
             </Button>
           </div>
         </CardHeader>
@@ -288,212 +304,336 @@ const ProductManager: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filters & Search
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              Filters & Search
+            </CardTitle>
+            {(searchTerm || categoryFilter !== 'all' || businessFilter !== 'all' || statusFilter !== 'all' || priceRange.min || priceRange.max) && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="w-4 h-4 mr-2" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
               />
             </div>
             
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Business</label>
-              <Select value={businessFilter} onValueChange={setBusinessFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All businesses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Businesses</SelectItem>
-                  {businesses.map(business => (
-                    <SelectItem key={business.id} value={business.id}>
-                      {business.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={businessFilter} onValueChange={setBusinessFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All businesses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Businesses</SelectItem>
+                {businesses.map(business => (
+                  <SelectItem key={business.id} value={business.id}>
+                    {business.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {statusOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {statusOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Min Price</label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={priceRange.min}
-                onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-              />
-            </div>
+            <Input
+              type="number"
+              placeholder="Min price"
+              value={priceRange.min}
+              onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+            />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Max Price</label>
-              <Input
-                type="number"
-                placeholder="1000"
-                value={priceRange.max}
-                onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-              />
-            </div>
+            <Input
+              type="number"
+              placeholder="Max price"
+              value={priceRange.max}
+              onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Products List */}
-      <div className="space-y-4">
-        {filteredProducts.map((product) => (
-          <Card key={product.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-lg">{product.name}</h3>
-                    <Badge className={getStatusColor(product.status)}>
-                      {product.status}
-                    </Badge>
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Tag className="w-3 h-3" />
-                      {product.category}
-                    </Badge>
-                    {!product.searchable && (
-                      <Badge variant="secondary">Hidden</Badge>
-                    )}
-                  </div>
+      {/* View Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Showing {paginatedProducts.length} of {filteredProducts.length} products
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+          >
+            <Grid3x3 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <ListIcon className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
 
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {product.description}
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-semibold">{formatPrice(product.price)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-muted-foreground" />
-                        <span>{product.business_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-muted-foreground" />
-                        <span>{product.business_address}, {product.business_island}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span>Created: {new Date(product.created_at).toLocaleDateString()}</span>
-                      </div>
-                      {product.image_url && (
-                        <div className="flex items-center gap-2">
-                          <ImageIcon className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-blue-600">Has image</span>
+      {/* Products Grid/List */}
+      {filteredProducts.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-xl font-semibold mb-2">No products found</h3>
+            <p className="text-muted-foreground mb-4">
+              Link a product to a business to get started.
+            </p>
+            <Button onClick={() => navigate('/admin/products/create')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Link Product to Business
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedProducts.map((bp) => {
+                const productName = bp.product?.name || 'Unknown Product';
+                const displayTitle = bp.title_override || bp.product?.title || productName;
+                const displayDescription = bp.description_override || bp.product?.description || '';
+                return (
+                  <Card key={bp.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+                    <div className="relative">
+                      {bp.product?.image_url ? (
+                        <img
+                          src={bp.product.image_url}
+                          alt={displayTitle}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-48 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                          <Package className="w-12 h-12 text-primary/30" />
                         </div>
                       )}
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <Badge className={bp.is_active ? 'bg-green-500' : 'bg-red-500'}>
+                          {bp.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                    <CardHeader>
+                      <CardTitle className="line-clamp-1">{displayTitle}</CardTitle>
+                      <CardDescription className="line-clamp-2">{displayDescription}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-primary">
+                          {formatPrice(bp.price_from, bp.price_to, bp.currency_code)}
+                        </span>
+                        {bp.duration_minutes && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDuration(bp.duration_minutes)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Building className="w-4 h-4" />
+                        <span className="truncate">{bp.business?.name}</span>
+                      </div>
+                      {bp.product?.category && (
+                        <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                          <Tag className="w-3 h-3" />
+                          {bp.product.category}
+                        </Badge>
+                      )}
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => navigate(`/admin/products/edit/${bp.id}`)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteProduct(bp.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {paginatedProducts.map((bp) => {
+                const productName = bp.product?.name || 'Unknown Product';
+                const displayTitle = bp.title_override || bp.product?.title || productName;
+                const displayDescription = bp.description_override || bp.product?.description || '';
+                return (
+                  <Card key={bp.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex gap-6">
+                        <div className="flex-shrink-0">
+                          {bp.product?.image_url ? (
+                            <img
+                              src={bp.product.image_url}
+                              alt={displayTitle}
+                              className="w-32 h-32 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-32 h-32 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
+                              <Package className="w-8 h-8 text-primary/30" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h3 className="font-semibold text-lg">{displayTitle}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{displayDescription}</p>
+                            </div>
+                            <div className="flex gap-2 ml-4">
+                              <Badge className={bp.is_active ? 'bg-green-500' : 'bg-red-500'}>
+                                {bp.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6 text-sm mt-4">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="w-4 h-4 text-muted-foreground" />
+                              <span className="font-semibold text-lg">
+                                {formatPrice(bp.price_from, bp.price_to, bp.currency_code)}
+                              </span>
+                            </div>
+                            {bp.duration_minutes && (
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-muted-foreground" />
+                                <span>{formatDuration(bp.duration_minutes)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Building className="w-4 h-4 text-muted-foreground" />
+                              <span>{bp.business?.name}</span>
+                            </div>
+                            {bp.product?.category && (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <Tag className="w-3 h-3" />
+                                {bp.product.category}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/admin/products/edit/${bp.id}`)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteProduct(bp.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
 
-                <div className="flex flex-col gap-2">
-                  <Select 
-                    value={product.status} 
-                    onValueChange={(value) => handleStatusChange(product.id, value)}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2">
+              <Button
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+              >
+                Previous
+              </Button>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                let page;
+                if (totalPages <= 7) {
+                  page = i + 1;
+                } else if (currentPage <= 4) {
+                  page = i + 1;
+                } else if (currentPage >= totalPages - 3) {
+                  page = totalPages - 6 + i;
+                } else {
+                  page = currentPage - 3 + i;
+                }
+                return (
+                  <Button
+                    key={page}
+                    variant={page === currentPage ? 'default' : 'outline'}
+                    onClick={() => setCurrentPage(page)}
+                    className="min-w-[40px]"
                   >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.location.href = `/products/${product.id}`}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.location.href = `/admin/products/edit/${product.id}`}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteProduct(product.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {filteredProducts.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-8">
-              <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No products found</h3>
-              <p className="text-muted-foreground">
-                Try adjusting your search criteria or filters.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                    {page}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
 
 export default ProductManager;
-

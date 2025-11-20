@@ -237,54 +237,25 @@ const OptimizedFeaturedListings = () => {
       setDataLoading(true);
       setLoading(true);
       
-      // Use lean query with only required fields
-      const { data, error } = await supabase
-        .from('businesses')
-        .select(`
-          id,
-          name,
-          category,
-          status,
-          address,
-          island,
-          latitude,
-          longitude,
-          featured,
-          verified,
-          logo_url,
-          cover_image_url,
-          average_rating,
-          total_reviews,
-          description,
-          phone,
-          whatsapp,
-          email,
-          website,
-          facebook_url
-        `)
-        .eq('status', 'active')
-        .eq('featured', true)
-        .order('created_at', { ascending: false })
-        .limit(8);
+      // Use centralized API - no timeout, let Supabase handle it
+      const { fetchBusinesses: fetchBusinessesAPI } = await import('@/lib/business-api');
+      const result = await fetchBusinessesAPI({
+        status: 'active',
+        featured: true,
+        page: 1,
+        pageSize: 8,
+      });
 
       if (signal.aborted) return;
-
-      if (error) {
-        console.error('🚨 FeaturedListings: Query failed:', error);
-        console.error('FeaturedListings Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        setBusinesses([]);
-      } else {
-        console.log('✅ FeaturedListings: Query successful, data:', data);
-        setBusinesses(data || []);
+      
+      setBusinesses(result.businesses);
+      
+      const fetchDuration = performance.now() - startTime;
+      console.log(`✅ FeaturedListings: Fetched ${result.businesses.length} businesses in ${fetchDuration.toFixed(2)}ms`);
+      
+      if (result.businesses.length === 0) {
+        console.warn('⚠️ FeaturedListings: No featured businesses found');
       }
-
-      const endTime = performance.now();
-      console.log(`✅ FeaturedListings: Data fetch completed in ${(endTime - startTime).toFixed(2)}ms`);
     } catch (error) {
       // Don't set error if request was aborted
       if (signal.aborted) return;

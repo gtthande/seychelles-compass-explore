@@ -38,7 +38,11 @@ const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
         setIsLoading(true);
         
         // Load Google Maps API
-        const maps = await loadGoogleMaps(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (!apiKey) {
+          throw new Error("Google Maps API key is not configured. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file.");
+        }
+        const maps = await loadGoogleMaps(apiKey);
         mapInstanceRef.current = maps;
 
         // Set initial center
@@ -283,6 +287,8 @@ const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
 };
 
 export default MapLocationPicker;
+
+
 
 
 

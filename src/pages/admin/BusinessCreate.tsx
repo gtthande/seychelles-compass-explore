@@ -12,8 +12,6 @@ import { Loader2 } from 'lucide-react';
 
 // Lazy load heavy map components
 const MinimalLocationInput = lazy(() => import('@/components/MinimalLocationInput'));
-const LocationInput = lazy(() => import('@/components/LocationInput'));
-const LocationCard = lazy(() => import('@/components/LocationCard'));
 import { 
   Save, 
   ArrowLeft, 
@@ -32,8 +30,6 @@ const BusinessCreate: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
-  const [showLocationOptions, setShowLocationOptions] = useState(false);
-  const [locationLink, setLocationLink] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,50 +78,17 @@ const BusinessCreate: React.FC = () => {
   };
 
 
-  const handleLocationParsed = (lat: number, lng: number, link: string) => {
-    setFormData(prev => ({
-      ...prev,
-      latitude: lat.toString(),
-      longitude: lng.toString()
-    }));
-    setLocationLink(link);
-    toast({
-      title: "Location Parsed",
-      description: `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`
-    });
+  // Location input handlers
+  const handleAddressChange = (address: string) => {
+    handleInputChange('address', address);
   };
 
-  const handleCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: "Error",
-        description: "Geolocation is not supported by this browser",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleLatitudeChange = (latitude: string) => {
+    handleInputChange('latitude', latitude);
+  };
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setFormData(prev => ({
-          ...prev,
-          latitude: latitude.toString(),
-          longitude: longitude.toString()
-        }));
-        toast({
-          title: "Current Location Set",
-          description: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-        });
-      },
-      (error) => {
-        toast({
-          title: "Error",
-          description: "Failed to get current location",
-          variant: "destructive",
-        });
-      }
-    );
+  const handleLongitudeChange = (longitude: string) => {
+    handleInputChange('longitude', longitude);
   };
 
   const validateForm = () => {
@@ -216,10 +179,39 @@ const BusinessCreate: React.FC = () => {
         throw new Error('User not authenticated');
       }
 
-      const insertData = {
-        ...formData,
-        latitude: formData.latitude ? Number(formData.latitude) : null,
-        longitude: formData.longitude ? Number(formData.longitude) : null,
+      // Parse and validate coordinates - only use valid numbers or null
+      const parseCoordinate = (value: string | null | undefined): number | null => {
+        if (!value || !value.trim()) return null;
+        const num = Number(value.trim());
+        return isNaN(num) ? null : num;
+      };
+
+      const latitude = parseCoordinate(formData.latitude);
+      const longitude = parseCoordinate(formData.longitude);
+
+      // Validate ranges if coordinates are provided
+      if (latitude !== null && (latitude < -90 || latitude > 90)) {
+        throw new Error('Latitude must be between -90 and 90');
+      }
+      if (longitude !== null && (longitude < -180 || longitude > 180)) {
+        throw new Error('Longitude must be between -180 and 180');
+      }
+
+      // Prepare insert data - only use valid database fields
+      // NEVER use undefined - use null for optional fields
+      const insertData: Record<string, any> = {
+        name: formData.name,
+        description: formData.description || null,
+        category: formData.category,
+        status: formData.status === 'draft' ? 'pending' : formData.status, // 'draft' is not valid, use 'pending'
+        phone: formData.phone || null,
+        email: formData.email || null,
+        website: formData.website || null,
+        address: formData.address || null,
+        island: formData.island || null,
+        latitude: latitude,
+        longitude: longitude,
+        logo_url: formData.logo_url || null,
         owner_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -413,7 +405,6 @@ const BusinessCreate: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Google Maps Link Parser */}
               <Suspense fallback={
                 <div className="flex items-center justify-center h-16">
                   <div className="flex items-center gap-2">
@@ -422,63 +413,19 @@ const BusinessCreate: React.FC = () => {
                   </div>
                 </div>
               }>
-                <LocationInput onParsed={handleLocationParsed} />
+                <MinimalLocationInput
+                  address={formData.address}
+                  latitude={formData.latitude}
+                  longitude={formData.longitude}
+                  onAddressChange={handleAddressChange}
+                  onLatitudeChange={handleLatitudeChange}
+                  onLongitudeChange={handleLongitudeChange}
+                  onCoordinateSourceChange={(source) => {
+                    // Optional: track coordinate source for debugging
+                    console.debug('[BusinessCreate] Coordinate source changed:', source);
+                  }}
+                />
               </Suspense>
-              
-              {/* Help Instructions */}
-              <div className="text-sm text-gray-500 bg-gray-50 border rounded-md p-3">
-                <p className="font-medium mb-1">ℹ️ How to get coordinates:</p>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>Open Google Maps and find your location</li>
-                  <li>Right-click on the exact spot → "What's here?"</li>
-                  <li>Copy the coordinates that appear</li>
-                  <li>Or copy the full Google Maps URL</li>
-                </ol>
-              </div>
-
-              {/* Display Location Card */}
-              {formData.latitude && formData.longitude && (
-                <Suspense fallback={
-                  <div className="flex items-center justify-center h-20">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm text-muted-foreground">Loading location card...</span>
-                    </div>
-                  </div>
-                }>
-                  <LocationCard
-                    address={formData.address}
-                    latitude={parseFloat(formData.latitude)}
-                    longitude={parseFloat(formData.longitude)}
-                    link={locationLink}
-                    phone={formData.phone}
-                    website={formData.website}
-                    email={formData.email}
-                  />
-                </Suspense>
-              )}
-
-              {/* Divider */}
-              <hr className="my-2" />
-
-              {/* Alternative Location Methods */}
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-gray-700">Alternative location methods:</p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCurrentLocation}
-                    className="flex items-center gap-2"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    Use Current Location
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    💡 Tip: Use the coordinate input above to paste coordinates from Google Maps
-                  </p>
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="island">Island</Label>

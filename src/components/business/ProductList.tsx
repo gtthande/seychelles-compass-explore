@@ -72,17 +72,44 @@ const ProductList = () => {
       setProductsLoading(true);
       
       let query = supabase
-        .from('products')
-        .select('*', { count: 'exact' })
+        .from('business_products')
+        .select(`
+          id,
+          title_override,
+          description_override,
+          price_from,
+          price_to,
+          currency_code,
+          duration_minutes,
+          booking_url,
+          notes,
+          is_active,
+          created_at,
+          updated_at,
+          product:products!inner (
+            id,
+            name,
+            title,
+            description,
+            category,
+            image_url,
+            status
+          )
+        `, { count: 'exact' })
         .eq('business_id', business.id);
 
       // Apply filters
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        query = query.or(`
+          product.name.ilike.%${searchTerm}%,
+          product.description.ilike.%${searchTerm}%,
+          title_override.ilike.%${searchTerm}%,
+          description_override.ilike.%${searchTerm}%
+        `);
       }
       
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as 'active' | 'draft' | 'pending' | 'expired');
+        query = query.eq('is_active', statusFilter === 'active');
       }
 
       // Apply pagination
@@ -95,7 +122,23 @@ const ProductList = () => {
 
       if (error) throw error;
       
-      setProducts(data || []);
+      // Transform data to match existing Product interface
+      const transformedProducts = (data || []).map(bp => ({
+        id: bp.id,
+        business_id: business.id,
+        name: bp.title_override || bp.product?.name || '',
+        title: bp.title_override || bp.product?.title || bp.product?.name || '',
+        description: bp.description_override || bp.product?.description || '',
+        price: bp.price_from || 0,
+        image_url: bp.product?.image_url || null,
+        category: bp.product?.category || null,
+        status: bp.is_active ? 'active' : 'inactive',
+        duration: bp.duration_minutes ? `${bp.duration_minutes} min` : null,
+        created_at: bp.created_at,
+        updated_at: bp.updated_at,
+      }));
+      
+      setProducts(transformedProducts);
       setTotalProducts(count || 0);
     } catch (error: any) {
       console.error('Error fetching products:', error);

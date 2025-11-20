@@ -14,7 +14,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 // Lazy load heavy map components
-const LocationInput = lazy(() => import('@/components/LocationInput'));
+const MinimalLocationInput = lazy(() => import('@/components/MinimalLocationInput'));
 
 interface Category {
   id: string;
@@ -93,37 +93,17 @@ const BusinessRegister = () => {
   };
 
 
-  const handleCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: "Error",
-        description: "Geolocation is not supported by this browser",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Location input handlers
+  const handleAddressChange = (address: string) => {
+    handleInputChange('address', address);
+  };
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setFormData(prev => ({
-          ...prev,
-          latitude: latitude.toString(),
-          longitude: longitude.toString()
-        }));
-        toast({
-          title: "Current Location Set",
-          description: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-        });
-      },
-      (error) => {
-        toast({
-          title: "Error",
-          description: "Failed to get current location",
-          variant: "destructive",
-        });
-      }
-    );
+  const handleLatitudeChange = (latitude: string) => {
+    handleInputChange('latitude', latitude);
+  };
+
+  const handleLongitudeChange = (longitude: string) => {
+    handleInputChange('longitude', longitude);
   };
 
   const validateForm = () => {
@@ -258,7 +238,27 @@ const BusinessRegister = () => {
       // Determine status based on user role
       const status = isAdmin ? 'active' : 'pending';
 
-      const insertData = {
+      // Parse and validate coordinates - only use valid numbers or null
+      const parseCoordinate = (value: string | null | undefined): number | null => {
+        if (!value || !value.trim()) return null;
+        const num = Number(value.trim());
+        return isNaN(num) ? null : num;
+      };
+
+      const latitude = parseCoordinate(formData.latitude);
+      const longitude = parseCoordinate(formData.longitude);
+
+      // Validate ranges if coordinates are provided
+      if (latitude !== null && (latitude < -90 || latitude > 90)) {
+        throw new Error('Latitude must be between -90 and 90');
+      }
+      if (longitude !== null && (longitude < -180 || longitude > 180)) {
+        throw new Error('Longitude must be between -180 and 180');
+      }
+
+      // Prepare insert data - only use valid database fields
+      // NEVER use undefined - use null for optional fields
+      const insertData: Record<string, any> = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         category: formData.category,
@@ -267,8 +267,8 @@ const BusinessRegister = () => {
         website: formData.website.trim() || null,
         address: formData.address.trim() || null,
         island: formData.island || null,
-        latitude: formData.latitude ? Number(formData.latitude) : null,
-        longitude: formData.longitude ? Number(formData.longitude) : null,
+        latitude: latitude,
+        longitude: longitude,
         logo_url: logoUrl || null,
         owner_id: profile.id,
         status: status as any,
@@ -508,70 +508,16 @@ const BusinessRegister = () => {
                       <Loader2 className="w-4 h-4 animate-spin" />
                     </div>
                   }>
-                    <LocationInput
-                      onParsed={(lat, lng, link) => {
-                        setFormData(prev => ({
-                          ...prev,
-                          latitude: lat.toString(),
-                          longitude: lng.toString()
-                        }));
-                      }}
+                    <MinimalLocationInput
+                      address={formData.address}
+                      latitude={formData.latitude}
+                      longitude={formData.longitude}
+                      onAddressChange={handleAddressChange}
+                      onLatitudeChange={handleLatitudeChange}
+                      onLongitudeChange={handleLongitudeChange}
+                      onIslandChange={(island) => handleInputChange('island', island)}
                     />
                   </Suspense>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="latitude">Latitude</Label>
-                      <Input
-                        id="latitude"
-                        type="number"
-                        step="any"
-                        value={formData.latitude}
-                        onChange={(e) => handleInputChange('latitude', e.target.value)}
-                        className={errors.latitude ? 'border-destructive' : ''}
-                        placeholder="e.g. -4.6191"
-                      />
-                      {errors.latitude && <p className="text-sm text-destructive">{errors.latitude}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="longitude">Longitude</Label>
-                      <Input
-                        id="longitude"
-                        type="number"
-                        step="any"
-                        value={formData.longitude}
-                        onChange={(e) => handleInputChange('longitude', e.target.value)}
-                        className={errors.longitude ? 'border-destructive' : ''}
-                        placeholder="e.g. 55.4513"
-                      />
-                      {errors.longitude && <p className="text-sm text-destructive">{errors.longitude}</p>}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCurrentLocation}
-                      className="flex items-center gap-2"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      Use Current Location
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      💡 Tip: Use the coordinate input above to paste coordinates from Google Maps
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                      placeholder="Street address"
-                    />
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="island">Island</Label>

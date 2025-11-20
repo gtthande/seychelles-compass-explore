@@ -205,7 +205,7 @@ const LocationCard: React.FC<LocationCardProps> = ({
       )}
 
       {/* Debug Info (only in development) */}
-      {process.env.NODE_ENV === 'development' && (latitude || longitude) && (
+      {import.meta.env.DEV && (latitude || longitude) && (
         <div className="pt-2 border-t border-gray-200 text-xs text-gray-400">
           <details>
             <summary className="cursor-pointer">Debug Info</summary>

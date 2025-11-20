@@ -30,10 +30,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: null
     },
     environment: {
-      nodeEnv: process.env.NODE_ENV,
-      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      hasGoogleMapsKey: !!process.env.VITE_GOOGLE_MAPS_API_KEY
+      nodeEnv: import.meta.env.MODE,
+      hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
+      hasSupabaseAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+      hasGoogleMapsKey: !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY
     }
   };
 

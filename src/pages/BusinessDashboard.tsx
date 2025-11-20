@@ -247,11 +247,21 @@ const BusinessDashboard = () => {
     if (!business?.id || !user) return;
     
     try {
+      // Sync all coordinate fields - lat/lng are source of truth
+      const lat = formData.latitude || formData.lat;
+      const lng = formData.longitude || formData.lng;
+      const coords = lat != null && lng != null ? { lat: Number(lat), lng: Number(lng) } : null;
+      
       const { error } = await supabase
         .from('businesses')
         .update({
-          latitude: formData.latitude,
-          longitude: formData.longitude,
+          lat: lat,
+          lng: lng,
+          location_lat: lat,
+          location_lng: lng,
+          coords: coords,
+          latitude: lat, // Keep legacy field for compatibility
+          longitude: lng, // Keep legacy field for compatibility
           address: formData.address,
           updated_at: new Date().toISOString()
         })

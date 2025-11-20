@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { geocodeAddress } from '@/lib/minimal-geocode';
-import { MapPin, X, Loader2, Navigation, AlertCircle, Copy, Check, ExternalLink } from 'lucide-react';
+import { MapPin, X, Loader2, Navigation, AlertCircle, ExternalLink } from 'lucide-react';
+
+export type CoordinateSource = 'none' | 'current-location' | 'manual';
 
 interface MinimalLocationInputProps {
   address: string;
@@ -13,9 +14,28 @@ interface MinimalLocationInputProps {
   onAddressChange: (address: string) => void;
   onLatitudeChange: (latitude: string) => void;
   onLongitudeChange: (longitude: string) => void;
+  onIslandChange?: (island: string) => void;
+  onCoordinateSourceChange?: (source: CoordinateSource) => void;
   disabled?: boolean;
 }
 
+/**
+ * MinimalLocationInput - Single source of truth for business coordinates
+ * 
+ * Features:
+ * - Single pair of latitude/longitude fields (the canonical values)
+ * - Browser geolocation (optional - fills coordinates from device GPS)
+ * - Paste coordinates (optional - fills coordinates from pasted text)
+ * - Manual coordinate entry (always available)
+ * - Open Google Maps (opens maps with coordinates or address)
+ * 
+ * Rules:
+ * - Only ONE pair of coordinates exists: { latitude, longitude }
+ * - All methods (GPS, paste, manual) update the SAME fields
+ * - No duplicate coordinate displays
+ * - No external geocoding API calls (no API key required)
+ * - Coordinates are preserved when editing existing businesses
+ */
 const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
   address,
   latitude,
@@ -23,63 +43,46 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
   onAddressChange,
   onLatitudeChange,
   onLongitudeChange,
+  onIslandChange,
+  onCoordinateSourceChange,
   disabled = false
 }) => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [geolocationLoading, setGeolocationLoading] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [coordinateInput, setCoordinateInput] = useState('');
+  const [coordinateSource, setCoordinateSource] = useState<CoordinateSource>('none');
 
-  // Handle geocoding from address (existing functionality)
-  const handleGetLocation = async () => {
-    if (!address.trim()) {
-      toast({
-        title: 'Address Required',
-        description: 'Please enter an address to get coordinates.',
-        variant: 'destructive',
-      });
-      return;
+  // Initialize coordinate source based on existing values (only on mount)
+  useEffect(() => {
+    const hasCoords = latitude && longitude && 
+                     !isNaN(Number(latitude)) && 
+                     !isNaN(Number(longitude));
+    if (hasCoords && coordinateSource === 'none') {
+      // If editing existing business with coordinates, treat as manual
+      // This preserves the coordinates and doesn't auto-overwrite them
+      setCoordinateSource('manual');
+      onCoordinateSourceChange?.('manual');
+    } else if (!hasCoords && coordinateSource !== 'none') {
+      setCoordinateSource('none');
+      onCoordinateSourceChange?.('none');
     }
+  }, []); // Only run on mount - don't re-run when coordinates change externally
 
-    setLoading(true);
-    
-    try {
-      const result = await geocodeAddress(address);
-      
-      if ('error' in result) {
-        throw new Error(result.error);
-      }
-      
-      // Update the form with new coordinates
-      onAddressChange(result.formatted);
-      onLatitudeChange(result.lat.toFixed(6));
-      onLongitudeChange(result.lng.toFixed(6));
-      
-      toast({
-        title: '✅ Location found',
-        description: `Coordinates: ${result.lat.toFixed(6)}, ${result.lng.toFixed(6)}`,
-      });
-      
-    } catch (error: any) {
-      console.error('Geocoding error:', error);
-      toast({
-        title: '❌ Location lookup failed',
-        description: error.message || 'Could not find coordinates for this address',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+  // Update coordinate source when coordinates are cleared
+  const updateCoordinateSource = (source: CoordinateSource) => {
+    setCoordinateSource(source);
+    onCoordinateSourceChange?.(source);
   };
 
-  // Handle getting current location using browser geolocation API
+  /**
+   * Handle getting current location using browser geolocation API ONLY
+   * No external geocoding API calls - just browser GPS
+   */
   const handleGetCurrentLocation = () => {
     // Check if geolocation is supported
     if (!navigator.geolocation) {
       toast({
         title: 'Geolocation Not Supported',
-        description: 'Your browser does not support geolocation. Please use "Pick on Map" or enter an address.',
+        description: 'Your browser does not support geolocation. Please paste coordinates manually.',
         variant: 'destructive',
         duration: 5000,
       });
@@ -91,24 +94,24 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
     // Configure geolocation options
     const options: PositionOptions = {
       enableHighAccuracy: true,
-      timeout: 10000, // 10 seconds timeout
+      timeout: 15000, // 15 seconds timeout
       maximumAge: 0 // Don't use cached position
     };
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude: deviceLat, longitude: deviceLng } = position.coords;
         
-        // Update form state with current location
-        onLatitudeChange(latitude.toFixed(6));
-        onLongitudeChange(longitude.toFixed(6));
+        console.log("[Location] Geolocation result:", position);
         
-        // Optionally update address if we can reverse geocode (optional enhancement)
-        // For now, just update coordinates
+        // Update the SAME latitude/longitude fields (single source of truth)
+        onLatitudeChange(deviceLat.toFixed(6));
+        onLongitudeChange(deviceLng.toFixed(6));
+        updateCoordinateSource('current-location');
         
         toast({
           title: '✅ Current Location Set',
-          description: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+          description: `Business coordinates set to your current location: ${deviceLat.toFixed(6)}, ${deviceLng.toFixed(6)}`,
         });
         
         setGeolocationLoading(false);
@@ -116,247 +119,162 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
       (error) => {
         setGeolocationLoading(false);
         
-        let errorMessage = 'Failed to get your current location.';
+        // Special handling for PERMISSION_DENIED - don't treat as fatal error
+        if (error.code === error.PERMISSION_DENIED) {
+          console.log("[Location] Permission denied by user");
+          toast({
+            title: 'Location Permission Denied',
+            description: 'Location access denied. Enable permissions and try again.',
+            variant: 'default',
+            duration: 5000,
+          });
+          // Do NOT change existing coordinates on permission denial
+          return;
+        }
+        
+        let errorMessage = 'Location lookup failed: ';
         
         switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. Please enable location permissions in your browser settings and try again.';
-            break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable. Please try "Pick on Map" or enter an address.';
+            errorMessage += 'Location information is unavailable. Please paste coordinates manually.';
             break;
           case error.TIMEOUT:
-            errorMessage = 'Location request timed out. Please try again or use "Pick on Map".';
+            errorMessage += 'Location request timed out. Please try again or paste coordinates manually.';
             break;
           default:
-            errorMessage = `Location error: ${error.message || 'Unknown error'}`;
+            errorMessage += `Geolocation request denied.`;
             break;
         }
         
-        console.error('Geolocation error:', {
+        console.warn('[Location] Geolocation error:', {
           code: error.code,
           message: error.message,
-          PERMISSION_DENIED: error.PERMISSION_DENIED,
-          POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
-          TIMEOUT: error.TIMEOUT
         });
         
         toast({
-          title: '❌ Location Error',
+          title: '⚠️ Location Error',
           description: errorMessage,
-          variant: 'destructive',
+          variant: 'default', // Not destructive - form still works
           duration: 6000,
         });
+        // Do NOT change existing coordinates on error
       },
       options
     );
   };
 
+  /**
+   * Build Google Maps URL using coordinates or address
+   * Priority: coordinates > address > default
+   */
+  const buildMapsUrl = (): string => {
+    const latNum = latitude ? Number(latitude) : null;
+    const lngNum = longitude ? Number(longitude) : null;
+    
+    // If we have valid coordinates, use them with the new API format
+    if (latNum !== null && lngNum !== null && 
+        !isNaN(latNum) && !isNaN(lngNum) &&
+        latNum >= -90 && latNum <= 90 &&
+        lngNum >= -180 && lngNum <= 180) {
+      return `https://www.google.com/maps/search/?api=1&query=${latNum},${lngNum}`;
+    }
+    
+    // Else if we have an address, use it
+    if (address && address.trim().length > 0) {
+      const encoded = encodeURIComponent(address.trim());
+      return `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+    }
+    
+    // Default: just open Google Maps
+    return "https://www.google.com/maps";
+  };
+
+  /**
+   * Handle opening Google Maps
+   * Just opens a new tab - no auto-parsing
+   */
+  const handleOpenMaps = () => {
+    const url = buildMapsUrl();
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+
+  /**
+   * Handle clear coordinates - clears the SAME latitude/longitude fields
+   */
+  const handleClearCoordinates = () => {
+    console.log("[Location] Cleared.");
+    onLatitudeChange('');
+    onLongitudeChange('');
+    updateCoordinateSource('none');
+    // Clear island when coordinates are cleared
+    if (onIslandChange) {
+      onIslandChange('');
+    }
+    toast({
+      title: 'Coordinates Cleared',
+      description: 'You can now search for the correct location.',
+    });
+  };
+
+  // Check if we have valid coordinates (for UI conditional rendering)
+  const hasValidCoordinates = latitude && longitude && 
+                             !isNaN(Number(latitude)) && 
+                             !isNaN(Number(longitude)) &&
+                             Number(latitude) >= -90 && Number(latitude) <= 90 &&
+                             Number(longitude) >= -180 && Number(longitude) <= 180;
 
   return (
     <div className="space-y-3">
+      {/* A) Address Input */}
       <div>
         <Label htmlFor="address">Address</Label>
-        <div className="flex gap-2 mt-1">
-          <Input
-            id="address"
-            value={address}
-            onChange={(e) => onAddressChange(e.target.value)}
-            placeholder="Street address, city"
-            className="flex-1"
-            disabled={disabled}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleGetLocation}
-            disabled={!address.trim() || loading || disabled}
-            className="flex items-center gap-1"
-            title="Get coordinates from address (geocoding)"
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <MapPin className="w-4 h-4" />
-            )}
-            {loading ? "Locating..." : "📍 Get Location"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Paste Coordinates Input */}
-      <div className="space-y-2">
-        <Label>Or Paste Coordinates Here</Label>
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            value={coordinateInput}
-            onChange={(e) => setCoordinateInput(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                // Parse coordinates - improved regex to handle many decimal places
-                // Matches: -4.614655873729187, 55.42605689637798 or -4.614655873729187,55.42605689637798
-                // Also handles integers: -4, 55
-                const trimmed = coordinateInput.trim();
-                const coordMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/);
-                if (coordMatch && coordMatch[1] && coordMatch[2]) {
-                  const lat = parseFloat(coordMatch[1].trim());
-                  const lng = parseFloat(coordMatch[2].trim());
-                  if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                    onLatitudeChange(lat.toFixed(6));
-                    onLongitudeChange(lng.toFixed(6));
-                    setCoordinateInput('');
-                    toast({
-                      title: '✅ Coordinates Pasted',
-                      description: `Coordinates set: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                    });
-                  } else {
-                    toast({
-                      title: 'Invalid Coordinates',
-                      description: 'Please enter valid coordinates (e.g., -4.6515, 55.4863)',
-                      variant: 'destructive',
-                    });
-                  }
-                } else {
-                  toast({
-                    title: 'Could Not Parse',
-                    description: 'Please paste coordinates in format: latitude, longitude (e.g., -4.6515, 55.4863)',
-                    variant: 'destructive',
-                  });
-                }
-              }
-            }}
-            placeholder="Paste coordinates: -4.6515, 55.4863"
-            className="flex-1"
-            disabled={disabled}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Parse coordinates - improved regex to handle many decimal places
-              // Matches: -4.614655873729187, 55.42605689637798 or -4.614655873729187,55.42605689637798
-              // Also handles integers: -4, 55
-              const trimmed = coordinateInput.trim();
-              const coordMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/);
-              if (coordMatch && coordMatch[1] && coordMatch[2]) {
-                const lat = parseFloat(coordMatch[1].trim());
-                const lng = parseFloat(coordMatch[2].trim());
-                if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                  onLatitudeChange(lat.toFixed(6));
-                  onLongitudeChange(lng.toFixed(6));
-                  setCoordinateInput('');
-                  toast({
-                    title: '✅ Coordinates Pasted',
-                    description: `Coordinates set: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                  });
-                } else {
-                  toast({
-                    title: 'Invalid Coordinates',
-                    description: 'Please enter valid coordinates (e.g., -4.6515, 55.4863)',
-                    variant: 'destructive',
-                  });
-                }
-              } else {
-                toast({
-                  title: 'Could Not Parse',
-                  description: 'Please paste coordinates in format: latitude, longitude (e.g., -4.6515, 55.4863)',
-                  variant: 'destructive',
-                });
-              }
-            }}
-            disabled={disabled || !coordinateInput.trim()}
-          >
-            Parse
-          </Button>
-        </div>
-      </div>
-
-      {/* Location Action Buttons */}
-      <div className="space-y-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleGetCurrentLocation}
-          disabled={geolocationLoading || disabled}
-          className="flex items-center gap-1 w-full"
-          title="Use your device's GPS location"
-        >
-          {geolocationLoading ? (
-            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Navigation className="w-4 h-4" />
-          )}
-          {geolocationLoading ? "Getting Location..." : "📍 Get Current Location"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            // Open Google Maps centered on Seychelles, or current coordinates if available
-            const lat = latitude && !isNaN(Number(latitude)) ? Number(latitude) : -4.619;
-            const lng = longitude && !isNaN(Number(longitude)) ? Number(longitude) : 55.451;
-            window.open(`https://www.google.com/maps/@${lat},${lng},12z`, '_blank');
-            toast({
-              title: '🌍 Google Maps Opened',
-              description: 'Right-click on the location → "What\'s here?" → Copy coordinates, then paste them above',
-              duration: 6000,
-            });
-          }}
+        <Input
+          id="address"
+          value={address}
+          onChange={(e) => onAddressChange(e.target.value)}
+          placeholder="Street address, city (e.g., Berjaya Hotel, Beau Vallon)"
+          className="mt-1"
           disabled={disabled}
-          className="flex items-center gap-1 w-full bg-green-50 hover:bg-green-100 border-green-200"
-          title="Open Google Maps to find and copy coordinates"
-        >
-          <ExternalLink className="w-4 h-4" />
-          🌍 Open Google Maps
-        </Button>
-        <p className="text-xs text-muted-foreground text-center">
-          💡 Tip: In Google Maps, right-click → "What's here?" → Copy coordinates, then paste above
-        </p>
+        />
       </div>
 
+      {/* B) Open Google Maps Button */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleOpenMaps}
+        disabled={disabled}
+        className="flex items-center gap-1 w-full bg-green-50 hover:bg-green-100 border-green-200"
+        title="Open Google Maps to find coordinates"
+      >
+        <ExternalLink className="w-4 h-4" />
+        🌍 Open Google Maps
+      </Button>
+
+      {/* Get Current Location Button - Always visible */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleGetCurrentLocation}
+        disabled={geolocationLoading || disabled}
+        className="flex items-center gap-1 w-full"
+        title="Use your device's GPS location for the business"
+      >
+        {geolocationLoading ? (
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Navigation className="w-4 h-4" />
+        )}
+        {geolocationLoading ? "Getting Location..." : "📍 Get Location"}
+      </Button>
+
+      {/* D) Single pair of Latitude/Longitude fields - Always visible (THE CANONICAL VALUES) */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="latitude">Latitude</Label>
-            {latitude && !isNaN(Number(latitude)) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(latitude);
-                    setCopiedField('lat');
-                    toast({
-                      title: '✅ Copied',
-                      description: 'Latitude copied to clipboard',
-                    });
-                    setTimeout(() => setCopiedField(null), 2000);
-                  } catch (err) {
-                    toast({
-                      title: 'Copy Failed',
-                      description: 'Failed to copy latitude',
-                      variant: 'destructive',
-                    });
-                  }
-                }}
-                className="h-5 px-1"
-                title="Copy latitude to clipboard"
-              >
-                {copiedField === 'lat' ? (
-                  <Check className="w-3 h-3 text-green-600" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
-              </Button>
-            )}
-          </div>
+          <Label htmlFor="latitude">Latitude</Label>
           <Input
             id="latitude"
             type="number"
@@ -367,6 +285,9 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
               // Allow empty string, valid numbers, and negative numbers
               if (value === '' || (!isNaN(Number(value)) && Number(value) >= -90 && Number(value) <= 90)) {
                 onLatitudeChange(value);
+                if (value && longitude) {
+                  updateCoordinateSource('manual');
+                }
               }
             }}
             placeholder="-4.619143"
@@ -382,41 +303,7 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
           )}
         </div>
         <div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="longitude">Longitude</Label>
-            {longitude && !isNaN(Number(longitude)) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(longitude);
-                    setCopiedField('lng');
-                    toast({
-                      title: '✅ Copied',
-                      description: 'Longitude copied to clipboard',
-                    });
-                    setTimeout(() => setCopiedField(null), 2000);
-                  } catch (err) {
-                    toast({
-                      title: 'Copy Failed',
-                      description: 'Failed to copy longitude',
-                      variant: 'destructive',
-                    });
-                  }
-                }}
-                className="h-5 px-1"
-                title="Copy longitude to clipboard"
-              >
-                {copiedField === 'lng' ? (
-                  <Check className="w-3 h-3 text-green-600" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
-              </Button>
-            )}
-          </div>
+          <Label htmlFor="longitude">Longitude</Label>
           <Input
             id="longitude"
             type="number"
@@ -427,6 +314,9 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
               // Allow empty string, valid numbers, and negative numbers
               if (value === '' || (!isNaN(Number(value)) && Number(value) >= -180 && Number(value) <= 180)) {
                 onLongitudeChange(value);
+                if (value && latitude) {
+                  updateCoordinateSource('manual');
+                }
               }
             }}
             placeholder="55.451315"
@@ -442,65 +332,15 @@ const MinimalLocationInput: React.FC<MinimalLocationInputProps> = ({
           )}
         </div>
       </div>
-      
-      {/* Show current coordinates if set with copy functionality */}
-      {latitude && longitude && !isNaN(Number(latitude)) && !isNaN(Number(longitude)) && (
-        <div className="p-2 bg-muted rounded-md text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="w-4 h-4" />
-              <span>Coordinates: {Number(latitude).toFixed(6)}, {Number(longitude).toFixed(6)}</span>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                const coords = `${Number(latitude).toFixed(6)}, ${Number(longitude).toFixed(6)}`;
-                try {
-                  await navigator.clipboard.writeText(coords);
-                  setCopiedField('both');
-                  toast({
-                    title: '✅ Copied',
-                    description: 'Coordinates copied to clipboard',
-                  });
-                  setTimeout(() => setCopiedField(null), 2000);
-                } catch (err) {
-                  toast({
-                    title: 'Copy Failed',
-                    description: 'Failed to copy coordinates',
-                    variant: 'destructive',
-                  });
-                }
-              }}
-              className="h-6 px-2"
-              title="Copy coordinates to clipboard"
-            >
-              {copiedField === 'both' ? (
-                <Check className="w-3 h-3 text-green-600" />
-              ) : (
-                <Copy className="w-3 h-3" />
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
 
-      {/* Clear Coordinates Button */}
-      {(latitude || longitude) && (
+      {/* E) Clear Coordinates Button - Only show when coordinates are set */}
+      {hasValidCoordinates && (
         <div className="flex justify-center">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              onLatitudeChange('');
-              onLongitudeChange('');
-              toast({
-                title: 'Coordinates Cleared',
-                description: 'You can now search for the correct location.',
-              });
-            }}
+            onClick={handleClearCoordinates}
             className="flex items-center gap-1"
           >
             <X className="w-4 h-4" />

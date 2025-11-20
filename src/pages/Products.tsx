@@ -71,61 +71,92 @@ const Products = () => {
   } = useServerSideData(
     'products_list',
     async () => {
-      // Optimized query with specific fields and proper pagination
+      // Optimized query using business_products join table
       let query = supabase
-        .from('products')
+        .from('business_products')
         .select(`
-          id, name, description, price, currency, category, status, in_stock, 
-          images, catalogue_url, sku, unit, tags, published_at,
-          business:businesses!inner(id, name, island, address)
+          id,
+          title_override,
+          description_override,
+          price_from,
+          price_to,
+          currency_code,
+          duration_minutes,
+          booking_url,
+          notes,
+          is_active,
+          created_at,
+          business:businesses!inner(
+            id, 
+            name, 
+            island, 
+            address
+          ),
+          product:products!inner(
+            id,
+            name,
+            title,
+            description,
+            category,
+            image_url,
+            status
+          )
         `)
-        .eq('status', 'active')
-        .not('published_at', 'is', null)
-        .order('published_at', { ascending: false });
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
       // Apply filters
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        query = query.or(`
+          product.name.ilike.%${searchTerm}%,
+          product.description.ilike.%${searchTerm}%,
+          title_override.ilike.%${searchTerm}%,
+          description_override.ilike.%${searchTerm}%
+        `);
       }
 
       if (selectedCategory && selectedCategory !== "__all__") {
-        query = query.eq('category', selectedCategory);
+        query = query.eq('product.category', selectedCategory);
       }
 
       if (priceRange.min) {
-        query = query.gte('price', parseFloat(priceRange.min));
+        query = query.gte('price_from', parseFloat(priceRange.min));
       }
 
       if (priceRange.max) {
-        query = query.lte('price', parseFloat(priceRange.max));
+        query = query.lte('price_to', parseFloat(priceRange.max));
       }
 
       if (selectedIsland && selectedIsland !== "__all__") {
-        query = query.eq('businesses.island', selectedIsland);
+        query = query.eq('business.island', selectedIsland);
       }
 
       // Get total count for pagination (separate optimized query)
       const countQuery = supabase
-        .from('products')
+        .from('business_products')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'active')
-        .not('published_at', 'is', null);
+        .eq('is_active', true);
 
       // Apply same filters to count query
       if (searchTerm) {
-        countQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        countQuery.or(`
+          product.name.ilike.%${searchTerm}%,
+          product.description.ilike.%${searchTerm}%,
+          title_override.ilike.%${searchTerm}%,
+          description_override.ilike.%${searchTerm}%
+        `);
       }
       if (selectedCategory && selectedCategory !== "__all__") {
-        countQuery.eq('category', selectedCategory);
+        countQuery.eq('product.category', selectedCategory);
       }
       if (priceRange.min) {
-        countQuery.gte('price', parseFloat(priceRange.min));
+        countQuery.gte('price_from', parseFloat(priceRange.min));
       }
       if (priceRange.max) {
-        countQuery.lte('price', parseFloat(priceRange.max));
+        countQuery.lte('price_to', parseFloat(priceRange.max));
       }
       if (selectedIsland && selectedIsland !== "__all__") {
-        countQuery.eq('businesses.island', selectedIsland);
+        countQuery.eq('business.island', selectedIsland);
       }
 
       const [{ data, error }, { count }] = await Promise.all([
@@ -138,7 +169,31 @@ const Products = () => {
       const totalCount = count || 0;
       setTotalPages(Math.ceil(totalCount / pageSize));
       
-      return data || [];
+      // Transform business_products data to match Product interface
+      const transformedData = (data || []).map((bp: any) => ({
+        id: bp.id,
+        name: bp.title_override || bp.product?.name || '',
+        description: bp.description_override || bp.product?.description || null,
+        price: bp.price_from || null,
+        currency: bp.currency_code || 'SCR',
+        category: bp.product?.category || null,
+        status: bp.is_active ? 'active' : 'inactive',
+        in_stock: bp.is_active,
+        images: bp.product?.image_url ? [bp.product.image_url] : null,
+        catalogue_url: bp.booking_url || null,
+        sku: null,
+        unit: null,
+        tags: null,
+        published_at: bp.created_at || null,
+        business: {
+          id: bp.business?.id || '',
+          name: bp.business?.name || '',
+          island: bp.business?.island || null,
+          address: bp.business?.address || null,
+        },
+      }));
+      
+      return transformedData;
     },
     {
       cache: true,

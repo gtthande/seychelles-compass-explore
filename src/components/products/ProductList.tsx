@@ -48,15 +48,45 @@ const ProductList: React.FC<ProductListProps> = ({ businessId, isOwner = false }
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      // Use business_products join table instead of products.business_id
       const { data, error } = await supabase
-        .from('products')
-        .select('id, business_id, name, description, price, image_url, created_at')
+        .from('business_products')
+        .select(`
+          id,
+          title_override,
+          description_override,
+          price_from,
+          price_to,
+          currency_code,
+          is_active,
+          created_at,
+          product:products!inner (
+            id,
+            name,
+            description,
+            image_url,
+            status
+          )
+        `)
         .eq('business_id', businessId)
-        .eq('status', 'active')
+        .eq('is_active', true)
+        .eq('product.status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProducts(data || []);
+      
+      // Transform to match Product interface
+      const transformedProducts = (data || []).map((bp: any) => ({
+        id: bp.id,
+        business_id: businessId,
+        name: bp.title_override || bp.product?.name || 'Unknown Product',
+        description: bp.description_override || bp.product?.description || null,
+        price: bp.price_from || null,
+        image_url: bp.product?.image_url || null,
+        created_at: bp.created_at,
+      }));
+      
+      setProducts(transformedProducts);
     } catch (error: any) {
       console.error('Error fetching products:', error);
       toast({

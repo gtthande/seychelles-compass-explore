@@ -326,17 +326,57 @@ const BusinessDashboard = () => {
   };
 
   const fetchProducts = async () => {
-    if (!user) return;
+    if (!user || !business?.id) return;
 
     try {
+      // Use business_products join table instead of products.business_id
       const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('business_id', business?.id || '')
+        .from('business_products')
+        .select(`
+          id,
+          title_override,
+          description_override,
+          price_from,
+          price_to,
+          currency_code,
+          duration_minutes,
+          booking_url,
+          notes,
+          is_active,
+          created_at,
+          updated_at,
+          product:products!inner (
+            id,
+            name,
+            title,
+            description,
+            category,
+            image_url,
+            status
+          )
+        `)
+        .eq('business_id', business.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProducts(data || []);
+      // Transform business_products data to match expected Product interface
+      const transformedProducts = (data || []).map((bp: any) => ({
+        id: bp.id,
+        name: bp.title_override || bp.product?.name || 'Unknown Product',
+        description: bp.description_override || bp.product?.description || '',
+        price: bp.price_from || 0,
+        price_to: bp.price_to || bp.price_from || null,
+        currency: bp.currency_code || 'SCR',
+        category: bp.product?.category || '',
+        images: bp.product?.image_url ? [bp.product.image_url] : [],
+        is_active: bp.is_active,
+        duration_minutes: bp.duration_minutes,
+        booking_url: bp.booking_url,
+        notes: bp.notes,
+        created_at: bp.created_at,
+        updated_at: bp.updated_at,
+      }));
+      setProducts(transformedProducts);
     } catch (error: any) {
       console.error('Error fetching products:', error);
     } finally {

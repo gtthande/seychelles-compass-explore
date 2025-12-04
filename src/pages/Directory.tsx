@@ -228,7 +228,7 @@ const Directory = () => {
       try {
         let query = supabase
           .from('businesses')
-          .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
+          .select('*')
           .order('featured', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(100); // Increased limit to get more results, will deduplicate
@@ -282,7 +282,7 @@ const Directory = () => {
               // Recreate query for retry (queries can't be reused after execution)
               query = supabase
                 .from('businesses')
-                .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
+                .select('*')
                 .order('featured', { ascending: false })
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -316,7 +316,7 @@ const Directory = () => {
               // Recreate query for retry
               query = supabase
                 .from('businesses')
-                .select('id, name, description, category, address, island, phone, email, website, average_rating, featured, status, created_at, latitude, longitude')
+                .select('*')
                 .order('featured', { ascending: false })
                 .order('created_at', { ascending: false })
                 .limit(100);

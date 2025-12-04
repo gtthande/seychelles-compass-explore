@@ -19,9 +19,10 @@ Add the following secrets:
 
 #### Supabase Configuration
 ```
+# ⚠️ Never commit real API keys. Store these as GitHub Secrets.
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+VITE_SUPABASE_ANON_KEY=[YOUR_SUPABASE_ANON_KEY]
+SUPABASE_SERVICE_ROLE_KEY=[YOUR_SERVICE_ROLE_KEY]
 ```
 
 #### Google Maps API

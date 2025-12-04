@@ -10,18 +10,24 @@
 ### Environment Variables
 Configure these in Vercel dashboard under Project Settings > Environment Variables:
 
+**⚠️ Security:** Never commit real API keys. Get your keys from the respective dashboards and add them via Vercel's environment variable interface.
+
 ```
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3bG1sbmlvdHlyanR0Z2xianJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MDM3MDEsImV4cCI6MjA3MjI3OTcwMX0.Wx2ypE6AlTBe0vBqC_MvYc5IiwemMaxXGiHOmGM6MoI
+VITE_SUPABASE_ANON_KEY=[YOUR_SUPABASE_ANON_KEY]
 VITE_SITE_URL=https://your-domain.vercel.app
 ```
 
+**Where to get your Supabase Anon Key:**
+- Go to https://supabase.com/dashboard/project/bwlmlniotyrjttglbjrl/settings/api
+- Copy the `anon` `public` key
+
 ### Optional Environment Variables (for enhanced features)
 ```
-OPENAI_API_KEY=sk-... # For AI search features
-RESEND_API_KEY=re_... # For reliable password reset emails (recommended)
-GOOGLE_MAPS_API_KEY=AIza... # For maps integration
-STRIPE_SECRET_KEY=sk_test_... # For payment processing
+OPENAI_API_KEY=[YOUR_OPENAI_API_KEY] # For AI search features
+RESEND_API_KEY=[YOUR_RESEND_API_KEY] # For reliable password reset emails (recommended)
+GOOGLE_MAPS_API_KEY=[YOUR_GOOGLE_MAPS_API_KEY] # For maps integration
+STRIPE_SECRET_KEY=[YOUR_STRIPE_SECRET_KEY] # For payment processing
 ```
 
 ### Password Reset Configuration

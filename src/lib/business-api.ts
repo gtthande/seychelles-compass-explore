@@ -110,24 +110,47 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  // Select ONLY valid fields
+  // Select businesses with categories via business_categories join
+  // Use left join so businesses without categories still appear
   let query = supabase
     .from("businesses")
-    .select(VALID_BUSINESS_FIELDS, { count: "exact" })
+    .select(`
+      *,
+      business_categories (
+        category_id,
+        categories (
+          id,
+          name,
+          description,
+          active
+        )
+      )
+    `, { count: "exact" })
+    .order("featured", { ascending: false })
     .order("created_at", { ascending: false })
     .range(from, to);
 
   // Apply filters
   if (search.trim()) {
-    query = query.ilike("name", `%${search.trim()}%`);
+    query = query.or(`name.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
   }
 
   if (status && status !== "all") {
     query = query.eq("status", status);
   }
 
+  // Filter by category via business_categories join
+  // Note: This filter might not work with nested joins in Supabase
+  // If filtering fails, we'll filter client-side instead
   if (category && category !== "all") {
-    query = query.eq("category", category);
+    // Try to filter via join - if this fails, we'll filter client-side
+    // Supabase might not support nested filtering on joined tables
+    try {
+      query = query.eq("business_categories.categories.name", category);
+    } catch (e) {
+      // Filter will be done client-side if join filter fails
+      console.warn("[fetchBusinesses] Category filter via join not supported, will filter client-side");
+    }
   }
 
   if (island && island !== "all") {
@@ -142,12 +165,14 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
 
   if (error) {
     console.error("[fetchBusinesses] Error", error);
-    console.error("[fetchBusinesses] Error details:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint
-    });
+    if (import.meta.env.DEV) {
+      console.error("[fetchBusinesses] Error details:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+    }
     // Don't throw - return empty result with error info
     // This prevents infinite loading states
     return {
@@ -156,8 +181,38 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
     };
   }
 
+  // Transform data to include categories array and legacy category field for backward compatibility
+  let businesses = (data ?? []).map((business: any) => {
+    const categories = business.business_categories?.map((bc: any) => bc.categories).filter(Boolean) || [];
+    const primaryCategory = categories[0]; // Use first category as primary for legacy support
+    
+    return {
+      ...business,
+      categories, // New: categories array
+      category: primaryCategory?.name || business.category_id || null, // Legacy: single category field
+      category_slug: primaryCategory?.name?.toLowerCase().replace(/\s+/g, '-') || null
+    };
+  });
+
+  // Client-side category filter if join filter didn't work
+  if (category && category !== "all") {
+    businesses = businesses.filter((business: any) => {
+      return business.categories?.some((cat: any) => cat.name === category) || 
+             business.category === category;
+    });
+  }
+
+  if (import.meta.env.DEV) {
+    console.debug('[Home] fetchBusinesses: Loaded businesses', {
+      count: businesses.length,
+      total: count ?? 0,
+      featured: featured !== undefined ? featured : 'all',
+      categoryFilter: category || 'none'
+    });
+  }
+
   return {
-    businesses: (data ?? []) as BusinessRow[],
+    businesses: businesses as BusinessRow[],
     total: count ?? 0,
   };
 }

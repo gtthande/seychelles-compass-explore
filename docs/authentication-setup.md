@@ -199,9 +199,13 @@ npx tsx admin/verify-auth.ts
 Ensure these are set in your production environment:
 ```bash
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_GOOGLE_MAPS_API_KEY=AIzaSyByNrxUDO-dODXwTaT6RINSbAfASZ-eGfY
+VITE_SUPABASE_ANON_KEY=[YOUR_SUPABASE_ANON_KEY]
+VITE_GOOGLE_MAPS_API_KEY=[YOUR_GOOGLE_MAPS_API_KEY]
 ```
+
+**⚠️ Security:** Never commit real API keys. Get your keys from:
+- Supabase: https://supabase.com/dashboard/project/bwlmlniotyrjttglbjrl/settings/api
+- Google Maps: https://console.cloud.google.com/apis/credentials
 
 ### Security Checklist
 - ✅ RLS policies enabled on all tables

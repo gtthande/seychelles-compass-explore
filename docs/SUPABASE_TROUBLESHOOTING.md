@@ -21,8 +21,10 @@ Create or update `.env.local` in the project root:
 
 ```env
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_ANON_KEY=[YOUR_SUPABASE_ANON_KEY]
 ```
+
+**⚠️ Security:** Replace `[YOUR_SUPABASE_ANON_KEY]` with your actual key from Supabase dashboard.
 
 **Important:** 
 - Use `.env.local` (not `.env`) for local development

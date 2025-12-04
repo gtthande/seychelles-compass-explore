@@ -66,7 +66,7 @@ export async function loadStaticData<T>(
 
   try {
     const data = await fetcher();
-    
+
     // Cache the result
     if (cache) {
       staticDataCache.set(key, {
@@ -89,7 +89,7 @@ export async function loadStaticData<T>(
       console.error('DataLoader Error message:', error.message);
       console.error('DataLoader Error stack:', error.stack);
     }
-    
+
     // Return cached data if available, otherwise fallback
     if (cache) {
       const cached = staticDataCache.get(key);
@@ -149,7 +149,7 @@ export function useDynamicData<T>(
     try {
       const result = await fetcher();
       setData(result);
-      
+
       // Cache the result if caching is enabled
       if (cache) {
         staticDataCache.set(key, {
@@ -166,7 +166,7 @@ export function useDynamicData<T>(
         console.error('DataLoader Dynamic Error message:', err.message);
         console.error('DataLoader Dynamic Error stack:', err.stack);
       }
-      
+
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       setData(fallback);
@@ -195,7 +195,7 @@ export async function preloadPageData(pageKey: string, fetchers: Record<string, 
   const promises = Object.entries(fetchers).map(([key, fetcher]) =>
     loadStaticData(`${pageKey}_${key}`, fetcher, { cache: true })
   );
-  
+
   try {
     const results = await Promise.all(promises);
     return results.reduce((acc, result, index) => {
@@ -226,7 +226,7 @@ export function clearCache(key?: string) {
 export function getCacheStats() {
   const now = Date.now();
   const entries = Array.from(staticDataCache.entries());
-  
+
   return {
     totalEntries: entries.length,
     validEntries: entries.filter(([, value]) => now - value.timestamp < value.ttl).length,
@@ -244,7 +244,7 @@ export const dataFetchers = {
         .from('businesses')
         .select('category')
         .not('category', 'is', null);
-      
+
       if (error) {
         console.error('🚨 DataFetchers: getCategories failed:', error);
         console.error('getCategories Error details:', {
@@ -255,7 +255,7 @@ export const dataFetchers = {
         });
         throw error;
       }
-      
+
       const uniqueCategories = [...new Set(data.map(item => item.category))];
       console.log('✅ DataFetchers: getCategories successful:', uniqueCategories);
       return uniqueCategories;
@@ -268,10 +268,10 @@ export const dataFetchers = {
   async getFeaturedBusinesses() {
     const { data, error } = await supabase
       .from('businesses')
-      .select('id, name, category, description, cover_image_url, logo_url, average_rating, verified, featured')
+      .select('*')
       .eq('featured', true)
       .limit(6);
-    
+
     if (error) throw error;
     return data || [];
   },
@@ -282,7 +282,7 @@ export const dataFetchers = {
       .select('*')
       .eq('is_active', true)
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -290,7 +290,7 @@ export const dataFetchers = {
   async getLiveCounters() {
     try {
       const { data, error } = await supabase.rpc('get_live_counters');
-      
+
       if (error) {
         console.error('🚨 DataFetchers: getLiveCounters RPC failed:', error);
         console.error('getLiveCounters Error details:', {
@@ -301,7 +301,7 @@ export const dataFetchers = {
         });
         throw error;
       }
-      
+
       console.log('✅ DataFetchers: getLiveCounters successful:', data);
       return data || { businesses: 0, products: 0, users: 0 };
     } catch (err) {
@@ -314,52 +314,101 @@ export const dataFetchers = {
   async getBusinesses(filters: any = {}) {
     let query = supabase
       .from('businesses')
-      .select('id, name, category, description, cover_image_url, logo_url, average_rating, verified, featured, location, contact_info')
+      .select(`
+        *,
+        business_categories (
+          category_id,
+          categories (
+            id,
+            name,
+            description,
+            active
+          )
+        )
+      `)
       .limit(20);
 
+    // Filter by category via business_categories join
     if (filters.category) {
-      query = query.eq('category', filters.category);
-    }
-    if (filters.search) {
-      query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
-    }
-
-    const { data, error } = await supabase
-      .from('businesses')
-      .select('id, name, category, description, cover_image_url, logo_url, average_rating, verified, featured, location, contact_info')
-      .limit(20);
-    
-    if (error) throw error;
-    return data || [];
-  },
-
-  async getProducts(filters: any = {}) {
-    let query = supabase
-      .from('products')
-      .select('id, name, description, price, images, business_id, category, created_at')
-      .limit(50);
-
-    if (filters.category) {
-      query = query.eq('category', filters.category);
+      query = query.eq('business_categories.categories.name', filters.category);
     }
     if (filters.search) {
       query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
     }
 
     const { data, error } = await query;
+
     if (error) throw error;
-    return data || [];
+    
+    // Transform to include categories array
+    return (data || []).map((business: any) => ({
+      ...business,
+      categories: business.business_categories?.map((bc: any) => bc.categories).filter(Boolean) || []
+    }));
+  },
+
+  async getProducts(filters: any = {}) {
+    try {
+      // Use products as base table
+      let query = supabase
+        .from('products')
+        .select('*')
+        .eq('status', 'active')
+        .limit(50);
+
+      if (filters.category) {
+        query = query.eq('category', filters.category);
+      }
+      if (filters.search) {
+        query = query.or(`
+          name.ilike.%${filters.search}%,
+          description.ilike.%${filters.search}%
+        `);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('[getProducts] Error:', error);
+        throw error;
+      }
+
+      // Transform to match expected format
+      const results: any[] = (data || []).map((product: any) => ({
+        id: product.id,
+        name: product.name || 'Unknown Product',
+        description: product.description || '',
+        price: product.price || 0,
+        price_to: product.price || null,
+        currency: 'SCR',
+        images: product.image_url ? [product.image_url] : [],
+        category: product.category || product.category_id || '',
+        created_at: product.created_at,
+      }));
+
+      return results;
+    } catch (error: any) {
+      console.error('[getProducts] Unexpected error:', error);
+      throw error;
+    }
   },
 
   async getBusinessById(id: string) {
-    const { data, error } = await supabase
-      .from('businesses')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('[getBusinessById] Error:', error);
+        throw error;
+      }
+      return data;
+    } catch (error: any) {
+      console.error('[getBusinessById] Unexpected error:', error);
+      throw error;
+    }
   },
 
   async getUserProfile(userId: string) {
@@ -368,7 +417,7 @@ export const dataFetchers = {
       .select('*')
       .eq('id', userId)  // Fixed: use id (primary key) not user_id
       .single();
-    
+
     if (error) throw error;
     return data;
   }

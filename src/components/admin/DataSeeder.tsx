@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
+import { Database } from "@/types/supabase";
 import { Loader2, Database as DatabaseIcon, CheckCircle, AlertTriangle } from "lucide-react";
 
 type Business = Database['public']['Tables']['businesses']['Insert'];

@@ -55,14 +55,56 @@ const BusinessDashboard = () => {
       if (!business) return;
 
       try {
+        // Use business_products join table instead of products.business_id
         const { data, error } = await supabase
-          .from('products')
-          .select('*')
+          .from('business_products')
+          .select(`
+            id,
+            title_override,
+            description_override,
+            price_from,
+            price_to,
+            currency_code,
+            duration_minutes,
+            is_active,
+            booking_url,
+            notes,
+            created_at,
+            updated_at,
+            product:products!inner (
+              id,
+              name,
+              description,
+              category,
+              status,
+              image_url
+            )
+          `)
           .eq('business_id', business.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setProducts(data || []);
+        
+        // Transform to match Product interface
+        const transformedProducts = (data || []).map((bp: any) => ({
+          id: bp.id,
+          name: bp.title_override || bp.product?.name || 'Unknown Product',
+          description: bp.description_override || bp.product?.description || null,
+          price: bp.price_from || null,
+          currency: bp.currency_code || 'SCR',
+          category: bp.product?.category || null,
+          status: bp.product?.status || 'active',
+          in_stock: bp.is_active,
+          stock_quantity: null,
+          images: bp.product?.image_url ? [bp.product.image_url] : null,
+          catalogue_url: bp.booking_url || null,
+          sku: null,
+          unit: null,
+          tags: null,
+          created_at: bp.created_at,
+        }));
+        
+        setProducts(transformedProducts);
       } catch (error: any) {
         console.error('Error fetching products:', error);
         toast({

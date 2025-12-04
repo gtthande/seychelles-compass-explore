@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import OptimizedImage from "@/components/OptimizedImage";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Store, 
   UtensilsCrossed, 
@@ -30,13 +31,13 @@ import entertainmentImg from '@/assets/category-entertainment.jpg';
 interface Category {
   id: string;
   name: string;
-  slug: string;
+  slug?: string; // May not exist in schema
   description: string | null;
   is_active: boolean;
-  image_url?: string | null;
 }
 
 interface CategoryWithCount extends Category {
+  slug: string; // Generated from name if not in DB
   count: number;
   businessCount: number;
   productCount: number;
@@ -98,6 +99,7 @@ const getImageForCategory = (slug: string): string => {
 };
 
 const CategoryGrid = () => {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -118,62 +120,110 @@ const CategoryGrid = () => {
       // Fetch categories with error handling
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
-        .select('*')
+        .select('id, name, description, is_active, created_at')
         .eq('is_active', true)
-        .order('name');
+        .order('name', { ascending: true });
 
       if (categoriesError) {
-        console.error('Categories error:', categoriesError);
+        console.error('[CategoryGrid] Failed to load categories', categoriesError);
+        toast({
+          title: 'Error',
+          description: 'Failed to load categories. Please try again.',
+          variant: 'destructive',
+        });
         throw categoriesError;
       }
 
       // Use fallback empty arrays if no data
       const categories = categoriesData || [];
 
-      // Fetch business counts by category with error handling
-      const { data: businessCounts, error: businessError } = await supabase
+      // Fetch business counts via business_categories join
+      const { data: activeBusinesses, error: businessError } = await supabase
         .from('businesses')
-        .select('category')
+        .select(`
+          id,
+          business_categories (
+            category_id
+          )
+        `)
         .eq('status', 'active');
 
       if (businessError) {
         console.error('Business counts error:', businessError);
-        // Continue with empty array instead of throwing
+        if (import.meta.env.DEV) {
+          console.error('   Error details:', JSON.stringify(businessError, null, 2));
+        }
       }
 
-      // Fetch product counts by category with error handling
-      const { data: productCounts, error: productError } = await supabase
+      // Fetch product counts - products don't have category field
+      const { data: productsData, error: productError } = await supabase
         .from('products')
-        .select('category, business_id')
-        .eq('status', 'active');
+        .select('business_id');
 
       if (productError) {
         console.error('Product counts error:', productError);
-        // Continue with empty array instead of throwing
+        if (import.meta.env.DEV) {
+          console.error('   Error details:', JSON.stringify(productError, null, 2));
+        }
       }
 
-      // Count by category with safe fallbacks
-      const businessCountMap = (businessCounts || []).reduce((acc, business) => {
-        if (business.category) {
-          acc[business.category] = (acc[business.category] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
+      // Count businesses by category_id
+      const businessCountMap: Record<string, number> = {};
+      if (activeBusinesses) {
+        activeBusinesses.forEach((business: any) => {
+          const businessCategories = business.business_categories || [];
+          businessCategories.forEach((bc: any) => {
+            const categoryId = bc.category_id;
+            if (categoryId) {
+              businessCountMap[categoryId] = (businessCountMap[categoryId] || 0) + 1;
+            }
+          });
+        });
+      }
 
-      const productCountMap = (productCounts || []).reduce((acc, product) => {
-        if (product.category) {
-          acc[product.category] = (acc[product.category] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
+      // Count products by category_id via business_categories
+      const productCountMap: Record<string, number> = {};
+      if (productsData && productsData.length > 0) {
+        const businessIds = [...new Set(productsData.map((p: any) => p.business_id).filter(Boolean))];
+        
+        if (businessIds.length > 0) {
+          const { data: productBusinessCategories, error: pbcError } = await supabase
+            .from('business_categories')
+            .select('business_id, category_id')
+            .in('business_id', businessIds);
 
-      // Combine data with safe fallbacks
-      const categoriesWithCounts = categories.map(category => ({
-        ...category,
-        businessCount: businessCountMap[category.slug] || 0,
-        productCount: productCountMap[category.slug] || 0,
-        count: (businessCountMap[category.slug] || 0) + (productCountMap[category.slug] || 0)
-      }));
+          if (!pbcError && productBusinessCategories) {
+            productsData.forEach((product: any) => {
+              const productBusinessCats = productBusinessCategories.filter(
+                (pbc: any) => pbc.business_id === product.business_id
+              );
+              productBusinessCats.forEach((pbc: any) => {
+                const categoryId = pbc.category_id;
+                if (categoryId) {
+                  productCountMap[categoryId] = (productCountMap[categoryId] || 0) + 1;
+                }
+              });
+            });
+          }
+        }
+      }
+
+      // Combine data with safe fallbacks - generate slug from name if missing
+      const categoriesWithCounts = categories.map(category => {
+        const categoryId = category.id;
+        const slug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
+        const businessCount = businessCountMap[categoryId] || 0;
+        const productCount = productCountMap[categoryId] || 0;
+        const count = businessCount + productCount;
+        
+        return {
+          ...category,
+          slug,
+          businessCount,
+          productCount,
+          count
+        };
+      });
 
       // Show all categories, even with zero counts for better UX
       if (!signal.aborted) {
@@ -251,11 +301,11 @@ const CategoryGrid = () => {
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {categories.map((category, index) => {
+          {!categories || categories.length === 0 ? null : categories.map((category, index) => {
             const IconComponent = getIconForCategory(category.slug);
             const colorGradient = getColorForCategory(index);
-            // Use image_url from database if available, otherwise fall back to hardcoded image
-            const categoryImage = category.image_url || getImageForCategory(category.slug);
+            // Use default image mapping (image_url column doesn't exist in categories table)
+            const categoryImage = getImageForCategory(category.slug);
             
             return (
               <Card 

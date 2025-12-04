@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import OptimizedImage from "@/components/OptimizedImage";
 import { Business } from "@/types/business";
+import { fetchBusinesses } from "@/lib/business-api";
 import { 
   Star, 
   MapPin, 
@@ -231,15 +232,17 @@ const OptimizedFeaturedListings = () => {
     const signal = abortControllerRef.current.signal;
     
     const startTime = performance.now();
-    console.log('🚀 FeaturedListings: Starting data fetch...');
+    
+    if (import.meta.env.DEV) {
+      console.debug('[Home] FeaturedListings: Starting data fetch...');
+    }
     
     try {
       setDataLoading(true);
       setLoading(true);
       
       // Use centralized API - no timeout, let Supabase handle it
-      const { fetchBusinesses: fetchBusinessesAPI } = await import('@/lib/business-api');
-      const result = await fetchBusinessesAPI({
+      const result = await fetchBusinesses({
         status: 'active',
         featured: true,
         page: 1,
@@ -251,17 +254,26 @@ const OptimizedFeaturedListings = () => {
       setBusinesses(result.businesses);
       
       const fetchDuration = performance.now() - startTime;
-      console.log(`✅ FeaturedListings: Fetched ${result.businesses.length} businesses in ${fetchDuration.toFixed(2)}ms`);
+      
+      if (import.meta.env.DEV) {
+        console.debug('[Home] FeaturedListings: Data fetch completed', {
+          duration: `${fetchDuration.toFixed(2)}ms`,
+          businessesCount: result.businesses.length,
+          total: result.total
+        });
+      }
       
       if (result.businesses.length === 0) {
-        console.warn('⚠️ FeaturedListings: No featured businesses found');
+        if (import.meta.env.DEV) {
+          console.warn('[Home] FeaturedListings: No featured businesses found');
+        }
       }
     } catch (error) {
       // Don't set error if request was aborted
       if (signal.aborted) return;
       
       console.error('🚨 FeaturedListings: Exception caught:', error);
-      if (error instanceof Error) {
+      if (import.meta.env.DEV && error instanceof Error) {
         console.error('Exception message:', error.message);
         console.error('Exception stack:', error.stack);
       }
@@ -275,13 +287,11 @@ const OptimizedFeaturedListings = () => {
   }, []);
 
   useEffect(() => {
-    const startTime = performance.now();
-    console.log('🚀 FeaturedListings: Component mounting...');
+    if (import.meta.env.DEV) {
+      console.debug('[Home] FeaturedListings: Component mounting...');
+    }
     
     fetchFeaturedBusinesses();
-    
-    const endTime = performance.now();
-    console.log(`✅ FeaturedListings: Component mounted in ${(endTime - startTime).toFixed(2)}ms`);
     
     return () => {
       // Cancel any pending requests
@@ -333,7 +343,7 @@ const OptimizedFeaturedListings = () => {
     );
   }
 
-  if (businesses.length === 0) {
+  if (businesses.length === 0 && !loading && !dataLoading) {
     return (
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4">
@@ -344,6 +354,11 @@ const OptimizedFeaturedListings = () => {
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
               No featured businesses yet. Featured businesses will appear here as they join our directory.
             </p>
+            {import.meta.env.DEV && (
+              <p className="text-sm text-muted-foreground mt-4">
+                Tip: Mark businesses as "featured" in Admin Panel to display them here.
+              </p>
+            )}
           </div>
         </div>
       </section>

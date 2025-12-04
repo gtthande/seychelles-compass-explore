@@ -71,129 +71,103 @@ const Products = () => {
   } = useServerSideData(
     'products_list',
     async () => {
-      // Optimized query using business_products join table
-      let query = supabase
-        .from('business_products')
-        .select(`
-          id,
-          title_override,
-          description_override,
-          price_from,
-          price_to,
-          currency_code,
-          duration_minutes,
-          booking_url,
-          notes,
-          is_active,
-          created_at,
-          business:businesses!inner(
-            id, 
-            name, 
-            island, 
-            address
-          ),
-          product:products!inner(
-            id,
-            name,
-            title,
-            description,
-            category,
-            image_url,
-            status
-          )
-        `)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+      try {
+        // Use products as base table with JOINs
+        // Only show active business_products for active businesses
+        let query = supabase
+          .from('products')
+          .select('*, business_products(*), businesses(*)', { count: 'exact' })
+          .eq('business_products.is_active', true)
+          .eq('businesses.status', 'active')
+          .order('created_at', { ascending: false });
 
-      // Apply filters
-      if (searchTerm) {
-        query = query.or(`
-          product.name.ilike.%${searchTerm}%,
-          product.description.ilike.%${searchTerm}%,
-          title_override.ilike.%${searchTerm}%,
-          description_override.ilike.%${searchTerm}%
-        `);
-      }
+        // Apply filters
+        if (searchTerm) {
+          query = query.or(`
+            name.ilike.%${searchTerm}%,
+            description.ilike.%${searchTerm}%,
+            business_products.notes.ilike.%${searchTerm}%
+          `);
+        }
 
-      if (selectedCategory && selectedCategory !== "__all__") {
-        query = query.eq('product.category', selectedCategory);
-      }
+        if (selectedCategory && selectedCategory !== "__all__") {
+          query = query.eq('category', selectedCategory);
+        }
 
-      if (priceRange.min) {
-        query = query.gte('price_from', parseFloat(priceRange.min));
-      }
+        if (priceRange.min) {
+          query = query.gte('business_products.price', parseFloat(priceRange.min));
+        }
 
-      if (priceRange.max) {
-        query = query.lte('price_to', parseFloat(priceRange.max));
-      }
+        if (priceRange.max) {
+          query = query.lte('business_products.price', parseFloat(priceRange.max));
+        }
 
-      if (selectedIsland && selectedIsland !== "__all__") {
-        query = query.eq('business.island', selectedIsland);
-      }
+        if (selectedIsland && selectedIsland !== "__all__") {
+          query = query.eq('businesses.island', selectedIsland);
+        }
 
-      // Get total count for pagination (separate optimized query)
-      const countQuery = supabase
-        .from('business_products')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_active', true);
+        const { data, error, count } = await query.range(
+          (currentPage - 1) * pageSize,
+          currentPage * pageSize - 1
+        );
 
-      // Apply same filters to count query
-      if (searchTerm) {
-        countQuery.or(`
-          product.name.ilike.%${searchTerm}%,
-          product.description.ilike.%${searchTerm}%,
-          title_override.ilike.%${searchTerm}%,
-          description_override.ilike.%${searchTerm}%
-        `);
-      }
-      if (selectedCategory && selectedCategory !== "__all__") {
-        countQuery.eq('product.category', selectedCategory);
-      }
-      if (priceRange.min) {
-        countQuery.gte('price_from', parseFloat(priceRange.min));
-      }
-      if (priceRange.max) {
-        countQuery.lte('price_to', parseFloat(priceRange.max));
-      }
-      if (selectedIsland && selectedIsland !== "__all__") {
-        countQuery.eq('business.island', selectedIsland);
-      }
-
-      const [{ data, error }, { count }] = await Promise.all([
-        query.range((currentPage - 1) * pageSize, currentPage * pageSize - 1),
-        countQuery
-      ]);
-
-      if (error) throw error;
+        if (error) {
+          console.error('[Products] Query error:', error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to load products",
+            variant: "destructive",
+          });
+          throw error;
+        }
       
-      const totalCount = count || 0;
-      setTotalPages(Math.ceil(totalCount / pageSize));
-      
-      // Transform business_products data to match Product interface
-      const transformedData = (data || []).map((bp: any) => ({
-        id: bp.id,
-        name: bp.title_override || bp.product?.name || '',
-        description: bp.description_override || bp.product?.description || null,
-        price: bp.price_from || null,
-        currency: bp.currency_code || 'SCR',
-        category: bp.product?.category || null,
-        status: bp.is_active ? 'active' : 'inactive',
-        in_stock: bp.is_active,
-        images: bp.product?.image_url ? [bp.product.image_url] : null,
-        catalogue_url: bp.booking_url || null,
-        sku: null,
-        unit: null,
-        tags: null,
-        published_at: bp.created_at || null,
-        business: {
-          id: bp.business?.id || '',
-          name: bp.business?.name || '',
-          island: bp.business?.island || null,
-          address: bp.business?.address || null,
-        },
-      }));
-      
-      return transformedData;
+        const totalCount = count || 0;
+        setTotalPages(Math.ceil(totalCount / pageSize));
+        
+        // Transform products data to match Product interface
+        // Products can have multiple business_products, so we flatten them
+        const transformedData: Product[] = [];
+        (data || []).forEach((product: any) => {
+          if (product.business_products && Array.isArray(product.business_products)) {
+            product.business_products.forEach((bp: any) => {
+              if (bp.is_active && bp.businesses) {
+                transformedData.push({
+                  id: bp.id || product.id,
+                  name: product.name || '',
+                  description: product.description || null,
+                  price: bp.price || null,
+                  currency: bp.overrides?.currency || 'SCR',
+                  category: product.category || null,
+                  status: bp.is_active ? 'active' : 'inactive',
+                  in_stock: bp.is_active,
+                  images: product.image_url ? [product.image_url] : null,
+                  catalogue_url: bp.overrides?.booking_url || null,
+                  sku: null,
+                  unit: null,
+                  tags: null,
+                  published_at: bp.created_at || product.created_at || null,
+                  business: {
+                    id: bp.businesses?.id || '',
+                    name: bp.businesses?.name || '',
+                    island: bp.businesses?.island || null,
+                    address: bp.businesses?.address || null,
+                  },
+                });
+              }
+            });
+          }
+        });
+        
+        return transformedData;
+      } catch (error: any) {
+        console.error('[Products] Unexpected error:', error);
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to load products",
+          variant: "destructive",
+        });
+        return [];
+      }
     },
     {
       cache: true,

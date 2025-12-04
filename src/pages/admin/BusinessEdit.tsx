@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import BusinessStatusBadge from '@/components/ui/BusinessStatusBadge';
 import MinimalLocationInput from '@/components/MinimalLocationInput';
+import BusinessProductAssignments from '@/components/admin/BusinessProductAssignments';
 import { 
   Save, 
   ArrowLeft, 
@@ -829,6 +830,11 @@ const BusinessEdit: React.FC = () => {
               />
             </CardContent>
           </Card>
+
+          {/* Assigned Products */}
+          {business && (
+            <BusinessProductAssignments businessId={business.id} />
+          )}
         </div>
 
         {/* Sidebar */}

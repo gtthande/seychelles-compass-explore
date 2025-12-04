@@ -50,7 +50,6 @@ const categorySchema = z.object({
   name: z.string().min(2, "Category name must be at least 2 characters"),
   description: z.string().optional(),
   slug: z.string().min(2, "Slug must be at least 2 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
-  image_url: z.string().url().optional().or(z.literal("")),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -61,7 +60,6 @@ interface Category {
   description: string | null;
   slug: string;
   is_active: boolean;
-  image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -84,7 +82,6 @@ const CategoryManager = () => {
       name: "",
       description: "",
       slug: "",
-      image_url: "",
     },
   });
 
@@ -110,7 +107,7 @@ const CategoryManager = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .order('name');
+        .order('name', { ascending: true });
 
       if (error) throw error;
       setCategories(data || []);
@@ -248,8 +245,8 @@ const CategoryManager = () => {
       });
 
       setImagePreview(urlData.publicUrl);
-      form.setValue('image_url', urlData.publicUrl);
       setImageFile(file);
+      // Note: image_url column doesn't exist in categories table
       
       toast({
         title: "Success",
@@ -363,7 +360,7 @@ const CategoryManager = () => {
   const removeImage = () => {
     setImageFile(null);
     setImagePreview('');
-    form.setValue('image_url', '');
+    // Note: image_url column doesn't exist in categories table
   };
 
   const onSubmit = async (data: CategoryFormData) => {
@@ -379,26 +376,15 @@ const CategoryManager = () => {
     try {
       if (editingCategory) {
         // Update existing category
-        // Only update image_url if a new value was provided (preserve existing if empty)
         const updateData: any = {
           name: data.name,
           description: data.description || null,
           slug: data.slug,
         };
         
-        // Only update image_url if a new URL was provided (don't overwrite with empty)
-        if (data.image_url && data.image_url.trim() !== '') {
-          updateData.image_url = data.image_url;
-        } else if (data.image_url === '') {
-          // Explicitly clear image_url if user removed it
-          updateData.image_url = null;
-        }
-        // If image_url is undefined/null, don't include it in update (preserves existing)
-        
         console.log('💾 Updating category:', {
           categoryId: editingCategory.id,
-          updateData,
-          existingImageUrl: editingCategory.image_url
+          updateData
         });
         
         const { error } = await supabase
@@ -419,11 +405,6 @@ const CategoryManager = () => {
           description: data.description || null,
           slug: data.slug,
         };
-        
-        // Only include image_url if provided (allow null for new categories)
-        if (data.image_url && data.image_url.trim() !== '') {
-          insertData.image_url = data.image_url;
-        }
         
         console.log('💾 Creating new category:', insertData);
         
@@ -457,14 +438,12 @@ const CategoryManager = () => {
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
-    const imageUrl = category.image_url || '';
     form.reset({
       name: category.name,
       description: category.description || "",
       slug: category.slug,
-      image_url: imageUrl,
     });
-    setImagePreview(imageUrl);
+    setImagePreview('');
     setImageFile(null);
     setShowDialog(true);
   };
@@ -639,84 +618,7 @@ const CategoryManager = () => {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="image_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category Image (Optional)</FormLabel>
-                      <FormControl>
-                        <div className="space-y-4">
-                          {imagePreview ? (
-                            <div className="relative">
-                              <img
-                                src={imagePreview}
-                                alt="Category preview"
-                                className="w-full h-48 object-cover rounded-lg border"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-2 right-2"
-                                onClick={removeImage}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                              <ImageIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                              <p className="text-sm text-muted-foreground mb-2">
-                                Upload an image for this category
-                              </p>
-                              <label className="cursor-pointer">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleImageFileChange}
-                                  className="hidden"
-                                  disabled={uploading}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  disabled={uploading}
-                                  asChild
-                                >
-                                  <span>
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    {uploading ? "Uploading..." : "Choose Image"}
-                                  </span>
-                                </Button>
-                              </label>
-                            </div>
-                          )}
-                          <div className="space-y-2">
-                            <Input
-                              type="url"
-                              placeholder="Or enter image URL"
-                              {...field}
-                              value={field.value || ''}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                if (e.target.value) {
-                                  setImagePreview(e.target.value);
-                                } else if (!imageFile) {
-                                  setImagePreview('');
-                                }
-                              }}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Upload an image file or provide an image URL
-                            </p>
-                          </div>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Image upload removed - image_url column doesn't exist in categories table */}
 
                 <div className="flex gap-2 pt-4">
                   <Button type="submit">

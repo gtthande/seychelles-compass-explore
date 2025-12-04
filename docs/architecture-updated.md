@@ -488,12 +488,14 @@ jobs:
 ### Environment Configuration
 ```bash
 # Production Environment Variables (GitHub Secrets)
+# ⚠️ Never commit real API keys. Store these as GitHub Secrets.
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
-VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+VITE_SUPABASE_ANON_KEY=[YOUR_SUPABASE_ANON_KEY]
+VITE_GOOGLE_MAPS_API_KEY=[YOUR_GOOGLE_MAPS_API_KEY]
+VITE_STRIPE_PUBLISHABLE_KEY=[YOUR_STRIPE_PUBLISHABLE_KEY]
 VITE_SITE_URL=https://seychelles-compass-explore.vercel.app
-RESEND_API_KEY=your-resend-api-key-here
+RESEND_API_KEY=[YOUR_RESEND_API_KEY]
+```
 
 # Vercel Configuration (GitHub Secrets)
 VERCEL_TOKEN=your-vercel-token

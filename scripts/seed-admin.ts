@@ -1,170 +1,171 @@
-import { createClient } from '@supabase/supabase-js';
-import { readFileSync, existsSync } from 'fs';
-import { resolve } from 'path';
+// scripts/seed-admin.ts
+import { config } from "dotenv";
+import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
-// Load .env file manually
-const envPath = resolve(process.cwd(), '.env');
-if (existsSync(envPath)) {
-    const envContent = readFileSync(envPath, 'utf8');
-    envContent.split(/\r?\n/).forEach((line) => {
-        line = line.trim();
-        if (!line || line.startsWith('#')) return;
-        const match = line.match(/^([^=]+)=(.*)$/);
-        if (match) {
-            const key = match[1].trim();
-            let value = match[2].trim();
-            if ((value.startsWith('"') && value.endsWith('"')) ||
-                (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.slice(1, -1);
-            }
-            if (!process.env[key]) {
-                process.env[key] = value;
+// Load .env file manually to get VITE_ prefixed vars
+config();
+
+// Also try reading .env directly as fallback
+try {
+    const envContent = readFileSync(resolve(process.cwd(), ".env"), "utf-8");
+    envContent.split("\n").forEach((line) => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#")) {
+            const [key, ...valueParts] = trimmed.split("=");
+            if (key && valueParts.length > 0) {
+                const value = valueParts.join("=").trim();
+                if (!process.env[key]) {
+                    process.env[key] = value;
+                }
             }
         }
     });
+} catch (err) {
+    console.warn("⚠️ Could not read .env file directly, using dotenv only");
 }
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-// Try both possible env var names for service role key
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const url = process.env.VITE_SUPABASE_URL;
+const serviceKey = process.env.VITE_SUPABASE_SERVICE_ROLE;
 
-if (!supabaseUrl) {
-    console.error('❌ Missing VITE_SUPABASE_URL in .env');
+if (!url || !serviceKey) {
+    console.error("❌ Missing VITE_SUPABASE_URL or VITE_SUPABASE_SERVICE_ROLE in environment");
+    console.error("VITE_SUPABASE_URL:", url ? "✓" : "✗");
+    console.error("VITE_SUPABASE_SERVICE_ROLE:", serviceKey ? "✓" : "✗");
     process.exit(1);
 }
 
-if (!serviceRoleKey) {
-    console.warn('⚠️  Missing SUPABASE_SERVICE_ROLE_KEY in .env');
-    console.warn('   Admin seeding requires service role key. Skipping...');
-    console.warn('   Add SUPABASE_SERVICE_ROLE_KEY to .env to enable admin seeding');
-    process.exit(0); // Exit gracefully, don't fail the dev server
-}
-
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
+const supabase = createClient(url, serviceKey, {
     auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
+        persistSession: false,
+    },
 });
 
-async function run() {
-    console.log('🔐 Seeding admin user...\n');
+const ADMIN_EMAIL = "gtthande@gmail.com";
+const ADMIN_PASSWORD = "Admin123!";
 
-    try {
-        // Check if user already exists
-        const { data: users, error: listError } = await supabase.auth.admin.listUsers();
+async function ensureAdminUser() {
+    console.log("🔧 Seeding admin user…");
 
-        if (listError) {
-            console.error('❌ Error listing users:', listError);
-            process.exit(1);
-        }
+    // 1) Check if auth user exists
+    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
 
-        const existingUser = users.users.find(u => u.email === 'gtthande@gmail.com');
-
+    if (listError) {
+        console.error("❌ Error listing users:", listError);
+    } else {
+        const existingUser = users?.find(u => u.email === ADMIN_EMAIL);
         if (existingUser) {
-            console.log('✓ Admin user already exists');
-            console.log(`  User ID: ${existingUser.id}`);
+            console.log("ℹ️ Auth user already exists for", ADMIN_EMAIL, "with ID:", existingUser.id);
+        }
+    }
 
-            // Update password and ensure email is confirmed
-            const { data: updateData, error: updateError } = await supabase.auth.admin.updateUserById(
-                existingUser.id,
-                {
-                    password: 'Admin123!',
-                    email_confirm: true
-                }
-            );
+    // 2) Upsert auth user (using admin API)
+    const { data: authResult, error: authError } = await supabase.auth.admin.createUser({
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+        email_confirm: true,
+    });
 
-            if (updateError) {
-                console.error('❌ Error updating user:', updateError);
-                process.exit(1);
-            }
-
-            console.log('✅ Admin user password updated');
-            console.log('✅ Email confirmed\n');
-
-            // Ensure profile exists with admin role
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', existingUser.id)
-                .single();
-
-            if (profileError && profileError.code !== 'PGRST116') {
-                console.warn('⚠️  Could not check profile:', profileError.message);
-            } else if (!profile) {
-                // Create profile if missing
-                const { error: createProfileError } = await supabase
-                    .from('profiles')
-                    .insert({
-                        user_id: existingUser.id,
-                        email: existingUser.email,
-                        role: 'admin',
-                        is_admin: true,
-                        is_active: true
-                    });
-
-                if (createProfileError) {
-                    console.warn('⚠️  Could not create profile:', createProfileError.message);
+    if (authError) {
+        if (authError.message?.includes("already registered") || authError.message?.includes("already exists") || authError.code === 'email_exists') {
+            console.log("ℹ️ Auth user already exists for", ADMIN_EMAIL);
+            // Try to get the existing user
+            const { data: { users } } = await supabase.auth.admin.listUsers();
+            const existingUser = users?.find(u => u.email === ADMIN_EMAIL);
+            if (existingUser) {
+                // Update password if user exists
+                console.log("🔄 Updating password for existing user...");
+                const { error: updateError } = await supabase.auth.admin.updateUserById(
+                    existingUser.id,
+                    { password: ADMIN_PASSWORD }
+                );
+                if (updateError) {
+                    console.warn("⚠️ Could not update password:", updateError.message);
                 } else {
-                    console.log('✅ Admin profile created');
-                }
-            } else if (profile.role !== 'admin' || !profile.is_admin) {
-                // Update profile to ensure admin role
-                const { error: updateProfileError } = await supabase
-                    .from('profiles')
-                    .update({ role: 'admin', is_admin: true })
-                    .eq('user_id', existingUser.id);
-
-                if (updateProfileError) {
-                    console.warn('⚠️  Could not update profile:', updateProfileError.message);
-                } else {
-                    console.log('✅ Admin profile updated');
+                    console.log("✅ Password updated for existing user");
+                    console.log(`   Email: ${ADMIN_EMAIL}`);
+                    console.log(`   Password: ${ADMIN_PASSWORD}`);
                 }
             }
         } else {
-            // Create new user
-            const { data, error } = await supabase.auth.admin.createUser({
-                email: "gtthande@gmail.com",
-                password: "Admin123!",
-                email_confirm: true,
-            });
-
-            if (error) {
-                console.error("❌ Seed error:", error);
-                return;
-            }
-
-            console.log("✅ Admin user created:", data.user?.id);
-
-            // Create profile with admin role
-            if (data.user) {
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .insert({
-                        user_id: data.user.id,
-                        email: data.user.email,
-                        role: 'admin',
-                        is_admin: true,
-                        is_active: true
-                    });
-
-                if (profileError) {
-                    console.warn('⚠️  Could not create profile:', profileError.message);
-                } else {
-                    console.log('✅ Admin profile created');
-                }
-            }
+            console.error("❌ Error creating auth user:", authError);
+            process.exit(1);
         }
+    } else {
+        console.log("✅ Auth user ensured:", authResult.user?.id);
+        console.log(`   Email: ${ADMIN_EMAIL}`);
+        console.log(`   Password: ${ADMIN_PASSWORD}`);
+    }
 
-        console.log('\n📝 Login credentials:');
-        console.log('   Email: gtthande@gmail.com');
-        console.log('   Password: Admin123!\n');
-        console.log('🎉 Admin user ready!\n');
-    } catch (error: any) {
-        console.error('❌ Unexpected error:', error.message);
+    // Get the user ID (either from creation or existing)
+    const { data: { users: allUsers } } = await supabase.auth.admin.listUsers();
+    const targetUser = allUsers?.find(u => u.email === ADMIN_EMAIL);
+
+    if (!targetUser) {
+        console.error("❌ Could not find user after creation/update");
         process.exit(1);
     }
+
+    const userId = targetUser.id;
+
+    // 3) Ensure admin flag in profile table
+    // Check if profile exists
+    const { data: existingProfile, error: profileCheckError } = await supabase
+        .from("profiles")
+        .select("id, user_id, is_admin, email")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+        console.error("❌ Error checking profile:", profileCheckError);
+    }
+
+    if (existingProfile) {
+        console.log("ℹ️ Profile already exists:", existingProfile);
+        // Update to ensure admin flag is set
+        const { error: updateError } = await supabase
+            .from("profiles")
+            .update({
+                is_admin: true,
+                email: ADMIN_EMAIL,
+            })
+            .eq("user_id", userId);
+
+        if (updateError) {
+            console.error("❌ Error updating admin profile:", updateError);
+            process.exit(1);
+        } else {
+            console.log("✅ Admin profile updated");
+        }
+    } else {
+        // Insert new profile
+        const { error: insertError } = await supabase
+            .from("profiles")
+            .insert({
+                user_id: userId,
+                email: ADMIN_EMAIL,
+                is_admin: true,
+                full_name: "Admin User",
+            });
+
+        if (insertError) {
+            console.error("❌ Error inserting admin profile:", insertError);
+            process.exit(1);
+        } else {
+            console.log("✅ Admin profile created");
+        }
+    }
+
+    console.log("✅ Admin seeding complete for", ADMIN_EMAIL);
 }
 
-run();
-
+ensureAdminUser()
+    .then(() => {
+        console.log("✅ Admin seeding complete.");
+        process.exit(0);
+    })
+    .catch((err) => {
+        console.error("❌ Unexpected error during admin seeding:", err);
+        process.exit(1);
+    });

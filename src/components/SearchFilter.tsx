@@ -160,33 +160,29 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
     try {
       // Optimized parallel queries with specific fields and limits
       const [categoriesResult, businessesResult, productsResult] = await Promise.all([
-        // Fetch categories with specific fields
+        // Fetch categories
         supabase
           .from('categories')
-          .select('id, name, slug, description, is_active')
+          .select('id, name, description, is_active, created_at')
           .eq('is_active', true)
           .order('name')
           .limit(20), // Limit categories
 
-        // Fetch businesses with specific fields and limit
+        // Fetch businesses
         supabase
           .from('businesses')
-          .select('id, name, description, category, status, logo_url, cover_image_url, average_rating, total_reviews, address, island, phone, website, whatsapp, featured, verified')
+          .select('*')
           .eq('status', 'active')
           .order('featured', { ascending: false })
           .order('name')
           .limit(50), // Limit businesses for performance
 
-        // Fetch products with business info and limit
+        // Fetch products
         supabase
           .from('products')
-          .select(`
-            id, name, description, price, currency, category, images, business_id, status,
-            businesses!inner(name, logo_url)
-          `)
+          .select('*')
           .eq('status', 'active')
-          .eq('businesses.status', 'active')
-          .order('name')
+          .order('created_at', { ascending: false })
           .limit(100) // Limit products for performance
       ]);
 
@@ -582,14 +578,17 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
   </Card>
 );
 
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => (
+const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+  const name = product?.name ?? "Unnamed";
+  
+  return (
   <Card className="hover:shadow-lg transition-shadow">
     <div className="relative">
       {product.images && product.images.length > 0 ? (
         <div className="h-40 relative overflow-hidden rounded-t-lg">
           <img 
             src={product.images[0]} 
-            alt={product.name}
+            alt={name}
             className="w-full h-full object-cover"
           />
         </div>
@@ -601,7 +600,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => (
     </div>
     
     <CardHeader className="pb-2">
-      <CardTitle className="text-base font-semibold line-clamp-1">{product.name}</CardTitle>
+      <CardTitle className="text-base font-semibold line-clamp-1">{name}</CardTitle>
       <CardDescription className="text-xs">
         by {product.businesses.name}
       </CardDescription>
@@ -621,6 +620,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => (
       )}
     </CardContent>
   </Card>
-);
+  );
+};
 
 export default SearchFilter;

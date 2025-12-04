@@ -13,3 +13,10 @@ COMMENT ON COLUMN public.categories.image_url IS 'URL or path to the category im
 
 
 
+
+
+
+
+
+
+

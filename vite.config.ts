@@ -10,6 +10,9 @@ import mkcert from "vite-plugin-mkcert";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  optimizeDeps: {
+    force: true,
+  },
   server: {
     host: "0.0.0.0", // allows localhost and LAN access
     port: 5173,

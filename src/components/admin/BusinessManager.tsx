@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import BusinessStatusBadge from "@/components/ui/BusinessStatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { fetchBusinesses } from "@/lib/business-api";
 import { 
   Search, 
   Building, 
@@ -62,7 +63,7 @@ const BusinessManager = () => {
   const islands = ["Mahé", "Praslin", "La Digue", "Silhouette", "Curieuse", "Bird", "Denis"];
 
   useEffect(() => {
-    fetchBusinesses();
+    fetchBusinessesData();
     fetchCategories();
   }, []);
 
@@ -70,16 +71,15 @@ const BusinessManager = () => {
     applyFilters();
   }, [businesses, searchTerm, statusFilter, categoryFilter, islandFilter]);
 
-  const fetchBusinesses = async () => {
+  const fetchBusinessesData = async () => {
     setLoading(true);
     try {
-      const { fetchBusinesses: fetchBusinessesAPI } = await import('@/lib/business-api');
-      const businesses = await fetchBusinessesAPI({
+      const result = await fetchBusinesses({
         limit: 100,
         orderBy: 'created_at',
         ascending: false,
       });
-      setBusinesses(businesses);
+      setBusinesses(result.businesses || result);
     } catch (error) {
       console.error('Error fetching businesses:', error);
       toast({

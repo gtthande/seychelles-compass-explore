@@ -386,12 +386,15 @@ Create `.env` file in project root:
 ```bash
 # Supabase Configuration
 VITE_SUPABASE_URL=https://bwlmlniotyrjttglbjrl.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_ANON_KEY=[YOUR_SUPABASE_ANON_KEY]
 
 # API Keys (configured in Supabase Edge Functions)
-OPENAI_API_KEY=sk-... # For AI search features
-RESEND_API_KEY=re_... # For email notifications  
-GOOGLE_MAPS_API_KEY=AIza... # For maps integration
+# ⚠️ Never commit real API keys. Get these from:
+# - Supabase: https://supabase.com/dashboard/project/bwlmlniotyrjttglbjrl/settings/api
+# - Google Cloud: https://console.cloud.google.com/apis/credentials
+OPENAI_API_KEY=[YOUR_OPENAI_API_KEY] # For AI search features
+RESEND_API_KEY=[YOUR_RESEND_API_KEY] # For email notifications  
+GOOGLE_MAPS_API_KEY=[YOUR_GOOGLE_MAPS_API_KEY] # For maps integration
 STRIPE_SECRET_KEY=sk_test_... # For payment processing
 ```
 

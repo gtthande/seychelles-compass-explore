@@ -20,21 +20,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Settings, Users, Package, FolderOpen, Calendar, Image, CreditCard, Building, UserCog, Terminal, GitBranch, Activity, Database } from "lucide-react";
-import { lazy, Suspense } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
-// Lazy load heavy admin components
-const CategoryManager = lazy(() => import("@/components/admin/CategoryManager"));
-const HeroSectionManager = lazy(() => import("@/components/admin/HeroSectionManager"));
-const DevSyncPanel = lazy(() => import("@/pages/admin/DevSyncPanel"));
-const CodeSync = lazy(() => import("@/pages/admin/CodeSync"));
-const LazyTabContent = lazy(() => import("@/components/admin/LazyTabContent"));
-const OptimizedUserManager = lazy(() => import("@/components/admin/OptimizedUserManager"));
-const OptimizedBusinessManager = lazy(() => import("@/components/admin/OptimizedBusinessManager"));
-const ProductManager = lazy(() => import("@/components/admin/ProductManager"));
-const PerformanceMonitor = lazy(() => import("@/components/PerformanceMonitor"));
-const MySQLBackup = lazy(() => import("@/pages/admin/MySQLBackup"));
+// Static imports for admin components (replaced lazy loading for stability)
+import CategoryManager from "@/components/admin/CategoryManager";
+import HeroSectionManager from "@/components/admin/HeroSectionManager";
+import DevSyncPanel from "@/pages/admin/DevSyncPanel";
+import CodeSync from "@/pages/admin/CodeSync";
+import LazyTabContent from "@/components/admin/LazyTabContent";
+import OptimizedUserManager from "@/components/admin/OptimizedUserManager";
+import OptimizedBusinessManager from "@/components/admin/OptimizedBusinessManager";
+import ProductManager from "@/components/admin/ProductManager";
+import PerformanceMonitor from "@/components/PerformanceMonitor";
+import MySQLBackup from "@/pages/admin/MySQLBackup";
 import PendingCountBadge from "@/components/admin/PendingCountBadge";
 
 const AdminPanel = () => {
@@ -195,9 +194,7 @@ const AdminPanel = () => {
         </TabsList>
 
         <TabsContent value="hero">
-          <Suspense fallback={<LoadingSkeleton />}>
-            <HeroSectionManager />
-          </Suspense>
+          <HeroSectionManager />
         </TabsContent>
 
         <TabsContent value="appointments">
@@ -226,9 +223,7 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="categories">
-          <Suspense fallback={<LoadingSkeleton />}>
-            <CategoryManager />
-          </Suspense>
+          <CategoryManager />
         </TabsContent>
 
         <TabsContent value="businesses">
@@ -240,9 +235,7 @@ const AdminPanel = () => {
               await new Promise(resolve => setTimeout(resolve, 500));
             }}
           >
-            <Suspense fallback={<LoadingSkeleton />}>
-              <OptimizedBusinessManager />
-            </Suspense>
+            <OptimizedBusinessManager />
           </LazyTabContent>
         </TabsContent>
 
@@ -280,9 +273,7 @@ const AdminPanel = () => {
               await new Promise(resolve => setTimeout(resolve, 500));
             }}
           >
-            <Suspense fallback={<LoadingSkeleton />}>
-              <OptimizedUserManager />
-            </Suspense>
+            <OptimizedUserManager />
           </LazyTabContent>
         </TabsContent>
 
@@ -295,9 +286,7 @@ const AdminPanel = () => {
               await new Promise(resolve => setTimeout(resolve, 500));
             }}
           >
-            <Suspense fallback={<LoadingSkeleton />}>
-              <ProductManager />
-            </Suspense>
+            <ProductManager />
           </LazyTabContent>
         </TabsContent>
 
@@ -327,22 +316,16 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="dev-sync">
-          <Suspense fallback={<LoadingSkeleton />}>
-            <DevSyncPanel />
-          </Suspense>
+          <DevSyncPanel />
         </TabsContent>
 
         <TabsContent value="code-sync">
-          <Suspense fallback={<LoadingSkeleton />}>
-            <CodeSync />
-          </Suspense>
+          <CodeSync />
         </TabsContent>
 
         <TabsContent value="performance">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Suspense fallback={<LoadingSkeleton />}>
-              <PerformanceMonitor />
-            </Suspense>
+            <PerformanceMonitor />
             <Card>
               <CardHeader>
                 <CardTitle>Performance Metrics</CardTitle>
@@ -369,9 +352,7 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="mysql-backup">
-          <Suspense fallback={<LoadingSkeleton />}>
-            <MySQLBackup />
-          </Suspense>
+          <MySQLBackup />
         </TabsContent>
       </Tabs>
       </div>

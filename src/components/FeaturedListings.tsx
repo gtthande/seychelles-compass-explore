@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import OptimizedImage from "@/components/OptimizedImage";
 import { Business } from "@/types/business";
+import { fetchBusinesses } from "@/lib/business-api";
 import { 
   Star, 
   MapPin, 
@@ -34,8 +35,7 @@ const FeaturedListings = () => {
       setLoading(true);
       
       // Use centralized API - no timeout, let Supabase handle it
-      const { fetchBusinesses: fetchBusinessesAPI } = await import('@/lib/business-api');
-      const result = await fetchBusinessesAPI({
+      const result = await fetchBusinesses({
         status: 'active',
         featured: true,
         page: 1,

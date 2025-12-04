@@ -99,48 +99,28 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     
-    // Debug logging
-    console.debug("[Auth] SignIn attempt", email);
-    console.debug("[Auth] Supabase URL:", import.meta.env.VITE_SUPABASE_URL ? "Loaded" : "Missing");
-    
+    console.log("[AUTH] Attempting sign in", { email });
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
       if (error) {
-        console.error("[Auth] Error", error);
-        console.error("[Auth] response.error:", error.message);
-        console.error("[Auth] Sign in failed:", {
+        console.error("Auth error:", error);
+        console.error("[AUTH] Sign in error:", {
           message: error.message,
-          status: error.status,
-          name: error.name
+          status: (error as any).status,
+          name: error.name,
         });
-        // Bubble up error message from Supabase
         toast({
           title: "Sign in failed",
           description: error.message || "Invalid login credentials",
           variant: "destructive",
         });
       } else {
-        console.log("[Auth] Sign in successful:", {
-          userId: data.user?.id,
-          email: data.user?.email,
-          sessionExists: !!data.session
-        });
-        
-        // Verify session was created
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          console.log("[Auth] Session verified:", {
-            userId: session.user.id,
-            expiresAt: session.expires_at
-          });
-        } else {
-          console.warn("[Auth] Warning: Session not found after sign in");
-        }
-        
+        console.log("[AUTH] Sign in success", data);
         toast({
           title: "Welcome back!",
           description: "You have successfully signed in.",
@@ -149,7 +129,7 @@ const Auth = () => {
         navigate("/admin");
       }
     } catch (error: any) {
-      console.error("[Auth] Unexpected error:", error);
+      console.error("[AUTH] Unexpected error:", error);
       toast({
         title: "Error",
         description: error?.message || "An unexpected error occurred. Please try again.",

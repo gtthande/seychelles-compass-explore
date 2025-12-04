@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import OptimizedImage from "@/components/OptimizedImage";
+import { useToast } from "@/hooks/use-toast";
+import { notifySupabaseError } from "@/lib/supabase-error-handler";
 import { 
   Store, 
   UtensilsCrossed, 
@@ -31,13 +33,13 @@ import entertainmentImg from '@/assets/category-entertainment.jpg';
 interface Category {
   id: string;
   name: string;
-  slug: string;
+  slug?: string; // May not exist in schema
   description: string | null;
   is_active: boolean;
-  image_url?: string | null;
 }
 
 interface CategoryWithCount extends Category {
+  slug: string; // Generated from name if not in DB
   count: number;
   businessCount: number;
   productCount: number;
@@ -116,10 +118,10 @@ const CategoryCard = React.memo(({
 }) => {
   const IconComponent = useMemo(() => getIconForCategory(category.slug), [category.slug]);
   const colorGradient = useMemo(() => getColorForCategory(index), [index]);
-  // Use image_url from database if available, otherwise fall back to default mapping
+  // Use default image mapping (image_url column doesn't exist in categories table)
   const categoryImage = useMemo(() => {
-    return category.image_url || getImageForCategory(category.slug);
-  }, [category.slug, category.image_url]);
+    return getImageForCategory(category.slug);
+  }, [category.slug]);
   
   const handleClick = useCallback(() => {
     onCategoryClick(category);
@@ -179,9 +181,10 @@ const CategoryCard = React.memo(({
 CategoryCard.displayName = 'CategoryCard';
 
 const OptimizedCategoryGrid = () => {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Memoized fetch function to prevent recreation
@@ -196,167 +199,179 @@ const OptimizedCategoryGrid = () => {
     const signal = abortControllerRef.current.signal;
     
     const startTime = performance.now();
-    console.log('🚀 CategoryGrid: Starting data fetch...');
+    
+    if (import.meta.env.DEV) {
+      console.debug('[Home] CategoryGrid: Starting data fetch...');
+    }
     
     try {
-      setDataLoading(true);
+      setLoading(true);
+      setError(null);
       
-      // Fetch categories first, then get counts separately for better reliability
+      // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+        .select('id, name, description, is_active, created_at')
+        .eq('is_active', true) // Filter active categories
+        .order('name', { ascending: true });
+
+      if (import.meta.env.DEV) {
+        console.log('[HOMEPAGE] categories returned:', categoriesData, 'error:', categoriesError);
+      }
 
       if (categoriesError) {
         console.error('🚨 CategoryGrid: Categories query failed:', categoriesError);
-        throw categoriesError;
+        if (import.meta.env.DEV) {
+          console.error('   Error details:', JSON.stringify(categoriesError, null, 2));
+        }
+        notifySupabaseError('Failed to load categories', categoriesError);
+        setCategories([]);
+        setLoading(false);
+        setError(categoriesError.message || 'Failed to load categories');
+        throw new Error('Homepage categories query failed: ' + categoriesError.message);
       }
 
-      // Fetch business counts separately
-      const { data: businessCounts, error: businessError } = await supabase
+      const categories = categoriesData || [];
+      
+      if (categories && categories.length === 0 && import.meta.env.DEV) {
+        console.warn('[HOMEPAGE] categories table is EMPTY');
+      }
+      
+      if (import.meta.env.DEV) {
+        console.debug('[Home] CategoryGrid: Loaded categories', { 
+          count: categories.length, 
+          categories: categories.map(c => ({ id: c.id, name: c.name }))
+        });
+      }
+
+      // Fetch business counts via business_categories join
+      // First get all active businesses with their categories
+      const { data: activeBusinesses, error: businessError } = await supabase
         .from('businesses')
-        .select('category')
+        .select(`
+          id,
+          business_categories (
+            category_id
+          )
+        `)
         .eq('status', 'active');
 
       if (businessError) {
         console.error('🚨 CategoryGrid: Business counts query failed:', businessError);
+        if (import.meta.env.DEV) {
+          console.error('   Error details:', JSON.stringify(businessError, null, 2));
+        }
       }
 
-      // Fetch product counts separately
-      const { data: productCounts, error: productError } = await supabase
+      // Fetch product counts - count products per business, then map to categories
+      const { data: productsData, error: productError } = await supabase
         .from('products')
-        .select('category')
-        .eq('status', 'active');
+        .select('business_id');
 
       if (productError) {
         console.error('🚨 CategoryGrid: Product counts query failed:', productError);
+        if (import.meta.env.DEV) {
+          console.error('   Error details:', JSON.stringify(productError, null, 2));
+        }
       }
 
-      // Count by category slug
-      const businessCountMap = (businessCounts || []).reduce((acc, business) => {
-        if (business.category) {
-          acc[business.category] = (acc[business.category] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
+      // Count businesses by category_id
+      const businessCountMap: Record<string, number> = {};
+      if (activeBusinesses) {
+        activeBusinesses.forEach((business: any) => {
+          const businessCategories = business.business_categories || [];
+          businessCategories.forEach((bc: any) => {
+            const categoryId = bc.category_id;
+            if (categoryId) {
+              businessCountMap[categoryId] = (businessCountMap[categoryId] || 0) + 1;
+            }
+          });
+        });
+      }
 
-      const productCountMap = (productCounts || []).reduce((acc, product) => {
-        if (product.category) {
-          acc[product.category] = (acc[product.category] || 0) + 1;
+      // Count products by category_id via business_categories
+      // Get businesses for products and their categories
+      const productCountMap: Record<string, number> = {};
+      if (productsData && productsData.length > 0) {
+        // Get unique business IDs from products
+        const businessIds = [...new Set(productsData.map((p: any) => p.business_id).filter(Boolean))];
+        
+        if (businessIds.length > 0) {
+          // Fetch categories for these businesses
+          const { data: productBusinessCategories, error: pbcError } = await supabase
+            .from('business_categories')
+            .select('business_id, category_id')
+            .in('business_id', businessIds);
+
+          if (pbcError) {
+            console.error('🚨 CategoryGrid: Product business categories query failed:', pbcError);
+          } else if (productBusinessCategories) {
+            // Count products per category
+            productsData.forEach((product: any) => {
+              const productBusinessCats = productBusinessCategories.filter(
+                (pbc: any) => pbc.business_id === product.business_id
+              );
+              productBusinessCats.forEach((pbc: any) => {
+                const categoryId = pbc.category_id;
+                if (categoryId) {
+                  productCountMap[categoryId] = (productCountMap[categoryId] || 0) + 1;
+                }
+              });
+            });
+          }
         }
-        return acc;
-      }, {} as Record<string, number>);
+      }
 
       // Process the data - show all categories even with zero counts
-      const categoriesWithCounts = (categoriesData || []).map(category => ({
-        ...category,
-        businessCount: businessCountMap[category.slug] || 0,
-        productCount: productCountMap[category.slug] || 0,
-        count: (businessCountMap[category.slug] || 0) + (productCountMap[category.slug] || 0)
-      }));
+      const categoriesWithCounts = categories.map(category => {
+        const categoryId = category.id;
+        const businessCount = businessCountMap[categoryId] || 0;
+        const productCount = productCountMap[categoryId] || 0;
+        const count = businessCount + productCount;
+        
+        return {
+          ...category,
+          slug: category.name.toLowerCase().replace(/\s+/g, '-'), // Generate slug from name if missing
+          businessCount,
+          productCount,
+          count
+        };
+      });
 
       const endTime = performance.now();
-      console.log(`✅ CategoryGrid: Data fetch completed in ${(endTime - startTime).toFixed(2)}ms`);
+      
+      if (import.meta.env.DEV) {
+        console.debug('[Home] CategoryGrid: Data fetch completed', {
+          duration: `${(endTime - startTime).toFixed(2)}ms`,
+          categoriesCount: categoriesWithCounts.length,
+          totalBusinesses: Object.values(businessCountMap).reduce((a, b) => a + b, 0),
+          totalProducts: Object.values(productCountMap).reduce((a, b) => a + b, 0)
+        });
+      }
 
       if (!signal.aborted) {
         setCategories(categoriesWithCounts);
+        setLoading(false);
       }
-    } catch (error) {
+    } catch (err: any) {
       // Don't set error if request was aborted
       if (signal.aborted) return;
       
-      console.error('🚨 CategoryGrid: Exception caught:', error);
-      console.error('Exception type:', typeof error);
-      console.error('Exception instanceof Error:', error instanceof Error);
-      if (error instanceof Error) {
-        console.error('Exception message:', error.message);
-        console.error('Exception stack:', error.stack);
-      }
-      
-      // Fallback: try individual queries if the join fails
-      try {
-        console.log('🔄 CategoryGrid: Trying fallback queries...');
-        
-        const [categoriesResult, businessCountsResult, productCountsResult] = await Promise.all([
-          supabase.from('categories').select('*').eq('is_active', true).order('name'),
-          supabase.from('businesses').select('category').eq('status', 'active'),
-          supabase.from('business_products')
-            .select('product:products!inner(category)')
-            .eq('is_active', true)
-        ]);
-
-        // Log individual query errors
-        if (categoriesResult.error) {
-          console.error('🚨 CategoryGrid: Categories query error:', categoriesResult.error);
-        }
-        if (businessCountsResult.error) {
-          console.error('🚨 CategoryGrid: Business counts query error:', businessCountsResult.error);
-        }
-        if (productCountsResult.error) {
-          console.error('🚨 CategoryGrid: Product counts query error:', productCountsResult.error);
-        }
-
-        const categories = categoriesResult.data || [];
-        const businessCounts = businessCountsResult.data || [];
-        const productCounts = productCountsResult.data || [];
-
-        // Count by category
-        const businessCountMap = businessCounts.reduce((acc, business) => {
-          if (business.category) {
-            acc[business.category] = (acc[business.category] || 0) + 1;
-          }
-          return acc;
-        }, {} as Record<string, number>);
-
-        const productCountMap = productCounts.reduce((acc, product) => {
-          if (product.category) {
-            acc[product.category] = (acc[product.category] || 0) + 1;
-          }
-          return acc;
-        }, {} as Record<string, number>);
-
-        const categoriesWithCounts = categories.map(category => ({
-          ...category,
-          businessCount: businessCountMap[category.slug] || 0,
-          productCount: productCountMap[category.slug] || 0,
-          count: (businessCountMap[category.slug] || 0) + (productCountMap[category.slug] || 0)
-        }));
-
-        const endTime = performance.now();
-        console.log(`✅ CategoryGrid: Fallback queries completed in ${(endTime - startTime).toFixed(2)}ms`);
-
-        if (!signal.aborted) {
-          setCategories(categoriesWithCounts);
-        }
-      } catch (fallbackError) {
-        console.error('🚨 CategoryGrid: Fallback queries also failed:', fallbackError);
-        console.error('Fallback error type:', typeof fallbackError);
-        console.error('Fallback error instanceof Error:', fallbackError instanceof Error);
-        if (fallbackError instanceof Error) {
-          console.error('Fallback error message:', fallbackError.message);
-          console.error('Fallback error stack:', fallbackError.stack);
-        }
-        if (!signal.aborted) {
-          setCategories([]);
-        }
-      }
-    } finally {
-      if (!signal.aborted) {
-        setDataLoading(false);
-        setLoading(false);
-      }
+      console.error('[CategoryGrid] Failed to load categories', err);
+      const errorMessage = err?.message || 'Failed to load categories';
+      setError(errorMessage);
+      notifySupabaseError('Failed to load categories', err);
+      setCategories([]);
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const startTime = performance.now();
-    console.log('🚀 CategoryGrid: Component mounting...');
+    if (import.meta.env.DEV) {
+      console.debug('[Home] CategoryGrid: Component mounting...');
+    }
     
     fetchCategoriesWithCounts();
-    
-    const endTime = performance.now();
-    console.log(`✅ CategoryGrid: Component mounted in ${(endTime - startTime).toFixed(2)}ms`);
     
     return () => {
       // Cancel any pending requests
@@ -385,8 +400,8 @@ const OptimizedCategoryGrid = () => {
     ))
   ), []);
 
-  // Show skeleton only during data loading, not component loading
-  if (dataLoading) {
+  // Show skeleton only while loading
+  if (loading) {
     return (
       <section className="py-20 bg-gradient-to-b from-background to-accent">
         <div className="container mx-auto px-4">
@@ -430,11 +445,20 @@ const OptimizedCategoryGrid = () => {
           ))}
         </div>
         
-        {categories.length === 0 && !dataLoading && (
+        {categories.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="bg-muted/30 rounded-lg p-8">
-              <p className="text-muted-foreground mb-2">No categories available yet</p>
-              <p className="text-sm text-muted-foreground">Categories will appear here as businesses are added to the directory.</p>
+              {error ? (
+                <>
+                  <p className="text-destructive mb-2">Failed to load categories</p>
+                  <p className="text-sm text-muted-foreground">{error}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-muted-foreground mb-2">No categories available yet</p>
+                  <p className="text-sm text-muted-foreground">Categories will appear here as businesses are added to the directory.</p>
+                </>
+              )}
             </div>
           </div>
         )}

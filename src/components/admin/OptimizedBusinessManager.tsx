@@ -82,7 +82,7 @@ const OptimizedBusinessManager: React.FC = () => {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");

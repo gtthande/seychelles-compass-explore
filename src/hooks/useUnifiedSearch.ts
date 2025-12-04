@@ -66,41 +66,55 @@ export const useUnifiedSearch = () => {
         businessQuery.eq('category', category);
       }
 
-      // Search products
+      // Search products via business_products join table
       const productQuery = supabase
-        .from('products')
+        .from('business_products')
         .select(`
           id,
-          name,
-          description,
-          category,
-          price,
-          image_url,
-          business_id,
-          businesses!inner (
+          title_override,
+          description_override,
+          price_from,
+          price_to,
+          currency_code,
+          is_active,
+          product:products!inner (
+            id,
+            name,
+            description,
+            category,
+            image_url,
+            status
+          ),
+          business:businesses!inner (
+            id,
             name,
             address,
             island
           )
         `)
-        .eq('status', 'active')
-        .eq('searchable', true)
+        .eq('is_active', true)
+        .eq('product.status', 'active')
         .limit(limit / 2);
 
       if (query) {
-        productQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+        productQuery.or(`
+          product.name.ilike.%${query}%,
+          product.description.ilike.%${query}%,
+          title_override.ilike.%${query}%,
+          description_override.ilike.%${query}%
+        `);
       }
 
       if (category) {
-        productQuery.eq('category', category);
+        productQuery.eq('product.category', category);
       }
 
       if (priceMin !== undefined) {
-        productQuery.gte('price', priceMin);
+        productQuery.gte('price_from', priceMin);
       }
 
       if (priceMax !== undefined) {
-        productQuery.lte('price', priceMax);
+        productQuery.lte('price_to', priceMax);
       }
 
       if (businessId) {
@@ -130,19 +144,25 @@ export const useUnifiedSearch = () => {
         rank: calculateRank(business.name, business.description || '', query)
       }));
 
-      const productResults: SearchResult[] = (productResult.data || []).map(product => ({
-        id: product.id,
-        type: 'product' as const,
-        name: product.name,
-        description: product.description || '',
-        category: product.category,
-        price: product.price,
-        image_url: product.image_url,
-        business_name: product.businesses?.name,
-        business_address: product.businesses?.address,
-        business_island: product.businesses?.island,
-        rank: calculateRank(product.name, product.description || '', query)
-      }));
+      const productResults: SearchResult[] = (productResult.data || []).map((bp: any) => {
+        const product = bp.product || {};
+        const business = bp.business || {};
+        const displayName = bp.title_override || product.name || 'Unknown Product';
+        const displayDescription = bp.description_override || product.description || '';
+        return {
+          id: bp.id,
+          type: 'product' as const,
+          name: displayName,
+          description: displayDescription,
+          category: product.category,
+          price: bp.price_from || 0,
+          image_url: product.image_url,
+          business_name: business.name,
+          business_address: business.address,
+          business_island: business.island,
+          rank: calculateRank(displayName, displayDescription, query)
+        };
+      });
 
       // Combine and sort by rank
       const allResults = [...businessResults, ...productResults]
@@ -208,44 +228,48 @@ export const useUnifiedSearch = () => {
     setError(null);
 
     try {
+      // Use products as base table with JOINs
+      // Pattern: products -> business_products -> businesses
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          id,
-          name,
-          description,
-          category,
-          price,
-          image_url,
-          business_id,
-          businesses!inner (
-            name,
-            address,
-            island
-          )
-        `)
-        .eq('status', 'active')
-        .eq('searchable', true)
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+        .select('*, business_products(*), businesses(*)')
+        .eq('business_products.is_active', true)
+        .or(`name.ilike.%${query}%,description.ilike.%${query}%,business_products.notes.ilike.%${query}%`)
         .limit(limit);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[searchProducts] Error:', error);
+        throw error;
+      }
 
-      return (data || []).map(product => ({
-        id: product.id,
-        type: 'product' as const,
-        name: product.name,
-        description: product.description || '',
-        category: product.category,
-        price: product.price,
-        image_url: product.image_url,
-        business_name: product.businesses?.name,
-        business_address: product.businesses?.address,
-        business_island: product.businesses?.island,
-        rank: calculateRank(product.name, product.description || '', query)
-      }));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Product search failed';
+      // Flatten products with their business_products
+      const results: SearchResult[] = [];
+      (data || []).forEach((product: any) => {
+        if (product.business_products && Array.isArray(product.business_products)) {
+          product.business_products.forEach((bp: any) => {
+            if (bp.is_active && bp.businesses) {
+              results.push({
+                id: bp.id || product.id,
+                type: 'product' as const,
+                name: product.name || '',
+                description: product.description || '',
+                category: product.category,
+                price: bp.price,
+                image_url: product.image_url,
+                business_name: bp.businesses?.name,
+                business_address: bp.businesses?.address,
+                business_island: bp.businesses?.island,
+                rank: calculateRank(product.name, product.description || '', query)
+              });
+            }
+          });
+        }
+      });
+
+      return results;
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Product search failed';
+      console.error('[searchProducts] Error:', err);
       setError(errorMessage);
       return [];
     } finally {
@@ -265,30 +289,31 @@ export const useUnifiedSearch = () => {
 // Helper function to calculate search rank
 const calculateRank = (name: string, description: string, query: string): number => {
   if (!query) return 1.0;
-  
+
   const queryLower = query.toLowerCase();
   const nameLower = name.toLowerCase();
   const descriptionLower = description.toLowerCase();
-  
+
   let rank = 0;
-  
+
   // Exact name match gets highest rank
   if (nameLower === queryLower) rank += 10;
   // Name starts with query
   else if (nameLower.startsWith(queryLower)) rank += 8;
   // Name contains query
   else if (nameLower.includes(queryLower)) rank += 6;
-  
+
   // Description contains query
   if (descriptionLower.includes(queryLower)) rank += 3;
-  
+
   // Boost for shorter names (more specific matches)
   rank += Math.max(0, 5 - name.length / 10);
-  
+
   return rank;
 };
 
 export default useUnifiedSearch;
+
 
 
 

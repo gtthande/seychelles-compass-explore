@@ -85,8 +85,23 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
       // Load all available products for the assign dropdown
       const { data: allProducts, error: productsError } = await supabase
         .from("products")
-        .select("*")
-        .eq("status", "active")
+        .select(`
+          id,
+          name,
+          description,
+          category,
+          images,
+          price,
+          currency,
+          stock,
+          is_active,
+          status,
+          business_id,
+          created_at,
+          updated_at,
+          slug
+        `)
+        .eq("is_active", true)
         .order("name");
 
       if (productsError) {

@@ -507,12 +507,24 @@ const Directory = () => {
       const { data, error } = await supabase
         .from('products')
         .select(`
-          id, name, description, category, price, currency, business_id,
+          id,
+          name,
+          description,
+          category,
+          images,
+          price,
+          currency,
+          stock,
+          is_active,
+          status,
+          business_id,
+          created_at,
+          updated_at,
+          slug,
           business:businesses(id, name, category, status, island, address)
         `)
-        .eq('status', 'active')
+        .eq('is_active', true)
         .eq('business.status', 'active')
-        .order('featured', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(50);
 

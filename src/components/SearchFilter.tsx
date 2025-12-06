@@ -47,20 +47,21 @@ interface Business {
   verified: boolean;
 }
 
-interface Product {
+export interface Product {
   id: string;
   name: string;
-  description: string | null;
-  price: number | null;
-  currency: string | null;
+  description: string;
   category: string;
-  images: string[] | null;
-  business_id: string;
+  images: string[];
+  price: number;
+  currency: string;
+  is_active: boolean;
+  stock: number;
   status: string;
-  businesses: {
-    name: string;
-    logo_url: string | null;
-  };
+  business_id: string | null;
+  created_at: string;
+  updated_at: string;
+  slug?: string | null;
 }
 
 interface SearchFilterProps {
@@ -163,7 +164,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
         // Fetch categories
         supabase
           .from('categories')
-          .select('id, name, description, is_active, created_at')
+          .select('id, name, slug, description, is_active, created_at')
           .eq('is_active', true)
           .order('name')
           .limit(20), // Limit categories
@@ -180,8 +181,23 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
         // Fetch products
         supabase
           .from('products')
-          .select('*')
-          .eq('status', 'active')
+          .select(`
+            id,
+            name,
+            description,
+            category,
+            images,
+            price,
+            currency,
+            stock,
+            is_active,
+            status,
+            business_id,
+            created_at,
+            updated_at,
+            slug
+          `)
+          .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(100) // Limit products for performance
       ]);
@@ -250,7 +266,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           let relevanceScore = 0;
           const name = product.name.toLowerCase();
           const description = product.description?.toLowerCase() || '';
-          const businessName = product.businesses.name.toLowerCase();
+          const businessName = product.businesses?.name?.toLowerCase() || '';
           
           // Prioritize product name matches
           if (name.includes(searchLower)) {
@@ -601,9 +617,11 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     
     <CardHeader className="pb-2">
       <CardTitle className="text-base font-semibold line-clamp-1">{name}</CardTitle>
-      <CardDescription className="text-xs">
-        by {product.businesses.name}
-      </CardDescription>
+      {product.businesses?.name && (
+        <CardDescription className="text-xs">
+          by {product.businesses.name}
+        </CardDescription>
+      )}
     </CardHeader>
     
     <CardContent className="space-y-2">

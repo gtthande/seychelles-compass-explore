@@ -35,14 +35,21 @@ const productSchema = z.object({
 
 type ProductFormData = z.infer<typeof productSchema>;
 
-interface Product {
+export interface Product {
   id: string;
-  business_id: string;
   name: string;
-  description: string | null;
-  price: number | null;
-  image_url: string | null;
+  description: string;
+  category: string;
+  images: string[];
+  price: number;
+  currency: string;
+  is_active: boolean;
+  stock: number;
+  status: string;
+  business_id: string | null;
   created_at: string;
+  updated_at: string;
+  slug?: string | null;
 }
 
 interface ProductFormProps {

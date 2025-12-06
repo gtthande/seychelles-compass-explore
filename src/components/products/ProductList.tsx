@@ -8,14 +8,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ProductForm from './ProductForm';
 
-interface Product {
+export interface Product {
   id: string;
-  business_id: string;
   name: string;
-  description: string | null;
-  price: number | null;
-  image_url: string | null;
+  description: string;
+  category: string;
+  images: string[];
+  price: number;
+  currency: string;
+  is_active: boolean;
+  stock: number;
+  status: string;
+  business_id: string | null;
   created_at: string;
+  updated_at: string;
+  slug?: string | null;
 }
 
 interface ProductListProps {
@@ -48,45 +55,31 @@ const ProductList: React.FC<ProductListProps> = ({ businessId, isOwner = false }
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      // Use business_products join table instead of products.business_id
       const { data, error } = await supabase
-        .from('business_products')
+        .from('products')
         .select(`
           id,
-          title_override,
-          description_override,
-          price_from,
-          price_to,
-          currency_code,
+          name,
+          description,
+          category,
+          images,
+          price,
+          currency,
+          stock,
           is_active,
+          status,
+          business_id,
           created_at,
-          product:products!inner (
-            id,
-            name,
-            description,
-            image_url,
-            status
-          )
+          updated_at,
+          slug
         `)
         .eq('business_id', businessId)
         .eq('is_active', true)
-        .eq('product.status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Transform to match Product interface
-      const transformedProducts = (data || []).map((bp: any) => ({
-        id: bp.id,
-        business_id: businessId,
-        name: bp.title_override || bp.product?.name || 'Unknown Product',
-        description: bp.description_override || bp.product?.description || null,
-        price: bp.price_from || null,
-        image_url: bp.product?.image_url || null,
-        created_at: bp.created_at,
-      }));
-      
-      setProducts(transformedProducts);
+      setProducts((data || []) as Product[]);
     } catch (error: any) {
       console.error('Error fetching products:', error);
       toast({

@@ -77,7 +77,7 @@ const SettingsManager = () => {
         throw new Error('No active session');
       }
 
-      const response = await fetch('/api/update-settings', {
+      const response = await fetch('http://localhost:5055/api/update-settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

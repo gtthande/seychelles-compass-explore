@@ -38,7 +38,7 @@ const PerformanceMonitor: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch('/api/debug/health');
+      const response = await fetch('http://localhost:5055/api/debug/health');
       const data = await response.json();
       setHealth(data);
     } catch (err: any) {

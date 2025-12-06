@@ -37,8 +37,23 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
     // Search products - simplified to basic query
     const { data: products, error: productError } = await supabase
       .from('products')
-      .select('*')
-      .eq('status', 'active')
+      .select(`
+        id,
+        name,
+        description,
+        category,
+        images,
+        price,
+        currency,
+        stock,
+        is_active,
+        status,
+        business_id,
+        created_at,
+        updated_at,
+        slug
+      `)
+      .eq('is_active', true)
       .ilike('name', `%${searchTerm}%`)
       .limit(25);
 

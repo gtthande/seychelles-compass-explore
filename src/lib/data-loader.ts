@@ -241,26 +241,25 @@ export const dataFetchers = {
   async getCategories() {
     try {
       const { data, error } = await supabase
-        .from('businesses')
-        .select('category')
-        .not('category', 'is', null);
+        .from('categories')
+        .select(`
+          id,
+          name,
+          slug,
+          description,
+          is_active
+        `)
+        .eq('is_active', true);
 
       if (error) {
-        console.error('🚨 DataFetchers: getCategories failed:', error);
-        console.error('getCategories Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
+        console.error('[DATA-LOADER] getCategories failed:', error);
         throw error;
       }
 
-      const uniqueCategories = [...new Set(data.map(item => item.category))];
-      console.log('✅ DataFetchers: getCategories successful:', uniqueCategories);
-      return uniqueCategories;
+      console.log('[DATA-LOADER] getCategories successful:', data);
+      return data || [];
     } catch (err) {
-      console.error('🚨 DataFetchers: getCategories exception:', err);
+      console.error('[DATA-LOADER] getCategories exception:', err);
       throw err;
     }
   },
@@ -268,11 +267,22 @@ export const dataFetchers = {
   async getFeaturedBusinesses() {
     const { data, error } = await supabase
       .from('businesses')
-      .select('*')
+      .select(`
+        id,
+        name,
+        description,
+        category,
+        status,
+        phone,
+        logo_url
+      `)
       .eq('featured', true)
       .limit(6);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      return [];
+    }
     return data || [];
   },
 
@@ -315,22 +325,18 @@ export const dataFetchers = {
     let query = supabase
       .from('businesses')
       .select(`
-        *,
-        business_categories (
-          category_id,
-          categories (
-            id,
-            name,
-            description,
-            active
-          )
-        )
+        id,
+        name,
+        description,
+        category,
+        status,
+        phone,
+        logo_url
       `)
       .limit(20);
 
-    // Filter by category via business_categories join
     if (filters.category) {
-      query = query.eq('business_categories.categories.name', filters.category);
+      query = query.eq('category', filters.category);
     }
     if (filters.search) {
       query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
@@ -338,53 +344,80 @@ export const dataFetchers = {
 
     const { data, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      return [];
+    }
     
-    // Transform to include categories array
-    return (data || []).map((business: any) => ({
-      ...business,
-      categories: business.business_categories?.map((bc: any) => bc.categories).filter(Boolean) || []
-    }));
+    return data || [];
   },
 
   async getProducts(filters: any = {}) {
     try {
-      // Use products as base table
+      // Use business_products with many-to-many join pattern
       let query = supabase
-        .from('products')
-        .select('*')
-        .eq('status', 'active')
-        .limit(50);
+        .from('business_products')
+        .select(`
+          id,
+          business_id,
+          product_id,
+          business:businesses (
+            id,
+            name,
+            address,
+            island,
+            category,
+            status
+          ),
+          product:products (
+            id,
+            name,
+            title,
+            description,
+            category,
+            image_url,
+            status,
+            price,
+            currency,
+            in_stock,
+            stock_quantity
+          )
+        `)
+        .order('product_id');
 
+      // Apply filters
       if (filters.category) {
-        query = query.eq('category', filters.category);
+        query = query.eq('product.category', filters.category);
       }
       if (filters.search) {
         query = query.or(`
-          name.ilike.%${filters.search}%,
-          description.ilike.%${filters.search}%
+          product.name.ilike.%${filters.search}%,
+          product.description.ilike.%${filters.search}%,
+          product.title.ilike.%${filters.search}%
         `);
       }
 
       const { data, error } = await query;
       if (error) {
-        console.error('[getProducts] Error:', error);
+        console.error('[DATA-LOADER] getProducts failed:', error);
         throw error;
       }
 
       // Transform to match expected format
-      const results: any[] = (data || []).map((product: any) => ({
-        id: product.id,
-        name: product.name || 'Unknown Product',
-        description: product.description || '',
-        price: product.price || 0,
-        price_to: product.price || null,
-        currency: 'SCR',
-        images: product.image_url ? [product.image_url] : [],
-        category: product.category || product.category_id || '',
-        created_at: product.created_at,
+      const results: any[] = (data || []).map((bp: any) => ({
+        id: bp.product?.id || bp.id,
+        name: bp.title_override || bp.product?.name || 'Unknown Product',
+        description: bp.description_override || bp.product?.description || '',
+        price: bp.price_from || bp.product?.price || 0,
+        price_to: bp.price_to || bp.price_from || null,
+        currency: bp.currency_code || 'SCR',
+        images: bp.product?.image_url ? [bp.product.image_url] : [],
+        category: bp.product?.category || '',
+        business_id: bp.business_id,
+        created_at: bp.created_at || bp.product?.created_at,
       }));
 
+      console.log('[DATA-LOADER] getProducts successful:', results.length, 'products');
       return results;
     } catch (error: any) {
       console.error('[getProducts] Unexpected error:', error);
@@ -396,18 +429,26 @@ export const dataFetchers = {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('*')
+        .select(`
+          id,
+          name,
+          description,
+          category,
+          status,
+          phone,
+          logo_url
+        `)
         .eq('id', id)
         .single();
 
       if (error) {
         console.error('[getBusinessById] Error:', error);
-        throw error;
+        return null;
       }
       return data;
     } catch (error: any) {
       console.error('[getBusinessById] Unexpected error:', error);
-      throw error;
+      return null;
     }
   },
 

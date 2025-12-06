@@ -54,14 +54,17 @@
 
 ### `categories`
 - `id` UUID PK DEFAULT gen_random_uuid()
-- `name` TEXT UNIQUE NOT NULL
+- `name` TEXT NOT NULL
+- `slug` TEXT UNIQUE NOT NULL
 - `description` TEXT
-- `active` BOOLEAN DEFAULT TRUE
+- `is_active` BOOLEAN DEFAULT TRUE
+- `image_url` TEXT (nullable, added in migration 20250127000000)
 - `created_at` TIMESTAMPTZ DEFAULT NOW()
+- `updated_at` TIMESTAMPTZ DEFAULT NOW()
 
 **Indexes:**
-- `idx_categories_active` on `active`
-- `idx_categories_name` on `name`
+- `idx_categories_active` on `is_active` (if exists)
+- `idx_categories_name` on `name` (if exists)
 
 ### `business_categories` (Many-to-Many)
 - `business_id` UUID FK → REFERENCES `businesses(id)` ON DELETE CASCADE
@@ -72,17 +75,47 @@
 - `idx_business_categories_business` on `business_id`
 - `idx_business_categories_category` on `category_id`
 
-### `products`
+### `products` (Master Product Catalogue)
 - `id` UUID PK DEFAULT gen_random_uuid()
-- `business_id` UUID FK → REFERENCES `businesses(id)` ON DELETE CASCADE
 - `name` TEXT NOT NULL
-- `price` NUMERIC(10, 2)
+- `title` TEXT (nullable, added in migration 20251202120000)
 - `description` TEXT
+- `category` TEXT (nullable, added in migration 20251202120000)
+- `image_url` TEXT (nullable, added in migration 20251202120000)
+- `status` TEXT DEFAULT 'active' (added in migration 20251202120000)
+- `searchable` BOOLEAN DEFAULT true (added in migration 20251202120000)
+- `duration` TEXT (nullable, added in migration 20251202120000)
+- `price` NUMERIC(10, 2) (legacy, may be null)
+- `is_active` BOOLEAN DEFAULT true
 - `created_at` TIMESTAMPTZ DEFAULT NOW()
 - `updated_at` TIMESTAMPTZ DEFAULT NOW()
 
+**Note:** Products are now in a master catalogue. Business-specific pricing/overrides are in `business_products` table.
+
 **Indexes:**
-- `idx_products_business_id` on `business_id`
+- `idx_products_business_id` on `business_id` (if exists, legacy)
+
+### `business_products` (Business-Product Junction Table)
+- `id` UUID PK DEFAULT gen_random_uuid()
+- `business_id` UUID FK → REFERENCES `businesses(id)` ON DELETE CASCADE
+- `product_id` UUID FK → REFERENCES `products(id)` ON DELETE CASCADE
+- `title_override` TEXT (nullable, business-specific title)
+- `description_override` TEXT (nullable, business-specific description)
+- `price_from` NUMERIC(12,2) (minimum price for this product at this business)
+- `price_to` NUMERIC(12,2) (nullable, maximum price)
+- `currency_code` TEXT DEFAULT 'SCR'
+- `duration_minutes` INTEGER (nullable)
+- `is_active` BOOLEAN DEFAULT true
+- `booking_url` TEXT (nullable)
+- `notes` TEXT (nullable, conditions/offers)
+- `created_at` TIMESTAMPTZ DEFAULT NOW()
+- `updated_at` TIMESTAMPTZ DEFAULT NOW()
+- UNIQUE (`business_id`, `product_id`)
+
+**Indexes:**
+- `idx_business_products_business_id` on `business_id`
+- `idx_business_products_product_id` on `product_id`
+- `idx_business_products_is_active` on `is_active` WHERE `is_active = true`
 
 ### `reviews`
 - `id` UUID PK DEFAULT gen_random_uuid()

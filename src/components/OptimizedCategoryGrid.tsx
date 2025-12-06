@@ -211,7 +211,7 @@ const OptimizedCategoryGrid = () => {
       // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
-        .select('id, name, description, is_active, created_at')
+        .select('id, name, slug, description, is_active, created_at')
         .eq('is_active', true) // Filter active categories
         .order('name', { ascending: true });
 
@@ -263,10 +263,10 @@ const OptimizedCategoryGrid = () => {
         }
       }
 
-      // Fetch product counts - count products per business, then map to categories
+      // Fetch product counts by category
       const { data: productsData, error: productError } = await supabase
         .from('products')
-        .select('business_id');
+        .select('category');
 
       if (productError) {
         console.error('🚨 CategoryGrid: Product counts query failed:', productError);
@@ -289,37 +289,21 @@ const OptimizedCategoryGrid = () => {
         });
       }
 
-      // Count products by category_id via business_categories
-      // Get businesses for products and their categories
+      // Count products by category name
       const productCountMap: Record<string, number> = {};
       if (productsData && productsData.length > 0) {
-        // Get unique business IDs from products
-        const businessIds = [...new Set(productsData.map((p: any) => p.business_id).filter(Boolean))];
-        
-        if (businessIds.length > 0) {
-          // Fetch categories for these businesses
-          const { data: productBusinessCategories, error: pbcError } = await supabase
-            .from('business_categories')
-            .select('business_id, category_id')
-            .in('business_id', businessIds);
-
-          if (pbcError) {
-            console.error('🚨 CategoryGrid: Product business categories query failed:', pbcError);
-          } else if (productBusinessCategories) {
-            // Count products per category
-            productsData.forEach((product: any) => {
-              const productBusinessCats = productBusinessCategories.filter(
-                (pbc: any) => pbc.business_id === product.business_id
-              );
-              productBusinessCats.forEach((pbc: any) => {
-                const categoryId = pbc.category_id;
-                if (categoryId) {
-                  productCountMap[categoryId] = (productCountMap[categoryId] || 0) + 1;
-                }
-              });
-            });
+        productsData.forEach((product: any) => {
+          if (product.category) {
+            // Find category by name match
+            const matchingCategory = categories.find(cat => 
+              cat.name.toLowerCase() === product.category.toLowerCase() ||
+              cat.slug === product.category
+            );
+            if (matchingCategory) {
+              productCountMap[matchingCategory.id] = (productCountMap[matchingCategory.id] || 0) + 1;
+            }
           }
-        }
+        });
       }
 
       // Process the data - show all categories even with zero counts

@@ -44,14 +44,21 @@ interface Business {
   owner_id: string;
 }
 
-interface Product {
+export interface Product {
   id: string;
   name: string;
   description: string;
-  price: number;
   category: string;
-  business_id: string;
-  image_url: string | null;
+  images: string[];
+  price: number;
+  currency: string;
+  is_active: boolean;
+  stock: number;
+  status: string;
+  business_id: string | null;
+  created_at: string;
+  updated_at: string;
+  slug?: string | null;
 }
 
 const BusinessDashboard = () => {

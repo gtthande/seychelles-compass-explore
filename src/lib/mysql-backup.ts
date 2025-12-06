@@ -65,7 +65,7 @@ export async function syncTableToMySQL(
   try {
     // This would typically call a Supabase Edge Function or backend API
     // For now, we'll return a placeholder that indicates the function should be implemented
-    const response = await fetch('/api/mysql-backup/sync', {
+    const response = await fetch('http://localhost:5055/api/mysql-backup/sync', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ export async function syncTableToMySQL(
  */
 export async function getSchemaDiff(): Promise<SchemaDiff[]> {
   try {
-    const response = await fetch('/api/mysql-backup/schema-diff');
+    const response = await fetch('http://localhost:5055/api/mysql-backup/schema-diff');
     if (!response.ok) {
       throw new Error(`Failed to get schema diff: ${response.statusText}`);
     }
@@ -112,7 +112,7 @@ export async function getSchemaDiff(): Promise<SchemaDiff[]> {
  */
 export async function syncAllTablesToMySQL(): Promise<BackupStatus> {
   try {
-    const response = await fetch('/api/mysql-backup/sync-all', {
+    const response = await fetch('http://localhost:5055/api/mysql-backup/sync-all', {
       method: 'POST',
     });
 
@@ -135,7 +135,7 @@ export async function syncAllTablesToMySQL(): Promise<BackupStatus> {
  */
 export async function testMySQLConnection(): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch('/api/mysql-backup/test-connection');
+    const response = await fetch('http://localhost:5055/api/mysql-backup/test-connection');
     if (!response.ok) {
       throw new Error(`Connection test failed: ${response.statusText}`);
     }

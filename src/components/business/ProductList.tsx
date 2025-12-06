@@ -32,23 +32,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-interface Product {
+export interface Product {
   id: string;
   name: string;
-  description: string | null;
-  price: number | null;
-  currency: string | null;
-  category: string | null;
-  status: string | null;
-  in_stock: boolean | null;
-  stock_quantity: number | null;
-  images: string[] | null;
-  catalogue_url: string | null;
-  sku: string | null;
-  unit: string | null;
-  tags: string[] | null;
+  description: string;
+  category: string;
+  images: string[];
+  price: number;
+  currency: string;
+  is_active: boolean;
+  stock: number;
+  status: string;
+  business_id: string | null;
   created_at: string;
-  published_at: string | null;
+  updated_at: string;
+  slug?: string | null;
 }
 
 const ITEMS_PER_PAGE = 12;
@@ -72,40 +70,28 @@ const ProductList = () => {
       setProductsLoading(true);
       
       let query = supabase
-        .from('business_products')
+        .from('products')
         .select(`
           id,
-          title_override,
-          description_override,
-          price_from,
-          price_to,
-          currency_code,
-          duration_minutes,
-          booking_url,
-          notes,
+          name,
+          description,
+          category,
+          images,
+          price,
+          currency,
+          stock,
           is_active,
+          status,
+          business_id,
           created_at,
           updated_at,
-          product:products!inner (
-            id,
-            name,
-            title,
-            description,
-            category,
-            image_url,
-            status
-          )
+          slug
         `, { count: 'exact' })
         .eq('business_id', business.id);
 
       // Apply filters
       if (searchTerm) {
-        query = query.or(`
-          product.name.ilike.%${searchTerm}%,
-          product.description.ilike.%${searchTerm}%,
-          title_override.ilike.%${searchTerm}%,
-          description_override.ilike.%${searchTerm}%
-        `);
+        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
       }
       
       if (statusFilter !== 'all') {
@@ -122,23 +108,7 @@ const ProductList = () => {
 
       if (error) throw error;
       
-      // Transform data to match existing Product interface
-      const transformedProducts = (data || []).map(bp => ({
-        id: bp.id,
-        business_id: business.id,
-        name: bp.title_override || bp.product?.name || '',
-        title: bp.title_override || bp.product?.title || bp.product?.name || '',
-        description: bp.description_override || bp.product?.description || '',
-        price: bp.price_from || 0,
-        image_url: bp.product?.image_url || null,
-        category: bp.product?.category || null,
-        status: bp.is_active ? 'active' : 'inactive',
-        duration: bp.duration_minutes ? `${bp.duration_minutes} min` : null,
-        created_at: bp.created_at,
-        updated_at: bp.updated_at,
-      }));
-      
-      setProducts(transformedProducts);
+      setProducts((data || []) as Product[]);
       setTotalProducts(count || 0);
     } catch (error: any) {
       console.error('Error fetching products:', error);

@@ -145,7 +145,13 @@ const OptimizedBusinessManager: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .select('slug, name')
+        .select(`
+          id,
+          name,
+          slug,
+          description,
+          is_active
+        `)
         .eq('is_active', true)
         .order('name');
 

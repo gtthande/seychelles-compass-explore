@@ -21,7 +21,7 @@ export interface Category {
 export async function fetchCategories(): Promise<Category[]> {
     const { data, error } = await supabase
         .from('categories')
-        .select('id, name, description, is_active, created_at')
+        .select('id, name, slug, description, is_active, created_at')
         .eq('is_active', true)
         .order('name', { ascending: true });
 
@@ -47,9 +47,10 @@ export async function fetchCategories(): Promise<Category[]> {
 export async function fetchCategoryBySlug(slug: string): Promise<Category | null> {
     const { data, error } = await supabase
         .from('categories')
-        .select('id, name, description, is_active, created_at')
+        .select('id, name, slug, description, is_active, created_at')
+        .eq('slug', slug)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
     if (error) {
         console.error('[fetchCategoryBySlug] Error:', error);

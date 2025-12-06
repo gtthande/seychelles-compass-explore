@@ -11,27 +11,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
-interface Product {
+export interface Product {
   id: string;
   name: string;
-  description: string | null;
-  price: number | null;
-  currency: string | null;
-  category: string | null;
-  status: string | null;
-  in_stock: boolean | null;
-  images: string[] | null;
-  catalogue_url: string | null;
-  sku: string | null;
-  unit: string | null;
-  tags: string[] | null;
-  published_at: string | null;
-  business: {
-    id: string;
-    name: string;
-    island: string | null;
-    address: string | null;
-  };
+  description: string;
+  category: string;
+  images: string[];
+  price: number;
+  currency: string;
+  is_active: boolean;
+  stock: number;
+  status: string;
+  business_id: string | null;
+  created_at: string;
+  updated_at: string;
+  slug?: string | null;
 }
 
 const Products = () => {
@@ -72,22 +66,36 @@ const Products = () => {
     'products_list',
     async () => {
       try {
-        // Use products as base table with JOINs
-        // Only show active business_products for active businesses
         let query = supabase
           .from('products')
-          .select('*, business_products(*), businesses(*)', { count: 'exact' })
-          .eq('business_products.is_active', true)
-          .eq('businesses.status', 'active')
+          .select(`
+            id,
+            name,
+            description,
+            category,
+            images,
+            price,
+            currency,
+            stock,
+            is_active,
+            status,
+            business_id,
+            created_at,
+            updated_at,
+            slug,
+            business:businesses (
+              id,
+              name,
+              island,
+              address
+            )
+          `, { count: 'exact' })
+          .eq('is_active', true)
           .order('created_at', { ascending: false });
 
         // Apply filters
         if (searchTerm) {
-          query = query.or(`
-            name.ilike.%${searchTerm}%,
-            description.ilike.%${searchTerm}%,
-            business_products.notes.ilike.%${searchTerm}%
-          `);
+          query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
         }
 
         if (selectedCategory && selectedCategory !== "__all__") {
@@ -95,15 +103,15 @@ const Products = () => {
         }
 
         if (priceRange.min) {
-          query = query.gte('business_products.price', parseFloat(priceRange.min));
+          query = query.gte('price', parseFloat(priceRange.min));
         }
 
         if (priceRange.max) {
-          query = query.lte('business_products.price', parseFloat(priceRange.max));
+          query = query.lte('price', parseFloat(priceRange.max));
         }
 
         if (selectedIsland && selectedIsland !== "__all__") {
-          query = query.eq('businesses.island', selectedIsland);
+          query = query.eq('business.island', selectedIsland);
         }
 
         const { data, error, count } = await query.range(
@@ -124,41 +132,7 @@ const Products = () => {
         const totalCount = count || 0;
         setTotalPages(Math.ceil(totalCount / pageSize));
         
-        // Transform products data to match Product interface
-        // Products can have multiple business_products, so we flatten them
-        const transformedData: Product[] = [];
-        (data || []).forEach((product: any) => {
-          if (product.business_products && Array.isArray(product.business_products)) {
-            product.business_products.forEach((bp: any) => {
-              if (bp.is_active && bp.businesses) {
-                transformedData.push({
-                  id: bp.id || product.id,
-                  name: product.name || '',
-                  description: product.description || null,
-                  price: bp.price || null,
-                  currency: bp.overrides?.currency || 'SCR',
-                  category: product.category || null,
-                  status: bp.is_active ? 'active' : 'inactive',
-                  in_stock: bp.is_active,
-                  images: product.image_url ? [product.image_url] : null,
-                  catalogue_url: bp.overrides?.booking_url || null,
-                  sku: null,
-                  unit: null,
-                  tags: null,
-                  published_at: bp.created_at || product.created_at || null,
-                  business: {
-                    id: bp.businesses?.id || '',
-                    name: bp.businesses?.name || '',
-                    island: bp.businesses?.island || null,
-                    address: bp.businesses?.address || null,
-                  },
-                });
-              }
-            });
-          }
-        });
-        
-        return transformedData;
+        return (data || []) as Product[];
       } catch (error: any) {
         console.error('[Products] Unexpected error:', error);
         toast({
@@ -203,7 +177,8 @@ const Products = () => {
 
   const handleShare = (product: Product, platform?: 'facebook' | 'instagram' | 'link') => {
     const productUrl = `${window.location.origin}/products/${product.id}`;
-    const shareText = `Check out ${product.name} from ${product.business.name} in Seychelles!`;
+    const businessName = product.business?.name || 'a local business';
+    const shareText = `Check out ${product.name} from ${businessName} in Seychelles!`;
     
     switch (platform) {
       case 'facebook':
@@ -319,11 +294,13 @@ const Products = () => {
         </CardDescription>
 
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="w-3 h-3" />
-            <span>{product.business.name}</span>
-            {product.business.island && <span>• {product.business.island}</span>}
-          </div>
+          {product.business?.name && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="w-3 h-3" />
+              <span>{product.business.name}</span>
+              {product.business.island && <span>• {product.business.island}</span>}
+            </div>
+          )}
 
           {product.category && (
             <Badge variant="secondary" className="bg-primary/10 text-primary">
@@ -405,11 +382,13 @@ const Products = () => {
             </p>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-3 h-3" />
-                <span>{product.business.name}</span>
-                {product.business.island && <span>• {product.business.island}</span>}
-              </div>
+              {product.business?.name && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-3 h-3" />
+                  <span>{product.business.name}</span>
+                  {product.business.island && <span>• {product.business.island}</span>}
+                </div>
+              )}
 
               <div className="flex gap-2">
                 {product.category && (

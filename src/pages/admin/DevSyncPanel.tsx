@@ -35,7 +35,7 @@ const DevSyncPanel: React.FC = () => {
     // Check if ALLOW_SYNC is enabled
     const checkSyncPermission = async () => {
       try {
-        const response = await fetch('/api/sync/health');
+        const response = await fetch('http://localhost:5055/api/sync/health');
         if (response.ok) {
           setAllowSync(true);
         }

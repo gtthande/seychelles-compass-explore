@@ -1,78 +1,263 @@
-# 🔧 Migration Application Guide
+# Migration Application Guide
 
-## ✅ Completed Steps
+This guide explains how to apply database migrations to the iCompass Seychelles project.
 
-1. ✅ **Database Types Generated**
-   - File: `src/lib/database.types.ts` (55KB)
-   - Generated successfully with all schema types
+## Overview
 
-2. ✅ **RLS Migration Files Created**
-   - `supabase/migrations/99999999999999_reset_rls.sql` - Resets all RLS policies
-   - `supabase/migrations/99999999999998_fix_admin_users.sql` - Fixes admin user
+Migrations are SQL files located in `supabase/migrations/` that modify the database schema. They must be applied in order and tested thoroughly.
 
-3. ✅ **App Rebuilt**
-   - Vite cache cleared
-   - Dependencies reinstalled
-   - Dev server running on port 5173
+## Migration Order
 
-## 📋 Required: Apply RLS Migrations
+**CRITICAL:** Migrations must be applied in this exact order:
 
-The migrations must be applied manually via Supabase Dashboard SQL Editor:
+1. **Schema Migrations** - Apply all SQL migration files
+2. **Type Generation** - Regenerate TypeScript types
+3. **Application Testing** - Test the application
 
-### Step 1: Open Supabase Dashboard
-1. Go to: https://supabase.com/dashboard/project/bwlmlniotyrjttglbjrl
-2. Navigate to **SQL Editor** in the left sidebar
-3. Click **"New query"**
+## Method 1: Supabase Dashboard (Recommended)
 
-### Step 2: Apply RLS Reset Migration
-1. Open file: `supabase/migrations/99999999999999_reset_rls.sql`
-2. Copy the entire SQL content
-3. Paste into SQL Editor
-4. Click **"Run"** (or press Ctrl+Enter)
-5. Wait for success message
+This is the safest method for production environments.
 
-### Step 3: Apply Admin User Fix
-1. Open file: `supabase/migrations/99999999999998_fix_admin_users.sql`
-2. Copy the entire SQL content
-3. Paste into SQL Editor
-4. Click **"Run"**
-5. Wait for success message
+### Steps
 
-## ✅ Testing Checklist
+1. **Open Supabase Dashboard:**
+   - Go to https://supabase.com/dashboard/project/bwlmlniotyrjttglbjrl
+   - Navigate to **SQL Editor** in the left sidebar
+   - Click **"New query"**
 
-After applying migrations, test:
+2. **Apply Migration:**
+   - Open the migration file from `supabase/migrations/`
+   - Copy the entire SQL content
+   - Paste into SQL Editor
+   - Click **"Run"** (or press Ctrl+Enter)
+   - Wait for success message
 
-- [ ] **Public Categories Load**
-  - Visit: http://localhost:5173/
-  - Check "Explore by Category" section loads
-  - Categories grid displays correctly
+3. **Verify:**
+   - Check for any errors in the output
+   - Verify the changes in the Table Editor
+   - Test RLS policies if applicable
 
-- [ ] **Public Products Load**
-  - Navigate to Products page
-  - Products list displays without errors
+### Advantages
 
-- [ ] **Login Works**
-  - Go to: http://localhost:5173/auth
-  - Login as: `gtthande@gmail.com`
-  - Password: (check your admin password)
-  - Should redirect to admin panel
+- ✅ Visual feedback on errors
+- ✅ Can review SQL before execution
+- ✅ Easy to rollback if needed
+- ✅ No CLI setup required
 
-- [ ] **Admin Panel Loads**
-  - After login, should see admin dashboard
-  - No RLS errors in console
+## Method 2: Supabase CLI
 
-## 🔍 If Issues Persist
+For local development or automated deployments.
 
-If any fetch functions still break:
+### Prerequisites
 
-1. Check browser console for errors
-2. Verify RLS policies are applied (check Supabase Dashboard → Authentication → Policies)
-3. Ensure all `.select()` calls use `.select("*")` instead of specific fields
-4. Check that `src/integrations/supabase/client.ts` is properly configured
+```bash
+# Install Supabase CLI
+npm install -g supabase
 
-## 📝 Notes
+# Login to Supabase
+supabase login
 
-- Migrations are numbered `99999999999999_*` to ensure they run last
-- The RLS reset migration drops ALL existing policies and creates new ones
-- Admin policies check both `is_admin` and `role='admin'` fields
+# Link to your project
+supabase link --project-ref bwlmlniotyrjttglbjrl
+```
 
+### Apply Migrations
+
+```bash
+# Push all migrations
+supabase db push
+
+# Or apply a specific migration
+supabase migration up
+```
+
+### Advantages
+
+- ✅ Automated and scriptable
+- ✅ Good for CI/CD pipelines
+- ✅ Can be version controlled
+
+## After Applying Migrations
+
+### 1. Regenerate TypeScript Types
+
+After schema changes, you must regenerate types:
+
+```bash
+npm run gen:types
+```
+
+This script:
+- Generates types from Supabase schema
+- Updates `src/types/supabase.ts`
+- Ensures type safety in the application
+
+### 2. Test the Application
+
+```bash
+# Start development server
+npm run dev
+
+# Test affected features
+# - Business registration
+# - Product management
+# - Admin panel
+# - Public directory
+```
+
+### 3. Verify RLS Policies
+
+If migrations modified RLS policies:
+
+1. Test as anonymous user (public access)
+2. Test as regular user (own data access)
+3. Test as business owner (business data access)
+4. Test as admin (full access)
+
+## Migration Best Practices
+
+### Before Creating a Migration
+
+1. **Check SCHEMA_LOCK.md:**
+   - Verify your changes don't violate critical rules
+   - Ensure you're not dropping protected tables
+   - Check for required columns/constraints
+
+2. **Test Locally First:**
+   - Apply migration to local Supabase instance
+   - Test all affected features
+   - Verify RLS policies work correctly
+
+3. **Make Migrations Idempotent:**
+   - Use `IF NOT EXISTS` / `IF EXISTS` checks
+   - Use `DO $$` blocks for conditional logic
+   - Safe to run multiple times
+
+### Migration Naming
+
+Format: `YYYYMMDDHHMMSS_description.sql`
+
+Examples:
+- `20250130000000_add_hero_section_table.sql`
+- `20250130000001_update_business_status_enum.sql`
+
+### Common Patterns
+
+#### Adding a Column
+
+```sql
+-- Idempotent column addition
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'businesses' AND column_name = 'new_column'
+  ) THEN
+    ALTER TABLE businesses ADD COLUMN new_column TEXT;
+  END IF;
+END $$;
+```
+
+#### Creating a Table
+
+```sql
+-- Idempotent table creation
+CREATE TABLE IF NOT EXISTS new_table (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### Adding RLS Policy
+
+```sql
+-- Idempotent policy creation
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'businesses' AND policyname = 'public_read'
+  ) THEN
+    CREATE POLICY "public_read" ON businesses
+      FOR SELECT USING (status = 'active');
+  END IF;
+END $$;
+```
+
+## Troubleshooting
+
+### Migration Fails
+
+1. **Check Error Message:**
+   - Read the full error in Supabase dashboard
+   - Common issues: syntax errors, constraint violations, missing dependencies
+
+2. **Rollback if Needed:**
+   - If migration partially applied, you may need to manually fix
+   - Check migration file for rollback instructions
+   - Contact maintainer if unsure
+
+3. **Verify Dependencies:**
+   - Ensure previous migrations are applied
+   - Check that required tables/columns exist
+
+### Types Out of Sync
+
+If TypeScript errors appear after migration:
+
+```bash
+# Regenerate types
+npm run gen:types
+
+# Restart dev server
+npm run dev
+```
+
+### RLS Policy Issues
+
+If data access fails after migration:
+
+1. Check policy definitions in migration
+2. Test with different user roles
+3. Verify `auth.uid()` is working correctly
+4. Check Supabase dashboard → Authentication → Policies
+
+## Emergency Procedures
+
+### If Migration Breaks Production
+
+1. **Stop the Application:**
+   - Pause deployments if possible
+   - Notify users if necessary
+
+2. **Assess the Damage:**
+   - Check which tables/features are affected
+   - Review error logs
+
+3. **Rollback Options:**
+   - If migration is reversible, create rollback migration
+   - If not, manual SQL fixes may be needed
+   - Contact database administrator if critical
+
+4. **Prevent Future Issues:**
+   - Always test migrations in development first
+   - Use staging environment for production-like testing
+   - Keep migration backups
+
+## Resources
+
+- [SCHEMA_LOCK.md](./supabase/SCHEMA_LOCK.md) - Schema reference and rules
+- [Supabase Migration Docs](https://supabase.com/docs/guides/cli/local-development#database-migrations)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+## Support
+
+For migration issues:
+1. Check this guide first
+2. Review SCHEMA_LOCK.md for constraints
+3. Test in development environment
+4. Contact project maintainer with:
+   - Migration file name
+   - Error message
+   - Steps to reproduce

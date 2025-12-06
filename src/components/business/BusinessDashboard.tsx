@@ -26,22 +26,21 @@ import {
 
 import ProductList from "./ProductList";
 
-interface Product {
+export interface Product {
   id: string;
   name: string;
-  description: string | null;
-  price: number | null;
-  currency: string | null;
-  category: string | null;
-  status: string | null;
-  in_stock: boolean | null;
-  stock_quantity: number | null;
-  images: string[] | null;
-  catalogue_url: string | null;
-  sku: string | null;
-  unit: string | null;
-  tags: string[] | null;
+  description: string;
+  category: string;
+  images: string[];
+  price: number;
+  currency: string;
+  is_active: boolean;
+  stock: number;
+  status: string;
+  business_id: string | null;
   created_at: string;
+  updated_at: string;
+  slug?: string | null;
 }
 
 const BusinessDashboard = () => {

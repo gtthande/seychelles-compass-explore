@@ -16,6 +16,10 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog';
 import { 
+  createProductMaster,
+  createBusinessProduct
+} from '@/lib/products-api';
+import { 
   Upload, 
   X, 
   Package, 
@@ -47,13 +51,16 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
   const [imagePreview, setImagePreview] = useState<string>('');
 
   const [formData, setFormData] = useState({
-    business_id: '',
     name: '',
     description: '',
+    category: 'tours',
+    images: [] as string[],
     price: '',
-    category: '',
-    status: 'active',
-    searchable: true
+    currency: 'SCR',
+    stock: 0,
+    is_active: true,
+    status: 'draft',
+    business_id: null as string | null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -96,7 +103,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
     }
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string | boolean | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error when user starts typing
@@ -108,16 +115,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.business_id) {
-      newErrors.business_id = 'Business is required';
-    }
-
     if (!formData.name.trim()) {
       newErrors.name = 'Product name is required';
     }
 
-    if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      newErrors.price = 'Valid price is required';
+    // Price is only required if linking to a business
+    if (formData.business_id) {
+      if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
+        newErrors.price = 'Valid price is required when linking to a business';
+      }
     }
 
     if (!formData.category) {
@@ -234,7 +240,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
       });
 
       setImagePreview(urlData.publicUrl);
-      setFormData(prev => ({ ...prev, image_url: urlData.publicUrl }));
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, urlData.publicUrl]
+      }));
       
       toast({
         title: "Success",
@@ -301,40 +310,72 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('products')
-        .insert({
-          ...formData,
-          price: Number(formData.price),
-          image_url: imagePreview || null
+      // Step 1: Create master product (catalogue item) - no business_id
+      const imageUrl = formData.images.length > 0 ? formData.images[0] : imagePreview || null;
+      const newProduct = await createProductMaster({
+        name: formData.name,
+        title: formData.name,
+        description: formData.description || null,
+        category: formData.category || null,
+        image_url: imageUrl,
+        status: formData.status === 'draft' ? 'active' : formData.status,
+        searchable: true
+      });
+
+      if (!newProduct) {
+        throw new Error('Failed to create master product');
+      }
+
+      // Step 2: If business_id is provided, create business-product link
+      if (formData.business_id) {
+        const businessProduct = await createBusinessProduct({
+          business_id: formData.business_id,
+          product_id: newProduct.id,
+          title_override: null,
+          description_override: null,
+          price_from: Number(formData.price),
+          price_to: null,
+          currency_code: formData.currency || 'SCR',
+          duration_minutes: null,
+          booking_url: null,
+          notes: null,
+          is_active: formData.is_active
         });
 
-      if (error) throw error;
+        if (!businessProduct) {
+          throw new Error('Failed to link product to business');
+        }
+      }
 
       toast({
         title: "Success",
-        description: "Product created successfully",
+        description: formData.business_id 
+          ? "Product created and linked to business successfully" 
+          : "Product created successfully",
       });
 
       // Reset form
       setFormData({
-        business_id: '',
         name: '',
         description: '',
+        category: 'tours',
+        images: [],
         price: '',
-        category: '',
-        status: 'active',
-        searchable: true
+        currency: 'SCR',
+        stock: 0,
+        is_active: true,
+        status: 'draft',
+        business_id: null,
       });
       setImageFile(null);
       setImagePreview('');
       setOpen(false);
       onProductAdded();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating product:', error);
       toast({
         title: "Error",
-        description: "Failed to create product",
+        description: error?.message || "Failed to create product",
         variant: "destructive",
       });
     } finally {
@@ -366,15 +407,16 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="business_id">Business *</Label>
+              <Label htmlFor="business_id">Business (Optional)</Label>
               <Select 
-                value={formData.business_id} 
-                onValueChange={(value) => handleInputChange('business_id', value)}
+                value={formData.business_id || ''} 
+                onValueChange={(value) => handleInputChange('business_id', value || null)}
               >
-                <SelectTrigger className={errors.business_id ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Select business" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select business (optional)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="">None</SelectItem>
                   {businesses.map(business => (
                     <SelectItem key={business.id} value={business.id}>
                       {business.name} - {business.island}
@@ -382,7 +424,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
                   ))}
                 </SelectContent>
               </Select>
-              {errors.business_id && <p className="text-sm text-red-500">{errors.business_id}</p>}
             </div>
 
             <div className="space-y-2">
@@ -428,6 +469,23 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select 
+                value={formData.currency} 
+                onValueChange={(value) => handleInputChange('currency', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SCR">SCR - Seychellois Rupee</SelectItem>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
               <Select 
                 value={formData.category} 
@@ -445,6 +503,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
                 </SelectContent>
               </Select>
               {errors.category && <p className="text-sm text-red-500">{errors.category}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stock">Stock</Label>
+              <Input
+                id="stock"
+                type="number"
+                value={formData.stock}
+                onChange={(e) => handleInputChange('stock', e.target.value)}
+                placeholder="0"
+              />
             </div>
 
             <div className="space-y-2">
@@ -484,7 +553,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
                   className="absolute top-2 right-2"
                   onClick={() => {
                     setImagePreview('');
-                    setFormData(prev => ({ ...prev, image_url: '' }));
+                    setFormData(prev => ({
+                      ...prev,
+                      images: prev.images.filter(img => img !== imagePreview)
+                    }));
                   }}
                 >
                   <X className="w-4 h-4" />
@@ -523,14 +595,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
             </div>
           </div>
 
-          {/* Searchable Toggle */}
+          {/* Active Toggle */}
           <div className="flex items-center space-x-2">
             <Switch
-              id="searchable"
-              checked={formData.searchable}
-              onCheckedChange={(checked) => handleInputChange('searchable', checked)}
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) => handleInputChange('is_active', checked)}
             />
-            <Label htmlFor="searchable">Make product searchable</Label>
+            <Label htmlFor="is_active">Product is active</Label>
           </div>
 
           {/* Actions */}

@@ -110,21 +110,17 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  // Select businesses with categories via business_categories join
-  // Use left join so businesses without categories still appear
+  // Select businesses with explicit fields
   let query = supabase
     .from("businesses")
     .select(`
-      *,
-      business_categories (
-        category_id,
-        categories (
-          id,
-          name,
-          description,
-          active
-        )
-      )
+      id,
+      name,
+      description,
+      category,
+      status,
+      phone,
+      logo_url
     `, { count: "exact" })
     .order("featured", { ascending: false })
     .order("created_at", { ascending: false })
@@ -181,24 +177,13 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
     };
   }
 
-  // Transform data to include categories array and legacy category field for backward compatibility
-  let businesses = (data ?? []).map((business: any) => {
-    const categories = business.business_categories?.map((bc: any) => bc.categories).filter(Boolean) || [];
-    const primaryCategory = categories[0]; // Use first category as primary for legacy support
-    
-    return {
-      ...business,
-      categories, // New: categories array
-      category: primaryCategory?.name || business.category_id || null, // Legacy: single category field
-      category_slug: primaryCategory?.name?.toLowerCase().replace(/\s+/g, '-') || null
-    };
-  });
-
-  // Client-side category filter if join filter didn't work
+  // Transform data
+  let businesses = data ?? [];
+  
+  // Client-side category filter
   if (category && category !== "all") {
     businesses = businesses.filter((business: any) => {
-      return business.categories?.some((cat: any) => cat.name === category) || 
-             business.category === category;
+      return business.category === category;
     });
   }
 

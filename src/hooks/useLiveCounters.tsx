@@ -52,7 +52,9 @@ export const useLiveCounters = () => {
         try {
           const [businessesResult, productsResult] = await Promise.all([
             supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-            supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active')
+            supabase.from('business_products')
+              .select('id', { count: 'exact', head: true })
+              .eq('is_active', true)
           ]);
 
           if (businessesResult.error) {
@@ -136,6 +138,13 @@ export const useLiveCounters = () => {
       })
       .subscribe();
 
+    const businessProductChannel = supabase
+      .channel('business-product-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'business_products' }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
     const profileChannel = supabase
       .channel('profile-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
@@ -159,6 +168,7 @@ export const useLiveCounters = () => {
       // Clean up subscriptions
       supabase.removeChannel(businessChannel);
       supabase.removeChannel(productChannel);
+      supabase.removeChannel(businessProductChannel);
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(reviewChannel);
     };

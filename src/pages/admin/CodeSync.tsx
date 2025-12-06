@@ -41,7 +41,7 @@ const CodeSync: React.FC = () => {
   useEffect(() => {
     const testAPI = async () => {
       try {
-        const response = await fetch('/api/admin/sync/pull', {
+        const response = await fetch('http://localhost:5055/api/admin/sync/pull', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });

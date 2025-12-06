@@ -23,7 +23,7 @@ export const useGoogleMapsApiKey = () => {
 
         // Priority 2: Try to fetch from the get-setting edge function
         try {
-          const response = await fetch('/api/get-setting/GOOGLE_MAPS_API_KEY');
+          const response = await fetch('http://localhost:5055/api/get-setting/GOOGLE_MAPS_API_KEY');
           
           if (response.ok) {
             const data = await response.json();

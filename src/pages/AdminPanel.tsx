@@ -278,16 +278,7 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="products">
-          <LazyTabContent
-            title="Product Management"
-            description="Manage product catalog and inventory"
-            onLoad={async () => {
-              // Product data will be loaded by the ProductManager component
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }}
-          >
-            <ProductManager />
-          </LazyTabContent>
+          <ProductManager />
         </TabsContent>
 
         <TabsContent value="settings">

@@ -71,3 +71,6 @@ CREATE POLICY "admin_full" ON public.products            FOR ALL USING (EXISTS (
 CREATE POLICY "admin_full" ON public.business_products   FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND (p.is_admin OR p.role='admin')));
 
 
+
+
+

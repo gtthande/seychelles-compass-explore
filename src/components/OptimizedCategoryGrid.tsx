@@ -263,10 +263,19 @@ const OptimizedCategoryGrid = () => {
         }
       }
 
-      // Fetch product counts by category
-      const { data: productsData, error: productError } = await supabase
-        .from('products')
-        .select('category');
+      // Fetch product counts by category via business_products
+      const { data: businessProductsData, error: productError } = await supabase
+        .from('business_products')
+        .select(`
+          is_active,
+          product:products (
+            category
+          ),
+          business:businesses (
+            status
+          )
+        `)
+        .eq('is_active', true);
 
       if (productError) {
         console.error('🚨 CategoryGrid: Product counts query failed:', productError);
@@ -289,15 +298,17 @@ const OptimizedCategoryGrid = () => {
         });
       }
 
-      // Count products by category name
+      // Count products by category name from business_products
       const productCountMap: Record<string, number> = {};
-      if (productsData && productsData.length > 0) {
-        productsData.forEach((product: any) => {
-          if (product.category) {
+      if (businessProductsData && businessProductsData.length > 0) {
+        businessProductsData.forEach((bp: any) => {
+          // Only count if business is active
+          if (bp.business?.status === 'active' && bp.product?.category) {
+            const category = bp.product.category;
             // Find category by name match
             const matchingCategory = categories.find(cat => 
-              cat.name.toLowerCase() === product.category.toLowerCase() ||
-              cat.slug === product.category
+              cat.name.toLowerCase() === category.toLowerCase() ||
+              cat.slug === category
             );
             if (matchingCategory) {
               productCountMap[matchingCategory.id] = (productCountMap[matchingCategory.id] || 0) + 1;

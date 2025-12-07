@@ -11,6 +11,7 @@ import { getServiceClient } from "@/integrations/supabase/service-client";
 
 /**
  * Business Product (join table row with product and business data)
+ * Normalized structure: { id: join_id, product: {...}, business: {...} }
  */
 export interface BusinessProduct {
     id: string;
@@ -27,12 +28,33 @@ export interface BusinessProduct {
     is_active: boolean;
     created_at: string;
     updated_at: string;
-    // Joined data
+    // Joined data - normalized structure with all fields
     business?: {
         id: string;
+        owner_id: string | null;
         name: string;
+        description: string | null;
+        category_id: string | null;
+        category: string | null;
+        status: string;
+        phone: string | null;
+        email: string | null;
+        website: string | null;
         address: string | null;
+        latitude: number | null;
+        longitude: number | null;
         island: string | null;
+        opening_hours: any | null;
+        services: string[] | null;
+        featured: boolean | null;
+        verified: boolean | null;
+        logo_url: string | null;
+        cover_image_url: string | null;
+        gallery_images: string[] | null;
+        average_rating: number | null;
+        total_reviews: number | null;
+        created_at: string;
+        updated_at: string;
     };
     product?: {
         id: string;
@@ -42,6 +64,12 @@ export interface BusinessProduct {
         category: string | null;
         image_url: string | null;
         status: string | null;
+        searchable: boolean | null;
+        duration: string | null;
+        price: number | null;
+        is_active: boolean;
+        created_at: string;
+        updated_at: string;
     };
 }
 
@@ -82,25 +110,58 @@ export interface BusinessProductListParams {
 /**
  * Fetch products with business_products and businesses JOINs
  * Note: This function queries business_products, not products directly
+ * Returns normalized structure: { id: join_id, product: {...}, business: {...} }
  */
 export async function fetchProducts(
     params: BusinessProductListParams = {}
 ): Promise<{ products: any[]; total: number }> {
     try {
         // Query business_products with many-to-many join pattern
+        // This matches: SELECT business_products.id, products.*, businesses.*
+        // Returns normalized: { id: join_id, product: {...}, business: {...} }
         let query = supabase
             .from('business_products')
             .select(`
         id,
         business_id,
         product_id,
+        title_override,
+        description_override,
+        price_from,
+        price_to,
+        currency_code,
+        duration_minutes,
+        booking_url,
+        notes,
+        is_active,
+        created_at,
+        updated_at,
         business:businesses (
           id,
+          owner_id,
           name,
-          address,
-          island,
+          description,
+          category_id,
           category,
-          status
+          status,
+          phone,
+          email,
+          website,
+          address,
+          latitude,
+          longitude,
+          island,
+          opening_hours,
+          services,
+          featured,
+          verified,
+          logo_url,
+          cover_image_url,
+          gallery_images,
+          average_rating,
+          total_reviews,
+          created_at,
+          updated_at
         ),
         product:products (
           id,
@@ -110,10 +171,12 @@ export async function fetchProducts(
           category,
           image_url,
           status,
+          searchable,
+          duration,
           price,
-          currency,
-          in_stock,
-          stock_quantity
+          is_active,
+          created_at,
+          updated_at
         )
       `, { count: 'exact' });
 
@@ -177,13 +240,15 @@ export async function fetchProducts(
 /**
  * Fetch business products with filters (legacy function for compatibility)
  * Uses safe query pattern: business_products LEFT JOIN products LEFT JOIN businesses
+ * Returns normalized structure: { id: join_id, product: {...}, business: {...} }
  */
 export async function fetchBusinessProducts(
     params: BusinessProductListParams = {}
 ): Promise<{ businessProducts: BusinessProduct[]; total: number }> {
     try {
         // Query business_products with joins to products and businesses
-        // This is the correct approach for many-to-many relationships
+        // This matches: SELECT business_products.id, products.*, businesses.*
+        // Returns normalized: { id: join_id, product: {...}, business: {...} }
         let query = supabase
             .from('business_products')
             .select(`
@@ -203,11 +268,30 @@ export async function fetchBusinessProducts(
         updated_at,
         business:businesses (
           id,
+          owner_id,
           name,
-          address,
-          island,
+          description,
+          category_id,
           category,
-          status
+          status,
+          phone,
+          email,
+          website,
+          address,
+          latitude,
+          longitude,
+          island,
+          opening_hours,
+          services,
+          featured,
+          verified,
+          logo_url,
+          cover_image_url,
+          gallery_images,
+          average_rating,
+          total_reviews,
+          created_at,
+          updated_at
         ),
         product:products (
           id,
@@ -217,10 +301,12 @@ export async function fetchBusinessProducts(
           category,
           image_url,
           status,
+          searchable,
+          duration,
           price,
-          currency,
-          in_stock,
-          stock_quantity
+          is_active,
+          created_at,
+          updated_at
         )
       `, { count: 'exact' });
 

@@ -16,16 +16,35 @@ export interface Product {
   name: string;
   description: string;
   category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  images?: string[];
+  image_url?: string | null;
+  price?: number | null;
+  price_from?: number | null;
+  price_to?: number | null;
+  currency?: string | null;
+  currency_code?: string;
   is_active: boolean;
-  stock: number;
+  stock?: number | null;
   status: string;
-  business_id: string | null;
+  business_id?: string | null;
   created_at: string;
   updated_at: string;
   slug?: string | null;
+  business?: {
+    id: string;
+    name: string;
+    island: string | null;
+    address: string | null;
+  };
+  product?: {
+    id: string;
+    name: string;
+    title: string | null;
+    description: string | null;
+    category: string | null;
+    image_url: string | null;
+    status: string | null;
+  };
 }
 
 const Products = () => {
@@ -66,48 +85,59 @@ const Products = () => {
     'products_list',
     async () => {
       try {
+        // Query business_products with many-to-many join pattern
         let query = supabase
-          .from('products')
+          .from('business_products')
           .select(`
             id,
-            name,
-            description,
-            category,
-            images,
-            price,
-            currency,
-            stock,
-            is_active,
-            status,
             business_id,
+            product_id,
+            price_from,
+            price_to,
+            currency_code,
+            is_active,
             created_at,
             updated_at,
-            slug,
             business:businesses (
               id,
               name,
               island,
-              address
+              address,
+              status
+            ),
+            product:products (
+              id,
+              name,
+              title,
+              description,
+              category,
+              image_url,
+              status
             )
           `, { count: 'exact' })
           .eq('is_active', true)
+          .eq('business.status', 'active')
           .order('created_at', { ascending: false });
 
         // Apply filters
         if (searchTerm) {
-          query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+          query = query.or(`
+            product.name.ilike.%${searchTerm}%,
+            product.description.ilike.%${searchTerm}%,
+            product.title.ilike.%${searchTerm}%
+          `);
         }
 
         if (selectedCategory && selectedCategory !== "__all__") {
-          query = query.eq('category', selectedCategory);
+          query = query.eq('product.category', selectedCategory);
         }
 
         if (priceRange.min) {
-          query = query.gte('price', parseFloat(priceRange.min));
+          query = query.gte('price_from', parseFloat(priceRange.min));
         }
 
         if (priceRange.max) {
-          query = query.lte('price', parseFloat(priceRange.max));
+          query = query.lte('price_to', parseFloat(priceRange.max));
         }
 
         if (selectedIsland && selectedIsland !== "__all__") {
@@ -132,7 +162,28 @@ const Products = () => {
         const totalCount = count || 0;
         setTotalPages(Math.ceil(totalCount / pageSize));
         
-        return (data || []) as Product[];
+        // Transform business_products data to match Product interface
+        const transformedData = (data || []).map((bp: any) => ({
+          id: bp.id,
+          name: bp.product?.title || bp.product?.name || '',
+          description: bp.product?.description || '',
+          category: bp.product?.category || '',
+          image_url: bp.product?.image_url || null,
+          price_from: bp.price_from,
+          price_to: bp.price_to,
+          price: bp.price_from, // Use price_from as primary price
+          currency: bp.currency_code || 'SCR',
+          currency_code: bp.currency_code || 'SCR',
+          is_active: bp.is_active,
+          status: bp.product?.status || 'active',
+          business_id: bp.business_id,
+          created_at: bp.created_at,
+          updated_at: bp.updated_at,
+          business: bp.business,
+          product: bp.product,
+        })) as Product[];
+        
+        return transformedData;
       } catch (error: any) {
         console.error('[Products] Unexpected error:', error);
         toast({
@@ -209,29 +260,39 @@ const Products = () => {
     }
   };
 
-  const formatPrice = (price: number | null, currency: string | null) => {
-    if (!price) return "Price on request";
-    const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₨";
-    return `${symbol}${price.toLocaleString()}`;
+  const formatPrice = (price: number | null | undefined, priceFrom: number | null | undefined, priceTo: number | null | undefined, currency: string | null | undefined) => {
+    const currencyCode = currency || 'SCR';
+    const symbol = currencyCode === "USD" ? "$" : currencyCode === "EUR" ? "€" : "₨";
+    
+    if (priceFrom && priceTo && priceFrom !== priceTo) {
+      return `${symbol}${priceFrom.toLocaleString()} - ${symbol}${priceTo.toLocaleString()}`;
+    }
+    if (priceFrom) {
+      return `From ${symbol}${priceFrom.toLocaleString()}`;
+    }
+    if (price) {
+      return `${symbol}${price.toLocaleString()}`;
+    }
+    return "Price on request";
   };
 
   const renderProductCard = (product: Product) => (
     <Card key={product.id} className="group hover:shadow-card-hover transition-all duration-300 bg-card border-border">
       <div className="relative overflow-hidden rounded-t-lg">
-        {product.images && product.images.length > 0 ? (
+        {product.image_url || (product.images && product.images.length > 0) ? (
           <img
-            src={product.images[0]}
+            src={product.image_url || (product.images && product.images[0]) || ''}
             alt={product.name}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+            }}
           />
-        ) : (
+        ) : null}
+        {(!product.image_url && (!product.images || product.images.length === 0)) && (
           <div className="w-full h-48 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
             <span className="text-primary/60 text-sm">No image</span>
-          </div>
-        )}
-        {!product.in_stock && (
-          <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground px-2 py-1 rounded-full text-xs">
-            Out of Stock
           </div>
         )}
       </div>
@@ -283,8 +344,7 @@ const Products = () => {
           </div>
         </div>
         <div className="text-primary font-semibold">
-          {formatPrice(product.price, product.currency)}
-          {product.unit && <span className="text-muted-foreground text-sm">/{product.unit}</span>}
+          {formatPrice(product.price, product.price_from, product.price_to, product.currency_code || product.currency)}
         </div>
       </CardHeader>
 
@@ -332,13 +392,18 @@ const Products = () => {
       <CardContent className="p-4">
         <div className="flex gap-4">
           <div className="flex-shrink-0">
-            {product.images && product.images.length > 0 ? (
+            {product.image_url || (product.images && product.images.length > 0) ? (
               <img
-                src={product.images[0]}
+                src={product.image_url || (product.images && product.images[0]) || ''}
                 alt={product.name}
                 className="w-24 h-24 object-cover rounded-lg"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                }}
               />
-            ) : (
+            ) : null}
+            {(!product.image_url && (!product.images || product.images.length === 0)) && (
               <div className="w-24 h-24 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
                 <span className="text-primary/60 text-xs">No image</span>
               </div>
@@ -373,8 +438,7 @@ const Products = () => {
             </div>
 
             <div className="text-primary font-semibold mb-2">
-              {formatPrice(product.price, product.currency)}
-              {product.unit && <span className="text-muted-foreground text-sm">/{product.unit}</span>}
+              {formatPrice(product.price, product.price_from, product.price_to, product.currency_code || product.currency)}
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -395,9 +459,6 @@ const Products = () => {
                   <Badge variant="secondary">
                     {categories.find(c => c.value === product.category)?.label || product.category}
                   </Badge>
-                )}
-                {!product.in_stock && (
-                  <Badge variant="destructive">Out of Stock</Badge>
                 )}
               </div>
             </div>

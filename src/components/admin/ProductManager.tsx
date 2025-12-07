@@ -71,60 +71,46 @@ const ProductManager: React.FC = () => {
     { value: 'inactive', label: 'Inactive', color: 'bg-red-500' }
   ];
 
+  // Load all data immediately on mount
   useEffect(() => {
-    fetchBusinessProductsData();
-    fetchBusinesses();
-    fetchMasterProducts();
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Load all three data sources in parallel for faster loading
+        const [businessProductsResult, productsResult, businessesResult] = await Promise.all([
+          fetchBusinessProducts({ limit: 200 }),
+          fetchAllProducts(),
+          supabase
+            .from('businesses')
+            .select('id, name, address, island')
+            .eq('status', 'active')
+            .order('name')
+        ]);
+
+        setBusinessProducts(businessProductsResult.businessProducts);
+        setMasterProducts(productsResult);
+        if (businessesResult.data) {
+          setBusinesses(businessesResult.data);
+        }
+      } catch (error) {
+        console.error('Error loading products data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch products",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
   useEffect(() => {
     applyFilters();
   }, [businessProducts, searchTerm, categoryFilter, businessFilter, statusFilter, priceRange]);
 
-  const fetchBusinessProductsData = async () => {
-    setLoading(true);
-    try {
-      const result = await fetchBusinessProducts({
-        limit: 200,
-        isActive: statusFilter === 'all' ? undefined : statusFilter === 'active'
-      });
-
-      setBusinessProducts(result.businessProducts);
-    } catch (error) {
-      console.error('Error fetching business products:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch products",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMasterProducts = async () => {
-    try {
-      const products = await fetchAllProducts();
-      setMasterProducts(products);
-    } catch (error) {
-      console.error('Error fetching master products:', error);
-    }
-  };
-
-  const fetchBusinesses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('businesses')
-        .select('id, name, address, island')
-        .eq('status', 'active')
-        .order('name');
-
-      if (error) throw error;
-      setBusinesses(data || []);
-    } catch (error) {
-      console.error('Error fetching businesses:', error);
-    }
-  };
 
   const applyFilters = () => {
     let filtered = [...businessProducts];

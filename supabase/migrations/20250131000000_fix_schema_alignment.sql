@@ -99,3 +99,6 @@ BEGIN
     RAISE NOTICE 'Schema alignment migration complete - all required columns verified';
 END $$;
 
+
+
+

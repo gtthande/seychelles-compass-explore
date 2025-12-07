@@ -69,29 +69,38 @@ const ProductList = () => {
     try {
       setProductsLoading(true);
       
+      // Query business_products for this business
       let query = supabase
-        .from('products')
+        .from('business_products')
         .select(`
           id,
-          name,
-          description,
-          category,
-          images,
-          price,
-          currency,
-          stock,
-          is_active,
-          status,
           business_id,
+          product_id,
+          price_from,
+          price_to,
+          currency_code,
+          is_active,
           created_at,
           updated_at,
-          slug
+          product:products (
+            id,
+            name,
+            title,
+            description,
+            category,
+            image_url,
+            status
+          )
         `, { count: 'exact' })
         .eq('business_id', business.id);
 
       // Apply filters
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        query = query.or(`
+          product.name.ilike.%${searchTerm}%,
+          product.description.ilike.%${searchTerm}%,
+          product.title.ilike.%${searchTerm}%
+        `);
       }
       
       if (statusFilter !== 'all') {
@@ -108,7 +117,28 @@ const ProductList = () => {
 
       if (error) throw error;
       
-      setProducts((data || []) as Product[]);
+      // Transform business_products data to match Product interface
+      const transformedData = (data || []).map((bp: any) => ({
+        id: bp.id,
+        name: bp.product?.title || bp.product?.name || '',
+        description: bp.product?.description || '',
+        category: bp.product?.category || '',
+        images: bp.product?.image_url ? [bp.product.image_url] : [],
+        image_url: bp.product?.image_url || null,
+        price: bp.price_from || null,
+        price_from: bp.price_from,
+        price_to: bp.price_to,
+        currency: bp.currency_code || 'SCR',
+        currency_code: bp.currency_code || 'SCR',
+        is_active: bp.is_active,
+        stock: null,
+        status: bp.product?.status || 'active',
+        business_id: bp.business_id,
+        created_at: bp.created_at,
+        updated_at: bp.updated_at,
+      })) as Product[];
+      
+      setProducts(transformedData);
       setTotalProducts(count || 0);
     } catch (error: any) {
       console.error('Error fetching products:', error);
@@ -130,16 +160,17 @@ const ProductList = () => {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
+      // Delete from business_products (unlink product from business)
       const { error } = await supabase
-        .from('products')
+        .from('business_products')
         .delete()
         .eq('id', productId);
 
       if (error) throw error;
 
       toast({
-        title: "Product Deleted",
-        description: "The product has been successfully deleted.",
+        title: "Product Removed",
+        description: "The product has been successfully removed from your business.",
       });
       
       fetchProducts();
@@ -147,26 +178,27 @@ const ProductList = () => {
       console.error('Error deleting product:', error);
       toast({
         title: "Error",
-        description: "Failed to delete product",
+        description: "Failed to remove product",
         variant: "destructive",
       });
     }
   };
 
   const handleToggleStatus = async (product: Product) => {
-    const newStatus = product.status === 'active' ? 'draft' : 'active';
+    const newStatus = !product.is_active;
     
     try {
+      // Update is_active in business_products
       const { error } = await supabase
-        .from('products')
-        .update({ status: newStatus })
+        .from('business_products')
+        .update({ is_active: newStatus })
         .eq('id', product.id);
 
       if (error) throw error;
 
       toast({
         title: "Status Updated",
-        description: `Product is now ${newStatus}`,
+        description: `Product is now ${newStatus ? 'active' : 'inactive'}`,
       });
       
       fetchProducts();
@@ -271,20 +303,23 @@ const ProductList = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {products.map((product) => (
               <Card key={product.id} className="hover:shadow-md transition-shadow">
-                {product.images && product.images.length > 0 && (
+                {(product.image_url || (product.images && product.images.length > 0)) && (
                   <div className="h-48 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-lg relative overflow-hidden">
                     <img 
-                      src={product.images[0]} 
+                      src={product.image_url || (product.images && product.images[0]) || ''} 
                       alt={product.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   </div>
                 )}
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg line-clamp-1">{product.name}</CardTitle>
-                    <Badge className={getStatusColor(product.status || 'draft')}>
-                      {product.status || 'draft'}
+                    <Badge className={getStatusColor(product.is_active ? 'active' : 'draft')}>
+                      {product.is_active ? 'active' : 'inactive'}
                     </Badge>
                   </div>
                   {product.description && (
@@ -293,22 +328,17 @@ const ProductList = () => {
                     </CardDescription>
                   )}
                   <div className="flex items-center justify-between">
-                    {product.price && (
+                    {(product.price_from || product.price) && (
                       <div className="text-lg font-semibold text-foreground">
-                        {product.currency || 'SCR'} {product.price}
-                      </div>
-                    )}
-                    {product.sku && (
-                      <div className="text-sm text-muted-foreground">
-                        SKU: {product.sku}
+                        {product.currency_code || product.currency || 'SCR'} {
+                          product.price_from || product.price
+                        }
+                        {product.price_to && product.price_to !== product.price_from && (
+                          <span> - {product.price_to}</span>
+                        )}
                       </div>
                     )}
                   </div>
-                  {product.stock_quantity !== null && (
-                    <div className="text-sm text-muted-foreground">
-                      Stock: {product.stock_quantity} {product.unit || 'units'}
-                    </div>
-                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
@@ -328,12 +358,12 @@ const ProductList = () => {
                       size="sm"
                       onClick={() => handleToggleStatus(product)}
                     >
-                      {product.status === 'active' ? (
+                      {product.is_active ? (
                         <EyeOff className="w-4 h-4 mr-1" />
                       ) : (
                         <Eye className="w-4 h-4 mr-1" />
                       )}
-                      {product.status === 'active' ? 'Draft' : 'Activate'}
+                      {product.is_active ? 'Deactivate' : 'Activate'}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

@@ -72,11 +72,15 @@ const BusinessDashboard = () => {
             updated_at,
             product:products!inner (
               id,
-              name,
+              title,
               description,
-              category,
-              status,
-              image_url
+              image_url,
+              price,
+              duration,
+              is_active,
+              searchable,
+              stock,
+              slug
             )
           `)
           .eq('business_id', business.id)
@@ -87,14 +91,14 @@ const BusinessDashboard = () => {
         // Transform to match Product interface
         const transformedProducts = (data || []).map((bp: any) => ({
           id: bp.id,
-          name: bp.title_override || bp.product?.name || 'Unknown Product',
+          name: bp.title_override || bp.product?.title || 'Unknown Product',
           description: bp.description_override || bp.product?.description || null,
-          price: bp.price_from || null,
+          price: bp.price_from || bp.product?.price || null,
           currency: bp.currency_code || 'SCR',
-          category: bp.product?.category || null,
-          status: bp.product?.status || 'active',
+          category: '', // Category removed from products schema
+          status: bp.is_active ? 'active' : 'inactive', // Use is_active from business_products
           in_stock: bp.is_active,
-          stock_quantity: null,
+          stock_quantity: bp.product?.stock || null,
           images: bp.product?.image_url ? [bp.product.image_url] : null,
           catalogue_url: bp.booking_url || null,
           sku: null,

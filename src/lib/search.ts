@@ -39,22 +39,21 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
       .from('products')
       .select(`
         id,
-        name,
+        title,
         description,
-        category,
-        images,
         price,
-        currency,
-        stock,
+        duration,
         is_active,
-        status,
+        searchable,
+        image_url,
+        stock,
         business_id,
+        slug,
         created_at,
-        updated_at,
-        slug
+        updated_at
       `)
       .eq('is_active', true)
-      .ilike('name', `%${searchTerm}%`)
+      .ilike('title', `%${searchTerm}%`)
       .limit(25);
 
     if (productError) {
@@ -75,8 +74,8 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
     const productResults: UnifiedSearchResult[] = (products || []).map(product => ({
       type: 'product' as const,
       id: product.id,
-      title: product.name,
-      subtitle: product.description || product.category || '',
+      title: product.title || '',
+      subtitle: product.description || '',
       latitude: null,
       longitude: null,
     }));

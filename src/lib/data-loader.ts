@@ -361,6 +361,9 @@ export const dataFetchers = {
           id,
           business_id,
           product_id,
+          title_override,
+          description_override,
+          price_override,
           business:businesses (
             id,
             name,
@@ -371,29 +374,29 @@ export const dataFetchers = {
           ),
           product:products (
             id,
-            name,
             title,
             description,
-            category,
             image_url,
-            status,
             price,
-            currency,
-            in_stock,
-            stock_quantity
+            duration,
+            is_active,
+            searchable,
+            stock,
+            slug,
+            created_at,
+            updated_at
           )
         `)
-        .order('product_id');
+        .order('id', { ascending: true });
 
       // Apply filters
-      if (filters.category) {
-        query = query.eq('product.category', filters.category);
-      }
+      // Category filter removed - products don't have category field
       if (filters.search) {
         query = query.or(`
-          product.name.ilike.%${filters.search}%,
+          product.title.ilike.%${filters.search}%,
           product.description.ilike.%${filters.search}%,
-          product.title.ilike.%${filters.search}%
+          title_override.ilike.%${filters.search}%,
+          description_override.ilike.%${filters.search}%
         `);
       }
 
@@ -406,13 +409,11 @@ export const dataFetchers = {
       // Transform to match expected format
       const results: any[] = (data || []).map((bp: any) => ({
         id: bp.product?.id || bp.id,
-        name: bp.title_override || bp.product?.name || 'Unknown Product',
+        title: bp.title_override || bp.product?.title || 'Unknown Product',
         description: bp.description_override || bp.product?.description || '',
-        price: bp.price_from || bp.product?.price || 0,
-        price_to: bp.price_to || bp.price_from || null,
-        currency: bp.currency_code || 'SCR',
-        images: bp.product?.image_url ? [bp.product.image_url] : [],
-        category: bp.product?.category || '',
+        price: bp.price_override || bp.product?.price || null,
+        image_url: bp.product?.image_url || null,
+        stock: bp.product?.stock || 0,
         business_id: bp.business_id,
         created_at: bp.created_at || bp.product?.created_at,
       }));

@@ -87,22 +87,21 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
         .from("products")
         .select(`
           id,
-          name,
+          title,
           description,
-          category,
-          images,
           price,
-          currency,
-          stock,
+          duration,
           is_active,
-          status,
+          searchable,
+          image_url,
+          stock,
           business_id,
+          slug,
           created_at,
-          updated_at,
-          slug
+          updated_at
         `)
         .eq("is_active", true)
-        .order("name");
+        .order("title");
 
       if (productsError) {
         console.error("[AdminPanel] Failed to load available products", {
@@ -357,7 +356,7 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
                 <SelectContent>
                   {unassignedProducts.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
-                      {product.name}
+                      {product.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -436,7 +435,7 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
                     // Edit Mode
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium">{assignment.products?.name || 'Unknown Product'}</h4>
+                        <h4 className="font-medium">{assignment.products?.title || 'Unknown Product'}</h4>
                         <Badge variant={assignment.active ? 'default' : 'secondary'}>
                           {assignment.active ? 'Active' : 'Inactive'}
                         </Badge>
@@ -504,7 +503,7 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium">{assignment.products?.name || 'Unknown Product'}</h4>
+                          <h4 className="font-medium">{assignment.products?.title || 'Unknown Product'}</h4>
                           {assignment.products?.description && (
                             <p className="text-sm text-muted-foreground mt-1">{assignment.products.description}</p>
                           )}

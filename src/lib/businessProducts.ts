@@ -26,7 +26,7 @@ export interface BusinessProductWithJoin {
     updated_at: string;
     products: {
         id: string;
-        name: string;
+        title: string;
         slug: string | null;
         description: string | null;
         base_price: number | null; // Base price from products table
@@ -51,15 +51,15 @@ export async function getBusinessProductAssignments(
       id,
       business_id,
       product_id,
+      title_override,
+      description_override,
+      price_override,
       is_active,
-      price,
-      duration,
-      notes,
       created_at,
       updated_at,
       products:product_id (
         id,
-        name,
+        title,
         slug,
         description,
         price,
@@ -67,7 +67,7 @@ export async function getBusinessProductAssignments(
       )
     `)
         .eq("business_id", businessId)
-        .order("name", { foreignTable: "products" });
+        .order("title", { foreignTable: "products" });
 
     if (error) {
         console.error("[BusinessProducts] Failed to load assignments", {
@@ -85,6 +85,9 @@ export async function getBusinessProductAssignments(
     const transformed = (data ?? []).map((item: any) => ({
         ...item,
         active: item.is_active,
+        price: item.price_override || item.products?.price || null,
+        duration: item.products?.duration || null,
+        notes: null, // notes field removed from schema
         products: item.products ? {
             ...item.products,
             base_price: item.products.price,
@@ -92,11 +95,11 @@ export async function getBusinessProductAssignments(
         } : null
     }));
 
-    // Sort by product name (fallback if foreignTable ordering doesn't work)
+    // Sort by product title (fallback if foreignTable ordering doesn't work)
     const sorted = transformed.sort((a, b) => {
-        const nameA = (a.products?.name || '').toLowerCase();
-        const nameB = (b.products?.name || '').toLowerCase();
-        return nameA.localeCompare(nameB);
+        const titleA = (a.products?.title || '').toLowerCase();
+        const titleB = (b.products?.title || '').toLowerCase();
+        return titleA.localeCompare(titleB);
     });
 
     return sorted as BusinessProductWithJoin[];
@@ -106,11 +109,15 @@ export async function getBusinessProductAssignments(
  * Product assignment overrides
  */
 export interface ProductAssignmentOverrides {
+    title_override?: string | null;
+    description_override?: string | null;
+    price_override?: number | null;
+    active?: boolean; // Maps to is_active column
+    is_active?: boolean; // Also support is_active for backward compatibility
+    // Legacy fields for backward compatibility
     price?: number | null;
     duration?: string | null;
     notes?: string | null;
-    active?: boolean; // Maps to is_active column
-    is_active?: boolean; // Also support is_active for backward compatibility
 }
 
 /**
@@ -141,9 +148,9 @@ export async function attachProductToBusiness(
             {
                 business_id: businessId,
                 product_id: productId,
-                price: overrides.price ?? null,
-                duration: overrides.duration ?? null,
-                notes: overrides.notes ?? null,
+                title_override: overrides.title_override ?? null,
+                description_override: overrides.description_override ?? null,
+                price_override: overrides.price_override ?? overrides.price ?? null,
                 is_active: isActive,
             },
             {
@@ -155,15 +162,15 @@ export async function attachProductToBusiness(
       id,
       business_id,
       product_id,
+      title_override,
+      description_override,
+      price_override,
       is_active,
-      price,
-      duration,
-      notes,
       created_at,
       updated_at,
       products:product_id (
         id,
-        name,
+        title,
         slug,
         description,
         price,
@@ -192,6 +199,9 @@ export async function attachProductToBusiness(
     return {
         ...data,
         active: data.is_active,
+        price: data.price_override || data.products?.price || null,
+        duration: data.products?.duration || null,
+        notes: null,
         products: data.products ? {
             ...data.products,
             base_price: data.products.price,
@@ -246,9 +256,14 @@ export async function updateBusinessProductAssignment(
 ): Promise<BusinessProductWithJoin | null> {
     const updateData: Record<string, any> = {};
 
-    if (overrides.price !== undefined) updateData.price = overrides.price;
-    if (overrides.duration !== undefined) updateData.duration = overrides.duration;
-    if (overrides.notes !== undefined) updateData.notes = overrides.notes;
+    if (overrides.title_override !== undefined) updateData.title_override = overrides.title_override;
+    if (overrides.description_override !== undefined) updateData.description_override = overrides.description_override;
+    if (overrides.price_override !== undefined) {
+        updateData.price_override = overrides.price_override;
+    } else if (overrides.price !== undefined) {
+        // Legacy support: map price to price_override
+        updateData.price_override = overrides.price;
+    }
 
     // Support both active and is_active
     if (overrides.active !== undefined) {
@@ -268,15 +283,15 @@ export async function updateBusinessProductAssignment(
       id,
       business_id,
       product_id,
+      title_override,
+      description_override,
+      price_override,
       is_active,
-      price,
-      duration,
-      notes,
       created_at,
       updated_at,
       products:product_id (
         id,
-        name,
+        title,
         slug,
         description,
         price,
@@ -305,6 +320,9 @@ export async function updateBusinessProductAssignment(
     return {
         ...data,
         active: data.is_active,
+        price: data.price_override || data.products?.price || null,
+        duration: data.products?.duration || null,
+        notes: null,
         products: data.products ? {
             ...data.products,
             base_price: data.products.price,

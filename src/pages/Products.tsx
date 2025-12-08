@@ -13,19 +13,17 @@ import { Progress } from "@/components/ui/progress";
 
 export interface Product {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  images?: string[];
+  title: string;
+  description?: string | null;
   image_url?: string | null;
   price?: number | null;
   price_from?: number | null;
   price_to?: number | null;
-  currency?: string | null;
+  price_override?: number | null;
   currency_code?: string;
+  duration?: string | null;
   is_active: boolean;
   stock?: number | null;
-  status: string;
   business_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -38,12 +36,11 @@ export interface Product {
   };
   product?: {
     id: string;
-    name: string;
-    title: string | null;
+    title: string;
     description: string | null;
-    category: string | null;
     image_url: string | null;
-    status: string | null;
+    price: number | null;
+    duration: string | null;
   };
 }
 
@@ -92,6 +89,9 @@ const Products = () => {
             id,
             business_id,
             product_id,
+            title_override,
+            description_override,
+            price_override,
             price_from,
             price_to,
             currency_code,
@@ -107,13 +107,20 @@ const Products = () => {
             ),
             product:products (
               id,
-              name,
               title,
               description,
-              category,
+              price,
+              duration,
+              is_active,
+              searchable,
               image_url,
-              status
-            )
+              stock,
+              business_id,
+              slug,
+              created_at,
+              updated_at
+            ),
+            price_override
           `, { count: 'exact' })
           .eq('is_active', true)
           .eq('business.status', 'active')
@@ -122,22 +129,22 @@ const Products = () => {
         // Apply filters
         if (searchTerm) {
           query = query.or(`
-            product.name.ilike.%${searchTerm}%,
-            product.description.ilike.%${searchTerm}%,
-            product.title.ilike.%${searchTerm}%
+            product.title.ilike.%${searchTerm}%,
+            product.description.ilike.%${searchTerm}%
           `);
         }
 
-        if (selectedCategory && selectedCategory !== "__all__") {
-          query = query.eq('product.category', selectedCategory);
-        }
+        // Category filter removed - category no longer exists in products table
+        // if (selectedCategory && selectedCategory !== "__all__") {
+        //   query = query.eq('product.category', selectedCategory);
+        // }
 
         if (priceRange.min) {
-          query = query.gte('price_from', parseFloat(priceRange.min));
+          query = query.or(`price_override.gte.${priceRange.min},price_from.gte.${priceRange.min}`);
         }
 
         if (priceRange.max) {
-          query = query.lte('price_to', parseFloat(priceRange.max));
+          query = query.or(`price_override.lte.${priceRange.max},price_to.lte.${priceRange.max}`);
         }
 
         if (selectedIsland && selectedIsland !== "__all__") {
@@ -165,20 +172,21 @@ const Products = () => {
         // Transform business_products data to match Product interface
         const transformedData = (data || []).map((bp: any) => ({
           id: bp.id,
-          name: bp.product?.title || bp.product?.name || '',
-          description: bp.product?.description || '',
-          category: bp.product?.category || '',
-          image_url: bp.product?.image_url || null,
-          price_from: bp.price_from,
-          price_to: bp.price_to,
-          price: bp.price_from, // Use price_from as primary price
-          currency: bp.currency_code || 'SCR',
+          title: bp.title_override || bp.product?.title || '',
+          description: bp.description_override || bp.product?.description || '',
+          image_url: bp.product?.image_url || null,  // Single string, not array
+          price_override: bp.price_override || null,
+          price_from: bp.price_from || null,
+          price_to: bp.price_to || null,
+          price: bp.price_override || bp.price_from || bp.product?.price || null,  // Use price_override as primary
           currency_code: bp.currency_code || 'SCR',
+          duration: bp.product?.duration || null,
           is_active: bp.is_active,
-          status: bp.product?.status || 'active',
+          stock: bp.product?.stock || 0,
           business_id: bp.business_id,
           created_at: bp.created_at,
           updated_at: bp.updated_at,
+          slug: bp.product?.slug || null,
           business: bp.business,
           product: bp.product,
         })) as Product[];
@@ -229,7 +237,7 @@ const Products = () => {
   const handleShare = (product: Product, platform?: 'facebook' | 'instagram' | 'link') => {
     const productUrl = `${window.location.origin}/products/${product.id}`;
     const businessName = product.business?.name || 'a local business';
-    const shareText = `Check out ${product.name} from ${businessName} in Seychelles!`;
+    const shareText = `Check out ${product.title || 'this product'} from ${businessName} in Seychelles!`;
     
     switch (platform) {
       case 'facebook':
@@ -246,7 +254,7 @@ const Products = () => {
       default:
         if (navigator.share) {
           navigator.share({
-            title: product.name,
+            title: product.title || 'Product',
             text: shareText,
             url: productUrl,
           });
@@ -279,10 +287,10 @@ const Products = () => {
   const renderProductCard = (product: Product) => (
     <Card key={product.id} className="group hover:shadow-card-hover transition-all duration-300 bg-card border-border">
       <div className="relative overflow-hidden rounded-t-lg">
-        {product.image_url || (product.images && product.images.length > 0) ? (
+        {product.image_url ? (
           <img
-            src={product.image_url || (product.images && product.images[0]) || ''}
-            alt={product.name}
+            src={product.image_url}
+            alt={product.title || 'Product'}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
@@ -290,7 +298,7 @@ const Products = () => {
             }}
           />
         ) : null}
-        {(!product.image_url && (!product.images || product.images.length === 0)) && (
+        {!product.image_url && (
           <div className="w-full h-48 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
             <span className="text-primary/60 text-sm">No image</span>
           </div>
@@ -299,7 +307,7 @@ const Products = () => {
 
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg line-clamp-2 text-card-foreground">{product.name}</CardTitle>
+          <CardTitle className="text-lg line-clamp-2 text-card-foreground">{product.title || 'Product'}</CardTitle>
           <div className="flex gap-1">
             <Button
               variant="ghost"
@@ -329,22 +337,10 @@ const Products = () => {
             >
               <Share2 className="w-4 h-4" />
             </Button>
-            {product.catalogue_url && (
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <a href={product.catalogue_url} target="_blank" rel="noopener noreferrer">
-                  <Download className="w-4 h-4" />
-                </a>
-              </Button>
-            )}
           </div>
         </div>
         <div className="text-primary font-semibold">
-          {formatPrice(product.price, product.price_from, product.price_to, product.currency_code || product.currency)}
+          {formatPrice(product.price, product.price_from, product.price_to, product.currency_code)}
         </div>
       </CardHeader>
 
@@ -362,26 +358,7 @@ const Products = () => {
             </div>
           )}
 
-          {product.category && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {categories.find(c => c.value === product.category)?.label || product.category}
-            </Badge>
-          )}
-
-          {product.tags && product.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {product.tags.slice(0, 3).map((tag, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-              {product.tags.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{product.tags.length - 3}
-                </Badge>
-              )}
-            </div>
-          )}
+          {/* Category and tags removed from products schema */}
         </div>
       </CardContent>
     </Card>
@@ -392,10 +369,10 @@ const Products = () => {
       <CardContent className="p-4">
         <div className="flex gap-4">
           <div className="flex-shrink-0">
-            {product.image_url || (product.images && product.images.length > 0) ? (
+            {product.image_url ? (
               <img
-                src={product.image_url || (product.images && product.images[0]) || ''}
-                alt={product.name}
+                src={product.image_url}
+                alt={product.title || 'Product'}
                 className="w-24 h-24 object-cover rounded-lg"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
@@ -403,7 +380,7 @@ const Products = () => {
                 }}
               />
             ) : null}
-            {(!product.image_url && (!product.images || product.images.length === 0)) && (
+            {!product.image_url && (
               <div className="w-24 h-24 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
                 <span className="text-primary/60 text-xs">No image</span>
               </div>
@@ -412,7 +389,7 @@ const Products = () => {
 
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
+              <h3 className="font-semibold text-lg line-clamp-1">{product.title || 'Product'}</h3>
               <div className="flex gap-1">
                 <Button
                   variant="ghost"
@@ -422,23 +399,11 @@ const Products = () => {
                 >
                   <Share2 className="w-4 h-4" />
                 </Button>
-                {product.catalogue_url && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <a href={product.catalogue_url} target="_blank" rel="noopener noreferrer">
-                      <Download className="w-4 h-4" />
-                    </a>
-                  </Button>
-                )}
               </div>
             </div>
 
             <div className="text-primary font-semibold mb-2">
-              {formatPrice(product.price, product.price_from, product.price_to, product.currency_code || product.currency)}
+              {formatPrice(product.price, product.price_from, product.price_to, product.currency_code)}
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -455,11 +420,7 @@ const Products = () => {
               )}
 
               <div className="flex gap-2">
-                {product.category && (
-                  <Badge variant="secondary">
-                    {categories.find(c => c.value === product.category)?.label || product.category}
-                  </Badge>
-                )}
+                {/* Category removed from products schema */}
               </div>
             </div>
           </div>

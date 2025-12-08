@@ -138,6 +138,8 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   // Filter by category via business_categories join
   // Note: This filter might not work with nested joins in Supabase
   // If filtering fails, we'll filter client-side instead
+  // TODO: Verify FK relationship between businesses and business_categories exists
+  // If PGRST200 errors occur, the join table name or FK constraint may need alignment
   if (category && category !== "all") {
     // Try to filter via join - if this fails, we'll filter client-side
     // Supabase might not support nested filtering on joined tables

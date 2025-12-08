@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const productSchema = z.object({
-  name: z.string().min(2, 'Product name must be at least 2 characters'),
+  title: z.string().min(2, 'Product title must be at least 2 characters'),
   description: z.string().optional(),
   price: z.string().optional().refine(
     (val) => !val || !isNaN(parseFloat(val)),
@@ -37,19 +37,18 @@ type ProductFormData = z.infer<typeof productSchema>;
 
 export interface Product {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  title: string;
+  description?: string | null;
+  price?: number | null;
+  duration?: string | null;
   is_active: boolean;
+  searchable: boolean;
+  image_url?: string | null;
   stock: number;
-  status: string;
-  business_id: string | null;
+  business_id?: string | null;
+  slug?: string | null;
   created_at: string;
   updated_at: string;
-  slug?: string | null;
 }
 
 interface ProductFormProps {
@@ -71,10 +70,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: product?.name || '',
+      title: product?.title || '',
       description: product?.description || '',
       price: product?.price?.toString() || '',
-      image_url: product?.image_url || '',
+      image_url: product?.image_url || '',  // Single string, not array
     },
   });
 
@@ -83,13 +82,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
       setLoading(true);
 
       const productData = {
-        business_id: businessId,
-        name: data.name,
+        title: data.title,
         description: data.description || null,
         price: data.price ? parseFloat(data.price) : null,
-        image_url: data.image_url || null,
-        status: 'active',
+        image_url: data.image_url || null,  // Single string, not array
+        is_active: true,
         searchable: true,
+        stock: 0,  // Default stock value
       };
 
       if (product) {
@@ -150,12 +149,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="name"
+              name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Product Name *</FormLabel>
+                  <FormLabel>Product Title *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter product name" {...field} />
+                    <Input placeholder="Enter product title" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

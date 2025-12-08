@@ -127,14 +127,40 @@ export const useAdvancedSearch = () => {
         console.error('Basic business search error:', businessError);
       }
 
-      // Basic product search using the improved pattern - optimized with specific fields and limits
+      // Basic product search using business_products join pattern
       const { data: productMatches, error: productError } = await supabase
-        .from('products')
-        .select('id, name, description, category, price, business_id, businesses!inner(name, id, category, description, address, island)')
-        .eq('status', 'active')
-        .eq('businesses.status', 'active')
-        .ilike('name', `%${query}%`)
-        .or(`description.ilike.%${query}%`)
+        .from('business_products')
+        .select(`
+          id,
+          title_override,
+          description_override,
+          price_override,
+          product:products!inner(
+            id,
+            title,
+            description,
+            price,
+            duration,
+            is_active,
+            searchable,
+            image_url,
+            stock,
+            slug
+          ),
+          business:businesses!inner(
+            id,
+            name,
+            category,
+            description,
+            address,
+            island,
+            status
+          )
+        `)
+        .eq('is_active', true)
+        .eq('product.is_active', true)
+        .eq('business.status', 'active')
+        .or(`product.title.ilike.%${query}%,product.description.ilike.%${query}%,title_override.ilike.%${query}%,description_override.ilike.%${query}%`)
         .limit(limit);
 
       if (productError) {
@@ -184,43 +210,41 @@ export const useAdvancedSearch = () => {
       });
 
       // Process product results using the improved pattern
-      const productResults: SearchResult[] = (productMatches || []).map(product => {
+      const productResults: SearchResult[] = (productMatches || []).map((bp: any) => {
         let relevanceScore = 0;
         let matchedField: 'name' | 'description' | 'category' | 'services' = 'name';
-        let highlight = `${product.business?.name} – ${product.name}`;
+        const product = bp.product || {};
+        const business = bp.business || {};
+        const productTitle = bp.title_override || product.title || '';
+        let highlight = `${business.name} – ${productTitle}`;
 
         const queryLower = query.toLowerCase();
-        const productName = product.name?.toLowerCase() || '';
-        const productDescription = product.description?.toLowerCase() || '';
-        const productCategory = product.category?.toLowerCase() || '';
+        const productTitleLower = productTitle.toLowerCase();
+        const productDescription = (bp.description_override || product.description || '').toLowerCase();
 
-        if (productName.includes(queryLower)) {
+        if (productTitleLower.includes(queryLower)) {
           relevanceScore += 100;
           matchedField = 'name';
-          highlight = `${product.business?.name} – offers ${product.name}`;
+          highlight = `${business.name} – offers ${productTitle}`;
         } else if (productDescription.includes(queryLower)) {
           relevanceScore += 75;
           matchedField = 'description';
-          highlight = `${product.business?.name} – ${product.name}: ${product.description}`;
-        } else if (productCategory.includes(queryLower)) {
-          relevanceScore += 50;
-          matchedField = 'category';
-          highlight = `${product.business?.name} – ${product.name} (${product.category})`;
+          highlight = `${business.name} – ${productTitle}: ${bp.description_override || product.description}`;
         }
 
         return {
-          business_id: product.business_id,
-          business_name: product.business?.name || '',
-          business_description: product.business?.description,
-          business_address: product.business?.address,
-          business_island: product.business?.island,
+          business_id: bp.business_id,
+          business_name: business.name || '',
+          business_description: business.description,
+          business_address: business.address,
+          business_island: business.island,
           match_source: 'product' as const,
           matched_field: matchedField,
           highlight,
           relevance_score: relevanceScore,
-          product_name: product.name,
-          product_description: product.description,
-          match_detail: product.name
+          product_name: productTitle,
+          product_description: bp.description_override || product.description || '',
+          match_detail: productTitle
         };
       });
 

@@ -76,20 +76,25 @@ const ProductList = () => {
           id,
           business_id,
           product_id,
-          price_from,
-          price_to,
-          currency_code,
+          title_override,
+          description_override,
+          price_override,
           is_active,
           created_at,
           updated_at,
           product:products (
             id,
-            name,
             title,
             description,
-            category,
+            price,
+            duration,
+            is_active,
+            searchable,
             image_url,
-            status
+            stock,
+            slug,
+            created_at,
+            updated_at
           )
         `, { count: 'exact' })
         .eq('business_id', business.id);
@@ -97,9 +102,8 @@ const ProductList = () => {
       // Apply filters
       if (searchTerm) {
         query = query.or(`
-          product.name.ilike.%${searchTerm}%,
-          product.description.ilike.%${searchTerm}%,
-          product.title.ilike.%${searchTerm}%
+          product.title.ilike.%${searchTerm}%,
+          product.description.ilike.%${searchTerm}%
         `);
       }
       
@@ -118,25 +122,29 @@ const ProductList = () => {
       if (error) throw error;
       
       // Transform business_products data to match Product interface
-      const transformedData = (data || []).map((bp: any) => ({
-        id: bp.id,
-        name: bp.product?.title || bp.product?.name || '',
-        description: bp.product?.description || '',
-        category: bp.product?.category || '',
-        images: bp.product?.image_url ? [bp.product.image_url] : [],
-        image_url: bp.product?.image_url || null,
-        price: bp.price_from || null,
-        price_from: bp.price_from,
-        price_to: bp.price_to,
-        currency: bp.currency_code || 'SCR',
-        currency_code: bp.currency_code || 'SCR',
-        is_active: bp.is_active,
-        stock: null,
-        status: bp.product?.status || 'active',
-        business_id: bp.business_id,
-        created_at: bp.created_at,
-        updated_at: bp.updated_at,
-      })) as Product[];
+      const transformedData = (data || []).map((bp: any) => {
+        const displayTitle = bp.title_override || bp.product?.title || '';
+        const displayDescription = bp.description_override || bp.product?.description || '';
+        const displayPrice = bp.price_override || bp.product?.price || null;
+        return {
+          id: bp.id,
+          name: displayTitle,
+          title: displayTitle,
+          description: displayDescription,
+          category: '', // Category removed from products schema
+          images: bp.product?.image_url ? [bp.product.image_url] : [],
+          image_url: bp.product?.image_url || null,
+          price: displayPrice,
+          currency: 'SCR',
+          currency_code: 'SCR',
+          is_active: bp.is_active,
+          stock: bp.product?.stock || null,
+          status: bp.is_active ? 'active' : 'inactive', // Use is_active from business_products
+          business_id: bp.business_id,
+          created_at: bp.created_at,
+          updated_at: bp.updated_at,
+        };
+      }) as Product[];
       
       setProducts(transformedData);
       setTotalProducts(count || 0);
@@ -307,7 +315,7 @@ const ProductList = () => {
                   <div className="h-48 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-lg relative overflow-hidden">
                     <img 
                       src={product.image_url || (product.images && product.images[0]) || ''} 
-                      alt={product.name}
+                      alt={product.title || 'Product'}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
@@ -317,7 +325,7 @@ const ProductList = () => {
                 )}
                 <CardHeader>
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg line-clamp-1">{product.name}</CardTitle>
+                    <CardTitle className="text-lg line-clamp-1">{product.title || 'Product'}</CardTitle>
                     <Badge className={getStatusColor(product.is_active ? 'active' : 'draft')}>
                       {product.is_active ? 'active' : 'inactive'}
                     </Badge>
@@ -328,14 +336,9 @@ const ProductList = () => {
                     </CardDescription>
                   )}
                   <div className="flex items-center justify-between">
-                    {(product.price_from || product.price) && (
+                    {product.price && (
                       <div className="text-lg font-semibold text-foreground">
-                        {product.currency_code || product.currency || 'SCR'} {
-                          product.price_from || product.price
-                        }
-                        {product.price_to && product.price_to !== product.price_from && (
-                          <span> - {product.price_to}</span>
-                        )}
+                        {product.currency_code || product.currency || 'SCR'} {product.price}
                       </div>
                     )}
                   </div>
@@ -376,7 +379,7 @@ const ProductList = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Product</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete "{product.name}"? This action cannot be undone.
+                            Are you sure you want to delete "{product.title || 'this product'}"? This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

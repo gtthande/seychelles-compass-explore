@@ -343,23 +343,21 @@ const BusinessDashboard = () => {
           id,
           title_override,
           description_override,
-          price_from,
-          price_to,
-          currency_code,
-          duration_minutes,
-          booking_url,
-          notes,
+          price_override,
           is_active,
           created_at,
           updated_at,
           product:products!inner (
             id,
-            name,
             title,
             description,
-            category,
             image_url,
-            status
+            price,
+            duration,
+            is_active,
+            searchable,
+            stock,
+            slug
           )
         `)
         .eq('business_id', business.id)
@@ -367,22 +365,26 @@ const BusinessDashboard = () => {
 
       if (error) throw error;
       // Transform business_products data to match expected Product interface
-      const transformedProducts = (data || []).map((bp: any) => ({
-        id: bp.id,
-        name: bp.title_override || bp.product?.name || 'Unknown Product',
-        description: bp.description_override || bp.product?.description || '',
-        price: bp.price_from || 0,
-        price_to: bp.price_to || bp.price_from || null,
-        currency: bp.currency_code || 'SCR',
-        category: bp.product?.category || '',
-        images: bp.product?.image_url ? [bp.product.image_url] : [],
-        is_active: bp.is_active,
-        duration_minutes: bp.duration_minutes,
-        booking_url: bp.booking_url,
-        notes: bp.notes,
-        created_at: bp.created_at,
-        updated_at: bp.updated_at,
-      }));
+      const transformedProducts = (data || []).map((bp: any) => {
+        const displayTitle = bp.title_override || bp.product?.title || 'Unknown Product';
+        const displayDescription = bp.description_override || bp.product?.description || '';
+        const displayPrice = bp.price_override || bp.product?.price || 0;
+        return {
+          id: bp.id,
+          name: displayTitle,
+          title: displayTitle,
+          description: displayDescription,
+          price: displayPrice,
+          currency: 'SCR',
+          category: '', // Category removed from products schema
+          images: bp.product?.image_url ? [bp.product.image_url] : [],
+          image_url: bp.product?.image_url || null,
+          is_active: bp.is_active,
+          stock: bp.product?.stock || 0,
+          created_at: bp.created_at,
+          updated_at: bp.updated_at,
+        };
+      });
       setProducts(transformedProducts);
     } catch (error: any) {
       console.error('Error fetching products:', error);
@@ -512,7 +514,7 @@ const BusinessDashboard = () => {
     if (product) {
       setEditingProduct(product);
       setProductForm({
-        name: product.name,
+        name: product.title || '',
         description: product.description,
         price: product.price,
         category: product.category,
@@ -808,7 +810,7 @@ const BusinessDashboard = () => {
               {products.map((product) => (
                 <Card key={product.id}>
                   <CardHeader>
-                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                    <CardTitle className="text-lg">{product.title || 'Product'}</CardTitle>
                     <CardDescription>{product.description}</CardDescription>
                   </CardHeader>
                   <CardContent>

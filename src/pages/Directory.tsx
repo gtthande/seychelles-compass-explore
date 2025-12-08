@@ -787,7 +787,7 @@ const Directory = () => {
       const productMatches = products
         .map(product => {
           let relevanceScore = 0;
-          const name = product.name?.toLowerCase() || '';
+          const name = (product.title || '')?.toLowerCase();
           const description = product.description?.toLowerCase() || '';
           const businessName = product.business?.name?.toLowerCase() || '';
           const searchLower = searchTerm.toLowerCase();

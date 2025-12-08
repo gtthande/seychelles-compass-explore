@@ -10,19 +10,18 @@ import ProductForm from './ProductForm';
 
 export interface Product {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  title: string;
+  description?: string | null;
+  price?: number | null;
+  duration?: string | null;
   is_active: boolean;
+  searchable: boolean;
+  image_url?: string | null;
   stock: number;
-  status: string;
-  business_id: string | null;
+  business_id?: string | null;
+  slug?: string | null;
   created_at: string;
   updated_at: string;
-  slug?: string | null;
 }
 
 interface ProductListProps {
@@ -59,19 +58,18 @@ const ProductList: React.FC<ProductListProps> = ({ businessId, isOwner = false }
         .from('products')
         .select(`
           id,
-          name,
+          title,
           description,
-          category,
-          images,
           price,
-          currency,
-          stock,
+          duration,
           is_active,
-          status,
+          searchable,
+          image_url,
+          stock,
           business_id,
+          slug,
           created_at,
-          updated_at,
-          slug
+          updated_at
         `)
         .eq('business_id', businessId)
         .eq('is_active', true)
@@ -186,13 +184,13 @@ const ProductList: React.FC<ProductListProps> = ({ businessId, isOwner = false }
                     <div className="aspect-video overflow-hidden rounded-t-lg">
                       <img
                         src={product.image_url}
-                        alt={product.name}
+                        alt={product.title || 'Product'}
                         className="w-full h-full object-cover"
                       />
                     </div>
                   )}
                   <CardHeader>
-                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                    <CardTitle className="text-lg">{product.title || 'Product'}</CardTitle>
                     {product.description && (
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {product.description}
@@ -200,7 +198,7 @@ const ProductList: React.FC<ProductListProps> = ({ businessId, isOwner = false }
                     )}
                     {product.price && (
                       <div className="text-lg font-semibold text-primary">
-                        {product.price} SCR
+                        ₨{product.price.toLocaleString()}
                       </div>
                     )}
                   </CardHeader>

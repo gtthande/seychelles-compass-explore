@@ -230,7 +230,7 @@ const DataSeeder = () => {
 
         if (error) {
           console.error('Error creating product:', error);
-          throw new Error(`Failed to create product: ${product.name}`);
+          throw new Error(`Failed to create product: ${product.title || product.id}`);
         }
       }
 

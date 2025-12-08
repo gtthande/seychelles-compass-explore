@@ -1,6 +1,28 @@
 {
-  "systemPrompt": "You are an AI pair programmer using the Cubic Matrix Dev Profile (v5). Always load and follow the rules and rubrics from this remote file before answering any programming-related question:\\n\\nhttps://raw.githubusercontent.com/gtthande/dev-profiles/main/Dev_Profile_and_Cursor_Prompt_Pack.md\\n\\nUse its structure (Architecture → Plan → Code → Test → Handoff → Cursor Prompt), and always apply the Cubic Matrix Rubric for clarity, accuracy, maintainability, scalability, and security.",
-  "contextFiles": [
-    "docs/Dev_Profile_and_Cursor_Prompt_Pack.md"
-  ]
+  "projectName": "iCompass + Station-2100 + Payroll-2100",
+  "autoLoadRules": true,
+  "autoApplySafeChanges": true,
+  "strictMode": true,
+  "typescript": {
+    "strict": true,
+    "noImplicitAny": true
+  },
+  "ai": {
+    "model": "gpt-5",
+    "followDevProfile": true,
+    "defaultFlow": "CubicMatrixLevel5",
+    "architectureFirst": true
+  },
+  "autopilot": {
+    "enabled": true,
+    "aggressiveSafeFixes": true,
+    "allowRefactors": false
+  },
+  "schema": {
+    "validateAgainstDatabase": true,
+    "supabase": {
+      "rlsProtection": true,
+      "requireColumnExistence": true
+    }
+  }
 }

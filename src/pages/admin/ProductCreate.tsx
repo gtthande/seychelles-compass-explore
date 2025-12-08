@@ -52,11 +52,13 @@ const ProductCreate: React.FC = () => {
 
   // Form state for master product (if creating new)
   const [masterProductData, setMasterProductData] = useState({
-    name: '',
     title: '',
     description: '',
-    category: '',
-    image_url: '',
+    price: '',
+    duration: '',
+    image_url: '' as string,  // Single URL string
+    stock: '',
+    slug: '',
   });
 
   // Form state for business-product link
@@ -65,8 +67,9 @@ const ProductCreate: React.FC = () => {
     product_id: '',
     title_override: '',
     description_override: '',
-    price_from: '',
-    price_to: '',
+    price_override: '',
+    price_from: '',  // Legacy support
+    price_to: '',  // Legacy support
     currency_code: 'SCR',
     duration_minutes: '',
     booking_url: '',
@@ -134,7 +137,7 @@ const ProductCreate: React.FC = () => {
       setLinkData(prev => ({
         ...prev,
         product_id: productId,
-        title_override: prev.title_override || product.title || product.name,
+        title_override: prev.title_override || product.title,
         description_override: prev.description_override || product.description || ''
       }));
     }
@@ -148,11 +151,11 @@ const ProductCreate: React.FC = () => {
     }
 
     if (createNewProduct) {
-      if (!masterProductData.name.trim()) {
-        newErrors.master_name = 'Product name is required';
+      if (!masterProductData.title.trim()) {
+        newErrors.master_title = 'Product title is required';
       }
-      if (!masterProductData.category) {
-        newErrors.master_category = 'Category is required';
+      if (!masterProductData.price || isNaN(Number(masterProductData.price)) || Number(masterProductData.price) <= 0) {
+        newErrors.master_price = 'Valid price is required';
       }
     } else {
       if (!linkData.product_id) {
@@ -160,11 +163,12 @@ const ProductCreate: React.FC = () => {
       }
     }
 
-    if (!linkData.price_from || isNaN(Number(linkData.price_from)) || Number(linkData.price_from) <= 0) {
-      newErrors.price_from = 'Valid minimum price is required';
+    const priceValue = linkData.price_override || linkData.price_from;
+    if (!priceValue || isNaN(Number(priceValue)) || Number(priceValue) <= 0) {
+      newErrors.price_override = 'Valid price is required';
     }
 
-    if (linkData.price_to && (isNaN(Number(linkData.price_to)) || Number(linkData.price_to) < Number(linkData.price_from))) {
+    if (linkData.price_to && (isNaN(Number(linkData.price_to)) || Number(linkData.price_to) < Number(priceValue))) {
       newErrors.price_to = 'Maximum price must be greater than minimum price';
     }
 
@@ -199,7 +203,10 @@ const ProductCreate: React.FC = () => {
       }
 
       setImagePreview(urlData.publicUrl);
-      setMasterProductData(prev => ({ ...prev, image_url: urlData.publicUrl }));
+                        setMasterProductData(prev => ({ 
+                          ...prev, 
+                          image_url: urlData.publicUrl
+                        }));
       
       toast({
         title: "Success",
@@ -236,12 +243,16 @@ const ProductCreate: React.FC = () => {
       // Step 1: Create master product if needed
       if (createNewProduct) {
         const newProduct = await createProductMaster({
-          name: masterProductData.name,
-          title: masterProductData.title || masterProductData.name,
-          description: masterProductData.description || null,
-          category: masterProductData.category || null,
-          image_url: masterProductData.image_url || null,
-          status: 'active',
+          title: masterProductData.title,
+          description: masterProductData.description || '',
+          price: Number(masterProductData.price),
+          duration: masterProductData.duration || '',
+          image_url: masterProductData.image_url.length > 0 
+            ? (Array.isArray(masterProductData.image_url) ? masterProductData.image_url[0] : masterProductData.image_url)
+            : null,
+          stock: masterProductData.stock ? Number(masterProductData.stock) : 0,
+          slug: masterProductData.slug || '',
+          is_active: true,
           searchable: true
         });
 
@@ -258,8 +269,9 @@ const ProductCreate: React.FC = () => {
         product_id: productId,
         title_override: linkData.title_override || null,
         description_override: linkData.description_override || null,
-        price_from: Number(linkData.price_from),
-        price_to: linkData.price_to ? Number(linkData.price_to) : undefined,
+        price_override: Number(linkData.price_override || linkData.price_from),
+        price_from: Number(linkData.price_from),  // Legacy support
+        price_to: linkData.price_to ? Number(linkData.price_to) : undefined,  // Legacy support
         currency_code: linkData.currency_code,
         duration_minutes: linkData.duration_minutes ? Number(linkData.duration_minutes) : undefined,
         booking_url: linkData.booking_url || null,
@@ -333,24 +345,24 @@ const ProductCreate: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="master_name">Product Name *</Label>
-                    <Input
-                      id="master_name"
-                      value={masterProductData.name}
-                      onChange={(e) => handleMasterProductChange('name', e.target.value)}
-                      className={errors.master_name ? 'border-red-500' : ''}
-                      placeholder="Enter product name"
-                    />
-                    {errors.master_name && <p className="text-sm text-red-500">{errors.master_name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="master_title">Display Title</Label>
+                    <Label htmlFor="master_title">Product Title *</Label>
                     <Input
                       id="master_title"
                       value={masterProductData.title}
                       onChange={(e) => handleMasterProductChange('title', e.target.value)}
-                      placeholder="Optional: Display title (defaults to name)"
+                      className={errors.master_title ? 'border-red-500' : ''}
+                      placeholder="Enter product title"
+                    />
+                    {errors.master_title && <p className="text-sm text-red-500">{errors.master_title}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="master_slug">Slug</Label>
+                    <Input
+                      id="master_slug"
+                      value={masterProductData.slug}
+                      onChange={(e) => handleMasterProductChange('slug', e.target.value)}
+                      placeholder="URL-friendly slug (auto-generated if empty)"
                     />
                   </div>
                 </div>
@@ -366,25 +378,40 @@ const ProductCreate: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="master_category">Category *</Label>
-                    <Select 
-                      value={masterProductData.category} 
-                      onValueChange={(value) => handleMasterProductChange('category', value)}
-                    >
-                      <SelectTrigger className={errors.master_category ? 'border-red-500' : ''}>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category.charAt(0).toUpperCase() + category.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.master_category && <p className="text-sm text-red-500">{errors.master_category}</p>}
+                    <Label htmlFor="master_price">Price *</Label>
+                    <Input
+                      id="master_price"
+                      type="number"
+                      step="0.01"
+                      value={masterProductData.price}
+                      onChange={(e) => handleMasterProductChange('price', e.target.value)}
+                      className={errors.master_price ? 'border-red-500' : ''}
+                      placeholder="0.00"
+                    />
+                    {errors.master_price && <p className="text-sm text-red-500">{errors.master_price}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="master_duration">Duration</Label>
+                    <Input
+                      id="master_duration"
+                      value={masterProductData.duration}
+                      onChange={(e) => handleMasterProductChange('duration', e.target.value)}
+                      placeholder="e.g., 1 night, 2 hours"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="master_stock">Stock</Label>
+                    <Input
+                      id="master_stock"
+                      type="number"
+                      value={masterProductData.stock}
+                      onChange={(e) => handleMasterProductChange('stock', e.target.value)}
+                      placeholder="0"
+                    />
                   </div>
                 </div>
 
@@ -469,7 +496,7 @@ const ProductCreate: React.FC = () => {
                     <SelectContent>
                       {masterProducts.map(product => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.title || product.name} {product.category && `(${product.category})`}
+                          {product.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -555,20 +582,20 @@ const ProductCreate: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price_from">Price From (SCR) *</Label>
+                <Label htmlFor="price_override">Price (SCR) *</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="price_from"
+                    id="price_override"
                     type="number"
                     step="0.01"
-                    value={linkData.price_from}
-                    onChange={(e) => handleInputChange('price_from', e.target.value)}
-                    className={`pl-10 ${errors.price_from ? 'border-red-500' : ''}`}
+                    value={linkData.price_override || linkData.price_from}
+                    onChange={(e) => handleInputChange('price_override', e.target.value)}
+                    className={`pl-10 ${errors.price_override ? 'border-red-500' : ''}`}
                     placeholder="0.00"
                   />
                 </div>
-                {errors.price_from && <p className="text-sm text-red-500">{errors.price_from}</p>}
+                {errors.price_override && <p className="text-sm text-red-500">{errors.price_override}</p>}
               </div>
 
               <div className="space-y-2">

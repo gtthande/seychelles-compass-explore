@@ -52,7 +52,8 @@ const ProductManager: React.FC = () => {
   const [filteredProducts, setFilteredProducts] = useState<BusinessProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  // Category filter removed - products don't have category field
+  // const [categoryFilter, setCategoryFilter] = useState('all');
   const [businessFilter, setBusinessFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
@@ -60,11 +61,12 @@ const ProductManager: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  const categories = [
-    'tours', 'equipment', 'food', 'accommodation', 'transport', 
-    'activities', 'souvenirs', 'services', 'entertainment', 'health',
-    'education', 'training', 'certification'
-  ];
+  // Categories removed - products don't have category field
+  // const categories = [
+  //   'tours', 'equipment', 'food', 'accommodation', 'transport', 
+  //   'activities', 'souvenirs', 'services', 'entertainment', 'health',
+  //   'education', 'training', 'certification'
+  // ];
 
   const statusOptions = [
     { value: 'active', label: 'Active', color: 'bg-green-500' },
@@ -88,12 +90,13 @@ const ProductManager: React.FC = () => {
         ]);
 
         setBusinessProducts(businessProductsResult.businessProducts);
-        setMasterProducts(productsResult);
+        setMasterProducts(productsResult || []);
         if (businessesResult.data) {
           setBusinesses(businessesResult.data);
         }
       } catch (error) {
         console.error('Error loading products data:', error);
+        // Don't override product list on error - keep existing data
         toast({
           title: "Error",
           description: "Failed to fetch products",
@@ -109,7 +112,7 @@ const ProductManager: React.FC = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [businessProducts, searchTerm, categoryFilter, businessFilter, statusFilter, priceRange]);
+  }, [businessProducts, searchTerm, businessFilter, statusFilter, priceRange]);
 
 
   const applyFilters = () => {
@@ -117,12 +120,10 @@ const ProductManager: React.FC = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(bp => {
-        const productName = bp.product?.name || '';
-        const title = bp.title_override || bp.product?.title || productName;
+        const title = bp.title_override || bp.product?.title || '';
         const description = bp.description_override || bp.product?.description || '';
         const businessName = bp.business?.name || '';
         return (
-          productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           description.toLowerCase().includes(searchTerm.toLowerCase()) ||
           businessName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -130,9 +131,10 @@ const ProductManager: React.FC = () => {
       });
     }
 
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(bp => bp.product?.category === categoryFilter);
-    }
+    // Category filter removed - products don't have category field
+    // if (categoryFilter !== 'all') {
+    //   filtered = filtered.filter(bp => bp.product?.category === categoryFilter);
+    // }
 
     if (businessFilter !== 'all') {
       filtered = filtered.filter(bp => bp.business_id === businessFilter);
@@ -143,13 +145,16 @@ const ProductManager: React.FC = () => {
     }
 
     if (priceRange.min) {
-      filtered = filtered.filter(bp => (bp.price_from || 0) >= Number(priceRange.min));
+      filtered = filtered.filter(bp => {
+        const displayPrice = bp.price_override || bp.product?.price || 0;
+        return displayPrice >= Number(priceRange.min);
+      });
     }
 
     if (priceRange.max) {
       filtered = filtered.filter(bp => {
-        const maxPrice = bp.price_to || bp.price_from || 0;
-        return maxPrice <= Number(priceRange.max);
+        const displayPrice = bp.price_override || bp.product?.price || 0;
+        return displayPrice <= Number(priceRange.max);
       });
     }
 
@@ -203,27 +208,16 @@ const ProductManager: React.FC = () => {
     }
   };
 
-  const formatPrice = (priceFrom: number | null, priceTo: number | null, currency: string = 'SCR') => {
-    if (!priceFrom) return "Price on request";
+  const formatPrice = (priceOverride: number | null, productPrice: number | null, currency: string = 'SCR') => {
+    const price = priceOverride || productPrice;
+    if (!price) return "Price on request";
     const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₨";
-    if (priceTo && priceTo !== priceFrom) {
-      return `${symbol}${priceFrom.toLocaleString()} - ${symbol}${priceTo.toLocaleString()}`;
-    }
-    return `${symbol}${priceFrom.toLocaleString()}`;
+    return `${symbol}${price.toLocaleString()}`;
   };
 
-  const formatDuration = (minutes: number | null) => {
-    if (!minutes) return null;
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (mins === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
-    return `${hours}h ${mins}m`;
-  };
 
   const clearFilters = () => {
     setSearchTerm('');
-    setCategoryFilter('all');
     setBusinessFilter('all');
     setStatusFilter('all');
     setPriceRange({ min: '', max: '' });
@@ -295,7 +289,7 @@ const ProductManager: React.FC = () => {
               <Filter className="w-5 h-5" />
               Filters & Search
             </CardTitle>
-            {(searchTerm || categoryFilter !== 'all' || businessFilter !== 'all' || statusFilter !== 'all' || priceRange.min || priceRange.max) && (
+            {(searchTerm || businessFilter !== 'all' || statusFilter !== 'all' || priceRange.min || priceRange.max) && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 <X className="w-4 h-4 mr-2" />
                 Clear Filters
@@ -304,7 +298,7 @@ const ProductManager: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
@@ -315,19 +309,7 @@ const ProductManager: React.FC = () => {
               />
             </div>
             
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category} value={category}>
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Category filter removed - products don't have category field */}
 
             <Select value={businessFilter} onValueChange={setBusinessFilter}>
               <SelectTrigger>
@@ -417,8 +399,7 @@ const ProductManager: React.FC = () => {
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedProducts.map((bp) => {
-                const productName = bp.product?.name || 'Unknown Product';
-                const displayTitle = bp.title_override || bp.product?.title || productName;
+                const displayTitle = bp.title_override || bp.product?.title || 'Unknown Product';
                 const displayDescription = bp.description_override || bp.product?.description || '';
                 return (
                   <Card key={bp.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
@@ -447,12 +428,12 @@ const ProductManager: React.FC = () => {
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-primary">
-                          {formatPrice(bp.price_from, bp.price_to, bp.currency_code)}
+                          {formatPrice(bp.price_override, bp.product?.price, bp.currency_code)}
                         </span>
-                        {bp.duration_minutes && (
+                        {bp.product?.duration && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {formatDuration(bp.duration_minutes)}
+                            {bp.product.duration}
                           </Badge>
                         )}
                       </div>
@@ -460,12 +441,6 @@ const ProductManager: React.FC = () => {
                         <Building className="w-4 h-4" />
                         <span className="truncate">{bp.business?.name}</span>
                       </div>
-                      {bp.product?.category && (
-                        <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                          <Tag className="w-3 h-3" />
-                          {bp.product.category}
-                        </Badge>
-                      )}
                       <div className="flex gap-2 pt-2">
                         <Button
                           variant="outline"
@@ -492,8 +467,7 @@ const ProductManager: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {paginatedProducts.map((bp) => {
-                const productName = bp.product?.name || 'Unknown Product';
-                const displayTitle = bp.title_override || bp.product?.title || productName;
+                const displayTitle = bp.title_override || bp.product?.title || 'Unknown Product';
                 const displayDescription = bp.description_override || bp.product?.description || '';
                 return (
                   <Card key={bp.id} className="hover:shadow-md transition-shadow">
@@ -528,25 +502,19 @@ const ProductManager: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <DollarSign className="w-4 h-4 text-muted-foreground" />
                               <span className="font-semibold text-lg">
-                                {formatPrice(bp.price_from, bp.price_to, bp.currency_code)}
+                                {formatPrice(bp.price_override, bp.product?.price, bp.currency_code)}
                               </span>
                             </div>
-                            {bp.duration_minutes && (
+                            {bp.product?.duration && (
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-muted-foreground" />
-                                <span>{formatDuration(bp.duration_minutes)}</span>
+                                <span>{bp.product.duration}</span>
                               </div>
                             )}
                             <div className="flex items-center gap-2">
                               <Building className="w-4 h-4 text-muted-foreground" />
                               <span>{bp.business?.name}</span>
                             </div>
-                            {bp.product?.category && (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <Tag className="w-3 h-3" />
-                                {bp.product.category}
-                              </Badge>
-                            )}
                           </div>
                           <div className="flex gap-2 mt-4">
                             <Button

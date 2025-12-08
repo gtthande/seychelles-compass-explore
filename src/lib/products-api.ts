@@ -8,10 +8,14 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getServiceClient } from "@/integrations/supabase/service-client";
+import { slugify } from "@/lib/utils";
 
 /**
  * Business Product (join table row with product and business data)
  * Normalized structure: { id: join_id, product: {...}, business: {...} }
+ * 
+ * Unified schema: id, business_id, product_id, price_override, title_override, description_override
+ * Legacy fields (price_from, price_to, etc.) kept for backward compatibility
  */
 export interface BusinessProduct {
     id: string;
@@ -19,13 +23,8 @@ export interface BusinessProduct {
     product_id: string;
     title_override: string | null;
     description_override: string | null;
-    price_from: number | null;
-    price_to: number | null;
-    currency_code: string;
-    duration_minutes: number | null;
-    booking_url: string | null;
-    notes: string | null;
-    is_active: boolean;
+    price_override: number | null;  // Primary price field (unified schema)
+    is_active?: boolean;
     created_at: string;
     updated_at: string;
     // Joined data - normalized structure with all fields
@@ -58,40 +57,27 @@ export interface BusinessProduct {
     };
     product?: {
         id: string;
-        name: string;
-        title: string | null;
+        title: string;
         description: string | null;
-        category: string | null;
-        image_url: string | null;
-        status: string | null;
-        searchable: boolean | null;
-        duration: string | null;
         price: number | null;
+        duration: string | null;
         is_active: boolean;
+        searchable: boolean;
+        image_url: string | null;  // Single URL (TEXT, not array)
+        stock: number;
+        slug: string;
+        business_id: string | null;
         created_at: string;
         updated_at: string;
     };
 }
 
 /**
- * Product interface matching database schema
+ * Product interface matching unified Station-2100 / iCompass schema
+ * Imported from src/types/product.ts for consistency
  */
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
-  is_active: boolean;
-  stock: number;
-  status: string;
-  business_id: string | null;
-  created_at: string;
-  updated_at: string;
-  slug?: string | null;
-}
+import type { Product } from '@/types/product';
+export type { Product };
 
 /**
  * Parameters for fetching business products
@@ -127,13 +113,7 @@ export async function fetchProducts(
         product_id,
         title_override,
         description_override,
-        price_from,
-        price_to,
-        currency_code,
-        duration_minutes,
-        booking_url,
-        notes,
-        is_active,
+        price_override,
         created_at,
         updated_at,
         business:businesses (
@@ -163,18 +143,17 @@ export async function fetchProducts(
           created_at,
           updated_at
         ),
-        product:products (
+        product:products!inner (
           id,
-          name,
           title,
           description,
-          category,
-          image_url,
-          status,
-          searchable,
-          duration,
           price,
+          duration,
           is_active,
+          searchable,
+          image_url,
+          stock,
+          slug,
           created_at,
           updated_at
         )
@@ -190,25 +169,24 @@ export async function fetchProducts(
         }
 
         if (params.priceMin !== undefined) {
-            query = query.gte('price_from', params.priceMin);
+            query = query.gte('price_override', params.priceMin);
         }
 
         if (params.priceMax !== undefined) {
-            query = query.lte('price_to', params.priceMax);
+            query = query.lte('price_override', params.priceMax);
         }
 
-        if (params.category) {
-            query = query.eq('product.category', params.category);
-        }
+        // Category filter removed - category no longer exists in products table
+        // if (params.category) {
+        //     query = query.eq('product.category', params.category);
+        // }
 
         if (params.search) {
             query = query.or(`
-        product.name.ilike.%${params.search}%,
-        product.description.ilike.%${params.search}%,
         product.title.ilike.%${params.search}%,
+        product.description.ilike.%${params.search}%,
         title_override.ilike.%${params.search}%,
-        description_override.ilike.%${params.search}%,
-        notes.ilike.%${params.search}%
+        description_override.ilike.%${params.search}%
       `);
         }
 
@@ -217,13 +195,13 @@ export async function fetchProducts(
         const offset = params.offset || 0;
         query = query.range(offset, offset + limit - 1);
 
-        // Order by product_id
-        query = query.order('product_id');
+        // Order by id (business_products.id)
+        query = query.order('id', { ascending: true });
 
         const { data, error, count } = await query;
 
         if (error) {
-            console.error('[fetchProducts] Error:', error);
+            console.error('Products error:', error);
             throw error;
         }
 
@@ -232,7 +210,7 @@ export async function fetchProducts(
             total: count ?? 0,
         };
     } catch (error: any) {
-        console.error('[fetchProducts] Unexpected error:', error);
+        console.error('Products error:', error);
         throw error;
     }
 }
@@ -257,13 +235,7 @@ export async function fetchBusinessProducts(
         product_id,
         title_override,
         description_override,
-        price_from,
-        price_to,
-        currency_code,
-        duration_minutes,
-        booking_url,
-        notes,
-        is_active,
+        price_override,
         created_at,
         updated_at,
         business:businesses (
@@ -293,18 +265,17 @@ export async function fetchBusinessProducts(
           created_at,
           updated_at
         ),
-        product:products (
+        product:products!inner (
           id,
-          name,
           title,
           description,
-          category,
-          image_url,
-          status,
-          searchable,
-          duration,
           price,
+          duration,
           is_active,
+          searchable,
+          image_url,
+          stock,
+          slug,
           created_at,
           updated_at
         )
@@ -320,25 +291,24 @@ export async function fetchBusinessProducts(
         }
 
         if (params.priceMin !== undefined) {
-            query = query.gte('price_from', params.priceMin);
+            query = query.gte('price_override', params.priceMin);
         }
 
         if (params.priceMax !== undefined) {
-            query = query.lte('price_to', params.priceMax);
+            query = query.lte('price_override', params.priceMax);
         }
 
-        if (params.category) {
-            query = query.eq('product.category', params.category);
-        }
+        // Category filter removed - category no longer exists in products table
+        // if (params.category) {
+        //     query = query.eq('product.category', params.category);
+        // }
 
         if (params.search) {
             query = query.or(`
-        product.name.ilike.%${params.search}%,
-        product.description.ilike.%${params.search}%,
         product.title.ilike.%${params.search}%,
+        product.description.ilike.%${params.search}%,
         title_override.ilike.%${params.search}%,
-        description_override.ilike.%${params.search}%,
-        notes.ilike.%${params.search}%
+        description_override.ilike.%${params.search}%
       `);
         }
 
@@ -347,13 +317,13 @@ export async function fetchBusinessProducts(
         const offset = params.offset || 0;
         query = query.range(offset, offset + limit - 1);
 
-        // Order by product_id
-        query = query.order('product_id');
+        // Order by id (business_products.id)
+        query = query.order('id', { ascending: true });
 
         const { data, error, count } = await query;
 
         if (error) {
-            console.error('[fetchBusinessProducts] Error:', error);
+            console.error('Products error:', error);
             throw error;
         }
 
@@ -362,50 +332,185 @@ export async function fetchBusinessProducts(
             total: count ?? 0,
         };
     } catch (error: any) {
-        console.error('[fetchBusinessProducts] Unexpected error:', error);
+        console.error('Products error:', error);
         throw error;
     }
 }
 
 /**
- * Create a master product (catalogue item)
+ * Create a product
+ * Uses unified schema fields (business_id is NOT inserted here - use business_products table for linking)
  * Uses service role for writes
  */
 export async function createProductMaster(
     productData: {
-        name: string;
-        title?: string;
+        title: string; // Required
         description?: string;
-        category?: string;
-        image_url?: string;
-        status?: string;
+        price?: number;
+        duration?: string;
+        is_active?: boolean;
         searchable?: boolean;
+        image_url?: string | string[]; // Single URL string (or array for backward compatibility)
+        stock?: number;
+        slug?: string;
     }
 ): Promise<Product | null> {
     try {
         const serviceClient = getServiceClient();
+        
+        // Generate slug if not provided
+        const slug = productData.slug || slugify(productData.title);
+        
+        // Build insert object with unified schema fields (NO business_id - linking happens in business_products)
+        const insertData: any = {
+            title: productData.title, // Required
+            description: productData.description || null,
+            price: productData.price ?? null,
+            duration: productData.duration || null,
+            is_active: productData.is_active ?? true,
+            searchable: productData.searchable ?? true,
+            image_url: Array.isArray(productData.image_url) 
+                ? (productData.image_url[0] || null) 
+                : (productData.image_url || null),  // Convert array to single string
+            stock: productData.stock ?? 0,
+            slug: slug,
+        };
+
         const { data, error } = await serviceClient
             .from('products')
-            .insert({
-                name: productData.name,
-                title: productData.title || productData.name,
-                description: productData.description || null,
-                category: productData.category || null,
-                image_url: productData.image_url || null,
-                status: productData.status || 'active',
-                searchable: productData.searchable ?? true,
-            })
-            .select()
+            .insert(insertData)
+            .select(`
+              id,
+              title,
+              description,
+              price,
+              duration,
+              is_active,
+              searchable,
+              image_url,
+              stock,
+              business_id,
+              slug,
+              created_at
+            `)
             .single();
 
         if (error) {
-            console.error('[createProductMaster] Error:', error);
+            console.error('Products error:', error);
             throw error;
         }
 
-        return data as Product;
+        // Map response to Product interface
+        const item = data as any;
+        return {
+            id: item.id,
+            title: item.title || '',
+            description: item.description || null,
+            price: item.price ? Number(item.price) : null,
+            duration: item.duration || null,
+            is_active: item.is_active ?? true,
+            searchable: item.searchable ?? true,
+            image_url: item.image_url || null,  // Single string, not array
+            stock: item.stock ?? 0,
+            slug: item.slug || '',
+            business_id: item.business_id || null,
+            created_at: item.created_at || new Date().toISOString(),
+            updated_at: item.updated_at || new Date().toISOString(),
+        } as Product;
     } catch (error: any) {
-        console.error('[createProductMaster] Unexpected error:', error);
+        console.error('Products error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update a product
+ * Updates unified schema fields
+ * Uses service role for writes
+ */
+export async function updateProductMaster(
+    productId: string,
+    productData: {
+        title?: string;
+        description?: string;
+        price?: number;
+        duration?: string;
+        is_active?: boolean;
+        searchable?: boolean;
+        image_url?: string | string[]; // Single URL string (or array for backward compatibility)
+        stock?: number;
+        slug?: string;
+        business_id?: string | null;
+    }
+): Promise<Product | null> {
+    try {
+        const serviceClient = getServiceClient();
+        
+        // Build update object with only provided fields
+        const updates: any = {};
+        if (productData.title !== undefined) updates.title = productData.title;
+        if (productData.description !== undefined) updates.description = productData.description;
+        if (productData.price !== undefined) updates.price = productData.price;
+        if (productData.duration !== undefined) updates.duration = productData.duration;
+        if (productData.is_active !== undefined) updates.is_active = productData.is_active;
+        if (productData.searchable !== undefined) updates.searchable = productData.searchable;
+        if (productData.image_url !== undefined) {
+            updates.image_url = Array.isArray(productData.image_url) 
+                ? (productData.image_url[0] || null) 
+                : productData.image_url;  // Convert array to single string
+        }
+        if (productData.stock !== undefined) updates.stock = productData.stock;
+        if (productData.slug !== undefined) updates.slug = productData.slug;
+        if (productData.business_id !== undefined) updates.business_id = productData.business_id;
+        
+        // Always update updated_at
+        updates.updated_at = new Date().toISOString();
+
+        const { data, error } = await serviceClient
+            .from('products')
+            .update(updates)
+            .eq('id', productId)
+            .select(`
+              id,
+              title,
+              description,
+              price,
+              duration,
+              is_active,
+              searchable,
+              image_url,
+              stock,
+              business_id,
+              slug,
+              created_at,
+              updated_at
+            `)
+            .single();
+
+        if (error) {
+            console.error('Products error:', error);
+            throw error;
+        }
+
+        // Map response to Product interface
+        const item = data as any;
+        return {
+            id: item.id,
+            title: item.title || '',
+            description: item.description || null,
+            price: item.price ? Number(item.price) : null,
+            duration: item.duration || null,
+            is_active: item.is_active ?? true,
+            searchable: item.searchable ?? true,
+            image_url: item.image_url || null,  // Single string, not array
+            stock: item.stock ?? 0,
+            slug: item.slug || '',
+            business_id: item.business_id || null,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+        } as Product;
+    } catch (error: any) {
+        console.error('Products error:', error);
         throw error;
     }
 }
@@ -420,12 +525,7 @@ export async function createBusinessProduct(
         product_id: string;
         title_override?: string | null;
         description_override?: string | null;
-        price_from?: number | null;
-        price_to?: number | null;
-        currency_code?: string;
-        duration_minutes?: number | null;
-        booking_url?: string | null;
-        notes?: string | null;
+        price_override?: number | null;
         is_active?: boolean;
     }
 ): Promise<BusinessProduct | null> {
@@ -438,29 +538,44 @@ export async function createBusinessProduct(
                 product_id: linkData.product_id,
                 title_override: linkData.title_override || null,
                 description_override: linkData.description_override || null,
-                price_from: linkData.price_from || null,
-                price_to: linkData.price_to || null,
-                currency_code: linkData.currency_code || 'SCR',
-                duration_minutes: linkData.duration_minutes || null,
-                booking_url: linkData.booking_url || null,
-                notes: linkData.notes || null,
+                price_override: linkData.price_override ?? null,
                 is_active: linkData.is_active ?? true,
             })
             .select(`
-        *,
-        product:products(*),
+        id,
+        business_id,
+        product_id,
+        title_override,
+        description_override,
+        price_override,
+        created_at,
+        updated_at,
+        product:products (
+          id,
+          title,
+          description,
+          price,
+          duration,
+          is_active,
+          searchable,
+          image_url,
+          stock,
+          slug,
+          created_at,
+          updated_at
+        ),
         business:businesses(*)
       `)
             .single();
 
         if (error) {
-            console.error('[createBusinessProduct] Error:', error);
+            console.error('Products error:', error);
             throw error;
         }
 
         return data as BusinessProduct;
     } catch (error: any) {
-        console.error('[createBusinessProduct] Unexpected error:', error);
+        console.error('Products error:', error);
         throw error;
     }
 }
@@ -474,12 +589,7 @@ export async function updateBusinessProduct(
     updates: Partial<{
         title_override: string | null;
         description_override: string | null;
-        price_from: number | null;
-        price_to: number | null;
-        currency_code: string;
-        duration_minutes: number | null;
-        booking_url: string | null;
-        notes: string | null;
+        price_override: number | null;
         is_active: boolean;
     }>
 ): Promise<BusinessProduct | null> {
@@ -490,20 +600,40 @@ export async function updateBusinessProduct(
             .update(updates)
             .eq('id', id)
             .select(`
-        *,
-        product:products(*),
+        id,
+        business_id,
+        product_id,
+        title_override,
+        description_override,
+        price_override,
+        created_at,
+        updated_at,
+        product:products (
+          id,
+          title,
+          description,
+          price,
+          duration,
+          is_active,
+          searchable,
+          image_url,
+          stock,
+          slug,
+          created_at,
+          updated_at
+        ),
         business:businesses(*)
       `)
             .single();
 
         if (error) {
-            console.error('[updateBusinessProduct] Error:', error);
+            console.error('Products error:', error);
             throw error;
         }
 
         return data as BusinessProduct;
     } catch (error: any) {
-        console.error('[updateBusinessProduct] Unexpected error:', error);
+        console.error('Products error:', error);
         throw error;
     }
 }
@@ -521,19 +651,20 @@ export async function deleteBusinessProduct(id: string): Promise<boolean> {
             .eq('id', id);
 
         if (error) {
-            console.error('[deleteBusinessProduct] Error:', error);
+            console.error('Products error:', error);
             throw error;
         }
 
         return true;
     } catch (error: any) {
-        console.error('[deleteBusinessProduct] Unexpected error:', error);
+        console.error('Products error:', error);
         throw error;
     }
 }
 
 /**
- * Fetch all master products (for dropdown/selection)
+ * Fetch all products (for dropdown/selection)
+ * Selects only real existing columns and maps image_url to string (not array)
  */
 export async function fetchAllProducts(): Promise<Product[]> {
     try {
@@ -541,31 +672,45 @@ export async function fetchAllProducts(): Promise<Product[]> {
             .from('products')
             .select(`
               id,
-              name,
+              title,
               description,
-              category,
-              images,
               price,
-              currency,
-              stock,
+              duration,
               is_active,
-              status,
+              searchable,
+              image_url,
+              stock,
               business_id,
+              slug,
               created_at,
-              updated_at,
-              slug
+              updated_at
             `)
-            .eq('status', 'active')
-            .order('name');
+            .eq('is_active', true)
+            .order('title');
 
         if (error) {
-            console.error('[fetchAllProducts] Error:', error);
+            console.error('Products error:', error);
             return [];
         }
 
-        return (data ?? []) as Product[];
-    } catch (error) {
-        console.error('[fetchAllProducts] Unexpected error:', error);
+        // Map image_url to string (not array) and set defaults
+        return (data ?? []).map((item: any) => ({
+            id: item.id,
+            title: item.title || '',
+            description: item.description || null,
+            price: item.price ? Number(item.price) : null,
+            duration: item.duration || null,
+            is_active: item.is_active ?? true,
+            searchable: item.searchable ?? true,
+            image_url: item.image_url || null,  // Single string, not array
+            stock: item.stock ?? 0,
+            slug: item.slug || '',
+            business_id: item.business_id || null,
+            created_at: item.created_at || new Date().toISOString(),
+            updated_at: item.updated_at || new Date().toISOString(),
+        })) as Product[];
+    } catch (error: any) {
+        console.error('Products error:', error);
         return [];
     }
 }
@@ -579,12 +724,7 @@ export async function attachProductToBusiness(
     overrides: {
         title_override?: string | null;
         description_override?: string | null;
-        price_from?: number | null;
-        price_to?: number | null;
-        currency_code?: string;
-        duration_minutes?: number | null;
-        booking_url?: string | null;
-        notes?: string | null;
+        price_override?: number | null;
         is_active?: boolean;
     } = {}
 ): Promise<BusinessProduct | null> {
@@ -610,12 +750,7 @@ export async function updateBusinessProductAssignment(
     overrides: {
         title_override?: string | null;
         description_override?: string | null;
-        price_from?: number | null;
-        price_to?: number | null;
-        currency_code?: string;
-        duration_minutes?: number | null;
-        booking_url?: string | null;
-        notes?: string | null;
+        price_override?: number | null;
         is_active?: boolean;
     }
 ): Promise<BusinessProduct | null> {
@@ -638,7 +773,7 @@ export async function getProductsByBusiness(businessId: string): Promise<Busines
         const result = await fetchBusinessProducts({ businessId, limit: 1000 });
         return result.businessProducts;
     } catch (error: any) {
-        console.error('[getProductsByBusiness] Error:', error);
+        console.error('Products error:', error);
         throw error;
     }
 }
@@ -656,13 +791,7 @@ export async function getLinkedBusinessesForProduct(productId: string): Promise<
         product_id,
         title_override,
         description_override,
-        price_from,
-        price_to,
-        currency_code,
-        duration_minutes,
-        booking_url,
-        notes,
-        is_active,
+        price_override,
         created_at,
         updated_at,
         business:businesses(
@@ -677,13 +806,13 @@ export async function getLinkedBusinessesForProduct(productId: string): Promise<
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('[getLinkedBusinessesForProduct] Error:', error);
+            console.error('Products error:', error);
             throw error;
         }
 
         return (data ?? []) as BusinessProduct[];
     } catch (error: any) {
-        console.error('[getLinkedBusinessesForProduct] Unexpected error:', error);
+        console.error('Products error:', error);
         throw error;
     }
 }
@@ -698,12 +827,7 @@ export async function linkProductToBusiness(
     overrides: {
         title_override?: string | null;
         description_override?: string | null;
-        price_from?: number | null;
-        price_to?: number | null;
-        currency_code?: string;
-        duration_minutes?: number | null;
-        booking_url?: string | null;
-        notes?: string | null;
+        price_override?: number | null;
         is_active?: boolean;
     } = {}
 ): Promise<BusinessProduct | null> {

@@ -16,36 +16,30 @@ import { Upload, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const productSchema = z.object({
-  name: z.string().min(2, "Product name must be at least 2 characters"),
+  title: z.string().min(2, "Product title must be at least 2 characters"),
   description: z.string().optional(),
   price: z.string().optional(),
-  currency: z.string().optional(),
-  category: z.string().optional(),
-  status: z.string().default("draft"),
-  in_stock: z.boolean().default(true),
-  stock_quantity: z.string().optional(),
-  sku: z.string().optional(),
-  unit: z.string().optional(),
-  tags: z.string().optional(),
+  duration: z.string().optional(),
+  image_url: z.string().url().optional().or(z.literal('')),
+  stock: z.string().optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
 
 export interface Product {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  title: string;
+  description?: string | null;
+  price?: number | null;
+  duration?: string | null;
   is_active: boolean;
+  searchable: boolean;
+  image_url?: string | null;
   stock: number;
-  status: string;
-  business_id: string | null;
+  business_id?: string | null;
+  slug?: string | null;
   created_at: string;
   updated_at: string;
-  slug?: string | null;
 }
 
 interface Business {
@@ -65,237 +59,117 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [catalogueFile, setCatalogueFile] = useState<File | null>(null);
-  const [existingImages, setExistingImages] = useState<string[]>(product?.images || []);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [businessVerified, setBusinessVerified] = useState(true);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: product?.name || "",
+      title: product?.title || "",
       description: product?.description || "",
       price: product?.price?.toString() || "",
-      currency: product?.currency || "SCR",
-      category: product?.category || "",
-      status: product?.status || "draft",
-      in_stock: product?.in_stock ?? true,
-      stock_quantity: product?.stock_quantity?.toString() || "",
-      sku: product?.sku || "",
-      unit: product?.unit || "",
-      tags: product?.tags?.join(", ") || "",
+      duration: product?.duration || "",
+      image_url: product?.image_url || "",
+      stock: product?.stock?.toString() || "0",
     },
   });
 
-  const currencies = [
-    { value: "SCR", label: "SCR - Seychellois Rupee" },
-    { value: "USD", label: "USD - US Dollar" },
-    { value: "EUR", label: "EUR - Euro" },
-  ];
 
-  const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
-
-  // Fetch categories from database
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('categories')
-          .select('slug, name')
-          .eq('is_active', true)
-          .order('name');
-
-        if (error) throw error;
-        
-        const categoryOptions = data?.map(cat => ({
-          value: cat.slug,
-          label: cat.name
-        })) || [];
-        
-        setCategories(categoryOptions);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        // Fallback to default categories if fetch fails
-        setCategories([
-          { value: "food", label: "Food & Beverages" },
-          { value: "accommodation", label: "Accommodation" },
-          { value: "tours", label: "Tours & Activities" },
-          { value: "transport", label: "Transportation" },
-          { value: "retail", label: "Retail Products" },
-          { value: "services", label: "Services" },
-          { value: "entertainment", label: "Entertainment" },
-        ]);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
-  const validateFiles = (files: File[], type: 'image' | 'pdf'): string[] => {
+  const validateFile = (file: File): string[] => {
     const errors: string[] = [];
     const maxImageSize = 5 * 1024 * 1024; // 5MB
-    const maxPdfSize = 10 * 1024 * 1024; // 10MB
     const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const allowedPdfTypes = ['application/pdf'];
 
-    files.forEach((file, index) => {
-      if (type === 'image') {
-        if (!allowedImageTypes.includes(file.type)) {
-          errors.push(`Image ${index + 1}: Only JPEG, PNG, and WebP formats are allowed`);
-        }
-        if (file.size > maxImageSize) {
-          errors.push(`Image ${index + 1}: File size must be less than 5MB`);
-        }
-      } else if (type === 'pdf') {
-        if (!allowedPdfTypes.includes(file.type)) {
-          errors.push(`Catalogue: Only PDF format is allowed`);
-        }
-        if (file.size > maxPdfSize) {
-          errors.push(`Catalogue: File size must be less than 10MB`);
-        }
-      }
-    });
+    if (!allowedImageTypes.includes(file.type)) {
+      errors.push('Only JPEG, PNG, and WebP formats are allowed');
+    }
+    if (file.size > maxImageSize) {
+      errors.push('File size must be less than 5MB');
+    }
 
     return errors;
   };
 
-  const uploadFiles = async () => {
-    const imageUrls: string[] = [...existingImages];
-    let catalogueUrl = product?.catalogue_url;
-    let totalFiles = imageFiles.length + (catalogueFile ? 1 : 0);
-    let uploadedFiles = 0;
-
+  const uploadImage = async (file: File): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${business.id}/${Date.now()}-${Math.random()}.${fileExt}`;
+    
     setUploadProgress(0);
-
-    // Upload images
-    for (const file of imageFiles) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${business.id}/${Date.now()}-${Math.random()}.${fileExt}`;
+    
+    try {
+      const PRODUCT_IMAGES_BUCKET = import.meta.env.VITE_IMAGE_BUCKET_PRODUCTS || 'product-images';
       
-      try {
-        // Verify bucket exists and is accessible
-        const PRODUCT_IMAGES_BUCKET = import.meta.env.VITE_IMAGE_BUCKET_PRODUCTS || 'product-images';
-        
-        const { data: bucketData, error: bucketError } = await supabase.storage
-          .getBucket(PRODUCT_IMAGES_BUCKET);
-        
-        if (bucketError) {
-          console.error('Product images bucket not accessible:', {
-            bucket: PRODUCT_IMAGES_BUCKET,
-            error: bucketError
-          });
-          throw new Error(`Product images storage bucket '${PRODUCT_IMAGES_BUCKET}' is not available`);
-        }
-        
-        const { data, error } = await supabase.storage
-          .from(PRODUCT_IMAGES_BUCKET)
-          .upload(fileName, file);
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .getBucket(PRODUCT_IMAGES_BUCKET);
+      
+      if (bucketError) {
+        console.error('Product images bucket not accessible:', {
+          bucket: PRODUCT_IMAGES_BUCKET,
+          error: bucketError
+        });
+        throw new Error(`Product images storage bucket '${PRODUCT_IMAGES_BUCKET}' is not available`);
+      }
+      
+      const { data, error } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .upload(fileName, file);
 
-        if (error) {
-          console.error('Product image upload error:', error);
-          throw error;
-        }
-        
-        const { data: publicUrlData } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(fileName);
-        
-        if (!publicUrlData?.publicUrl) {
-          throw new Error('Failed to get public URL for uploaded product image');
-        }
-        
-        imageUrls.push(publicUrlData.publicUrl);
-        
-        uploadedFiles++;
-        setUploadProgress((uploadedFiles / totalFiles) * 50); // 50% for image uploads
-      } catch (error) {
-        console.error('Product image upload failed:', error);
+      if (error) {
+        console.error('Product image upload error:', error);
         throw error;
       }
-    }
-
-    // Upload catalogue
-    if (catalogueFile) {
-      const fileExt = catalogueFile.name.split('.').pop();
-      const fileName = `${business.id}/catalogue-${Date.now()}.${fileExt}`;
       
-      try {
-        // Verify bucket exists and is accessible
-        const { data: bucketData, error: bucketError } = await supabase.storage
-          .getBucket('product-catalogues');
-        
-        if (bucketError) {
-          console.error('Product catalogues bucket not accessible:', bucketError);
-          throw new Error('Product catalogues storage is not available');
-        }
-        
-        const { data, error } = await supabase.storage
-          .from('product-catalogues')
-          .upload(fileName, catalogueFile);
-
-        if (error) {
-          console.error('Catalogue upload error:', error);
-          throw error;
-        }
-        
-        const { data: publicUrlData } = supabase.storage.from('product-catalogues').getPublicUrl(fileName);
-        
-        if (!publicUrlData?.publicUrl) {
-          throw new Error('Failed to get public URL for uploaded catalogue');
-        }
-        
-        catalogueUrl = publicUrlData.publicUrl;
-        uploadedFiles++;
-        setUploadProgress((uploadedFiles / totalFiles) * 50);
-      } catch (error) {
-        console.error('Catalogue upload failed:', error);
-        throw error;
+      const { data: publicUrlData } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(fileName);
+      
+      if (!publicUrlData?.publicUrl) {
+        throw new Error('Failed to get public URL for uploaded product image');
       }
+      
+      setUploadProgress(100);
+      return publicUrlData.publicUrl;
+    } catch (error) {
+      console.error('Product image upload failed:', error);
+      throw error;
     }
-
-    setUploadProgress(100);
-    return { imageUrls, catalogueUrl };
   };
 
   const onSubmit = async (data: ProductFormData) => {
     if (!user) return;
-
-    // Validate files before submission
-    const imageErrors = validateFiles(imageFiles, 'image');
-    const pdfErrors = catalogueFile ? validateFiles([catalogueFile], 'pdf') : [];
-    const allErrors = [...imageErrors, ...pdfErrors];
-
-    if (allErrors.length > 0) {
-      setValidationErrors(allErrors);
-      toast({
-        title: "File Validation Error",
-        description: "Please fix the file errors before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setValidationErrors([]);
     setLoading(true);
     setUploadProgress(0);
     
     try {
-      const { imageUrls, catalogueUrl } = await uploadFiles();
+      let imageUrl = data.image_url || null;
+
+      // Upload image file if provided
+      if (imageFile) {
+        const imageErrors = validateFile(imageFile);
+        if (imageErrors.length > 0) {
+          setValidationErrors(imageErrors);
+          toast({
+            title: "File Validation Error",
+            description: imageErrors[0],
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        imageUrl = await uploadImage(imageFile);
+      }
 
       const productData = {
-        name: data.name,
+        title: data.title,
         description: data.description || null,
         price: data.price ? parseFloat(data.price) : null,
-        currency: data.currency || null,
-        category: data.category || null,
-        status: data.status as any,
-        in_stock: data.in_stock,
-        stock_quantity: data.stock_quantity ? parseInt(data.stock_quantity) : null,
-        images: imageUrls.length > 0 ? imageUrls : null,
-        catalogue_url: catalogueUrl,
+        duration: data.duration || null,
+        image_url: imageUrl,
+        stock: data.stock ? parseInt(data.stock) : 0,
+        is_active: true,
+        searchable: true,
         business_id: business.id,
-        sku: data.sku || null,
-        unit: data.unit || null,
-        tags: data.tags ? data.tags.split(",").map(tag => tag.trim()).filter(Boolean) : null,
       };
 
       if (product) {
@@ -339,10 +213,13 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
     }
   };
 
-  const handleImageFiles = (files: FileList | null) => {
-    if (!files) return;
-    const fileArray = Array.from(files);
-    const errors = validateFiles(fileArray, 'image');
+  const handleImageFile = (file: File | null) => {
+    if (!file) {
+      setImageFile(null);
+      return;
+    }
+    
+    const errors = validateFile(file);
     
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -355,33 +232,7 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
     }
     
     setValidationErrors([]);
-    setImageFiles([...imageFiles, ...fileArray]);
-  };
-
-  const handleCatalogueFile = (file: File | null) => {
-    if (!file) return;
-    const errors = validateFiles([file], 'pdf');
-    
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      toast({
-        title: "File Validation Error",
-        description: errors[0],
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setValidationErrors([]);
-    setCatalogueFile(file);
-  };
-
-  const removeExistingImage = (indexToRemove: number) => {
-    setExistingImages(existingImages.filter((_, index) => index !== indexToRemove));
-  };
-
-  const removeNewImage = (indexToRemove: number) => {
-    setImageFiles(imageFiles.filter((_, index) => index !== indexToRemove));
+    setImageFile(file);
   };
 
   return (
@@ -422,12 +273,12 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
             )}
             <FormField
               control={form.control}
-              name="name"
+              name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Product/Service Name</FormLabel>
+                  <FormLabel>Product/Service Title *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter product name" {...field} />
+                    <Input placeholder="Enter product title" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -458,7 +309,7 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price (Optional)</FormLabel>
+                    <FormLabel>Price (SCR, Optional)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="0.00" {...field} />
                     </FormControl>
@@ -469,103 +320,12 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
 
               <FormField
                 control={form.control}
-                name="currency"
+                name="duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Currency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select currency" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {currencies.map((currency) => (
-                          <SelectItem key={currency.value} value={currency.value}>
-                            {currency.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="sku"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>SKU (Optional)</FormLabel>
+                    <FormLabel>Duration (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Product SKU" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="unit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., piece, kg, liter" {...field} />
+                      <Input placeholder="e.g., 2 hours" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -575,140 +335,78 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
 
             <FormField
               control={form.control}
-              name="tags"
+              name="stock"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tags (Optional)</FormLabel>
+                  <FormLabel>Stock Quantity (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter tags separated by commas" {...field} />
+                    <Input type="number" placeholder="0" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="flex items-center space-x-2">
-              <FormField
-                control={form.control}
-                name="in_stock"
-                render={({ field }) => (
-                  <FormItem className="flex items-center space-x-2">
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormLabel>In Stock</FormLabel>
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="image_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="url"
+                      placeholder="https://example.com/image.jpg"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="stock_quantity"
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel>Stock Quantity (Optional)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Existing Images */}
-            {existingImages.length > 0 && (
-              <div className="space-y-2">
-                <FormLabel>Current Images</FormLabel>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {existingImages.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img 
-                        src={image} 
-                        alt={`Product ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-1 right-1 h-6 w-6 p-0"
-                        onClick={() => removeExistingImage(index)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* New Images Upload */}
+            {/* Image Upload */}
             <div className="space-y-2">
-              <FormLabel>Add Images (Max 5MB each, JPEG/PNG/WebP)</FormLabel>
+              <FormLabel>Or Upload Image (Max 5MB, JPEG/PNG/WebP)</FormLabel>
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
                 <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                 <input
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
-                  multiple
-                  onChange={(e) => handleImageFiles(e.target.files)}
+                  onChange={(e) => handleImageFile(e.target.files?.[0] || null)}
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  Supported formats: JPEG, PNG, WebP. Max size: 5MB per image.
+                  Supported formats: JPEG, PNG, WebP. Max size: 5MB.
                 </p>
-              </div>
-              {imageFiles.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                  {imageFiles.map((file, index) => (
-                    <div key={index} className="relative">
-                      <img 
-                        src={URL.createObjectURL(file)} 
-                        alt={`New ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-1 right-1 h-6 w-6 p-0"
-                        onClick={() => removeNewImage(index)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Catalogue Upload */}
-            <div className="space-y-2">
-              <FormLabel>Product Catalogue (PDF Only, Max 10MB)</FormLabel>
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
-                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                <input
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  onChange={(e) => handleCatalogueFile(e.target.files?.[0] || null)}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  PDF format only. Max size: 10MB.
-                </p>
-                {catalogueFile && (
-                  <p className="text-sm text-green-600 mt-2">
-                    Selected: {catalogueFile.name}
-                  </p>
+                {imageFile && (
+                  <div className="mt-2">
+                    <img 
+                      src={URL.createObjectURL(imageFile)} 
+                      alt="Preview"
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => handleImageFile(null)}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Remove Image
+                    </Button>
+                  </div>
                 )}
-                {product?.catalogue_url && !catalogueFile && (
-                  <p className="text-sm text-blue-600 mt-2">
-                    Current catalogue uploaded
-                  </p>
+                {product?.image_url && !imageFile && (
+                  <div className="mt-2">
+                    <p className="text-sm text-blue-600 mb-2">Current image:</p>
+                    <img 
+                      src={product.image_url} 
+                      alt="Current"
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                  </div>
                 )}
               </div>
             </div>

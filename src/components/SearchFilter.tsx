@@ -49,19 +49,18 @@ interface Business {
 
 export interface Product {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  title: string;
+  description: string | null;
+  price: number | null;
+  duration: string | null;
   is_active: boolean;
+  searchable: boolean;
+  image_url: string | null;
   stock: number;
-  status: string;
   business_id: string | null;
+  slug: string | null;
   created_at: string;
   updated_at: string;
-  slug?: string | null;
 }
 
 interface SearchFilterProps {
@@ -114,7 +113,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           event: '*',
           schema: 'public',
           table: 'products',
-          filter: 'status=eq.active'
+          filter: 'is_active=eq.true'
         },
         () => {
           fetchData(); // Refetch when products change
@@ -183,19 +182,18 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           .from('products')
           .select(`
             id,
-            name,
+            title,
             description,
-            category,
-            images,
             price,
-            currency,
-            stock,
+            duration,
             is_active,
-            status,
+            searchable,
+            image_url,
+            stock,
             business_id,
+            slug,
             created_at,
-            updated_at,
-            slug
+            updated_at
           `)
           .eq('is_active', true)
           .order('created_at', { ascending: false })
@@ -264,20 +262,14 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
       filteredProd = filteredProd
         .map(product => {
           let relevanceScore = 0;
-          const name = product.name.toLowerCase();
+          const title = (product.title || '').toLowerCase();
           const description = product.description?.toLowerCase() || '';
-          const businessName = product.businesses?.name?.toLowerCase() || '';
           
-          // Prioritize product name matches
-          if (name.includes(searchLower)) {
+          // Prioritize product title matches
+          if (title.includes(searchLower)) {
             relevanceScore += 100;
-            if (name === searchLower) relevanceScore += 50;
-            if (name.startsWith(searchLower)) relevanceScore += 25;
-          }
-          
-          // Business name match
-          if (businessName.includes(searchLower)) {
-            relevanceScore += 75;
+            if (title === searchLower) relevanceScore += 50;
+            if (title.startsWith(searchLower)) relevanceScore += 25;
           }
           
           // Description match
@@ -292,10 +284,10 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
         .slice(0, 20); // Limit to top 20 products
     }
 
-    // Apply category filter
+    // Apply category filter (only for businesses, products don't have category)
     if (selectedCategory) {
       filteredBiz = filteredBiz.filter(business => business.category === selectedCategory);
-      filteredProd = filteredProd.filter(product => product.category === selectedCategory);
+      // Products don't have category field anymore - skip product category filter
     }
 
     setFilteredBusinesses(filteredBiz);
@@ -595,17 +587,22 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
 );
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
-  const name = product?.name ?? "Unnamed";
+  const title = product?.title || "Unnamed";
+  const imageUrl = product?.image_url || null;
+  const placeholderImage = '/placeholder-product.png';
   
   return (
   <Card className="hover:shadow-lg transition-shadow">
     <div className="relative">
-      {product.images && product.images.length > 0 ? (
+      {imageUrl ? (
         <div className="h-40 relative overflow-hidden rounded-t-lg">
           <img 
-            src={product.images[0]} 
-            alt={name}
+            src={imageUrl} 
+            alt={title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = placeholderImage;
+            }}
           />
         </div>
       ) : (
@@ -616,12 +613,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     </div>
     
     <CardHeader className="pb-2">
-      <CardTitle className="text-base font-semibold line-clamp-1">{name}</CardTitle>
-      {product.businesses?.name && (
-        <CardDescription className="text-xs">
-          by {product.businesses.name}
-        </CardDescription>
-      )}
+      <CardTitle className="text-base font-semibold line-clamp-1">{title}</CardTitle>
     </CardHeader>
     
     <CardContent className="space-y-2">
@@ -633,7 +625,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       
       {product.price && (
         <div className="text-lg font-semibold text-primary">
-          {product.currency || 'SCR'} {product.price}
+          SCR {product.price}
         </div>
       )}
     </CardContent>

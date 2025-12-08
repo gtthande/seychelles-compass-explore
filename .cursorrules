@@ -1,14 +1,195 @@
-ignore:
-  - node_modules/**
-  - .git/**
-  - *.lock
-  - *.env
-  - **/*.sql
-  - **/*.png
-  - **/*.jpg
-  - **/*.jpeg
-  - **/*.zip
-  - **/*.pdf
-  - docs/README_How_To_Link.md
-include:
-  - docs/Dev_Profile_and_Cursor_Prompt_Pack.md
+# GLOBAL PERMANENT RULES FOR CURSOR
+
+# iCompass + Station-2100 + Payroll-2100
+
+# Official Dev Mode: Cubic Matrix Level-5
+
+
+
+# ---------------------------------------------------------
+
+# 1. DEVELOPMENT PROFILE
+
+# ---------------------------------------------------------
+
+- ALWAYS load and follow the Dev Profile from:
+
+  https://github.com/gtthande/dev-profiles/blob/main/Dev_Profile_and_Cursor_Prompt_Pack.md
+
+
+
+- ALWAYS operate using Cubic Matrix Dev Mode – Level 5:
+
+  ARCHITECTURE → PLAN → CODE → TEST → HANDOFF → CURSOR PROMPT
+
+
+
+- Correctness > speed > magic.  
+
+- No assumptions without schema validation.
+
+
+
+# ---------------------------------------------------------
+
+# 2. AUTO-APPROVAL & CHANGE STABILITY
+
+# ---------------------------------------------------------
+
+- Automatically accept ALL safe changes.
+
+- DO NOT request approval unless:
+
+  • A migration could corrupt data
+
+  • An RLS policy could lock out admins
+
+  • A schema change would drop or rename columns
+
+
+
+- If unsure: ask ONCE with: "Require confirmation?".
+
+- Otherwise: apply fixes immediately and safely.
+
+
+
+# ---------------------------------------------------------
+
+# 3. SUPABASE + MYSQL SCHEMA RULES
+
+# ---------------------------------------------------------
+
+- Always validate column names.
+
+- NEVER fetch, map, or reference non-existent fields.
+
+- NEVER reintroduce deprecated product fields such as:
+
+  title, description, images, slug, business_id, currency, stock.
+
+
+
+- When updating TypeScript models:
+
+  backend schema = source of truth.
+
+
+
+- Follow consistent RLS admin pattern:
+
+    (p.id = auth.uid() OR p.user_id = auth.uid())
+
+    AND (is_admin = true OR role = 'admin')
+
+
+
+# ---------------------------------------------------------
+
+# 4. QUERY & API RULES
+
+# ---------------------------------------------------------
+
+- Always use explicit .select('col1, col2, …').
+
+- Never swallow Supabase errors; always check and log `{ error }`.
+
+- Normalize API responses consistently across modules.
+
+- Do not break public API outputs.
+
+- Prefer Zod validations when shaping fetched data.
+
+
+
+# ---------------------------------------------------------
+
+# 5. AUTOPILOT RULES
+
+# ---------------------------------------------------------
+
+Autopilot MAY:
+
+  • fix imports  
+
+  • correct schema mismatches  
+
+  • align TypeScript with DB schema  
+
+  • repair broken queries  
+
+  • clean unused code (100% safe only)  
+
+  • improve RLS consistency  
+
+
+
+Autopilot MUST NOT:
+
+  • refactor entire architecture  
+
+  • rename models or modules without instruction  
+
+  • generate new tables, routes, or pages without instruction  
+
+  • override `.env`  
+
+
+
+# ---------------------------------------------------------
+
+# 6. UI / COMPONENT RULES
+
+# ---------------------------------------------------------
+
+- Use shadcn/ui + Tailwind conventions.  
+
+- Maintain readability.  
+
+- Preserve accessibility attributes.  
+
+- Do not break or restyle components unless explicitly asked.
+
+
+
+# ---------------------------------------------------------
+
+# 7. LOGGING & ERROR HANDLING
+
+# ---------------------------------------------------------
+
+- ALWAYS surface Supabase error messages.
+
+- ALWAYS include root cause.
+
+- NEVER silently continue on failure.
+
+
+
+# ---------------------------------------------------------
+
+# 8. STABILITY RULES
+
+# ---------------------------------------------------------
+
+- Cursor must NEVER require a "resume prompt" again.  
+
+- Cursor must ALWAYS reload this configuration on startup.  
+
+- Do NOT rewrite or delete this file automatically.  
+
+- Prevent regression loops.  
+
+- Always maintain working state.
+
+
+
+# ---------------------------------------------------------
+
+# 9. PRIORITY RULE
+
+# ---------------------------------------------------------
+
+If rules conflict:
+
+USER INSTRUCTION > .cursorrules > defaults

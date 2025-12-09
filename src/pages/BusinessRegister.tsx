@@ -18,7 +18,7 @@ const MinimalLocationInput = lazy(() => import('@/components/MinimalLocationInpu
 
 interface Category {
   id: string;
-  name: string;
+  title: string;
   slug: string;
 }
 
@@ -62,9 +62,9 @@ const BusinessRegister = () => {
       try {
         const { data, error } = await supabase
           .from('categories')
-          .select('id, name, slug')
+          .select('id, title, slug')
           .eq('is_active', true)
-          .order('name');
+          .order('title');
 
         if (error) throw error;
         setCategories(data || []);
@@ -235,9 +235,6 @@ const BusinessRegister = () => {
         logoUrl = formData.logo_url;
       }
 
-      // Determine status based on user role
-      const status = isAdmin ? 'active' : 'pending';
-
       // Parse and validate coordinates - only use valid numbers or null
       const parseCoordinate = (value: string | null | undefined): number | null => {
         if (!value || !value.trim()) return null;
@@ -256,12 +253,22 @@ const BusinessRegister = () => {
         throw new Error('Longitude must be between -180 and 180');
       }
 
+      // Find category_id from category slug
+      const selectedCategory = categories.find(cat => cat.slug === formData.category);
+      if (!selectedCategory) {
+        throw new Error('Invalid category selected');
+      }
+
+      // Determine verification and active status based on user role
+      const is_verified = isAdmin ? true : false;
+      const is_active = isAdmin ? true : false;
+
       // Prepare insert data - only use valid database fields
       // NEVER use undefined - use null for optional fields
       const insertData: Record<string, any> = {
-        name: formData.name.trim(),
+        title: formData.name.trim(), // Map form 'name' to database 'title'
         description: formData.description.trim() || null,
-        category: formData.category,
+        category_id: selectedCategory.id, // Map form 'category' (slug) to database 'category_id' (UUID)
         phone: formData.phone.trim() || null,
         email: formData.email.trim() || null,
         website: formData.website.trim() || null,
@@ -269,9 +276,10 @@ const BusinessRegister = () => {
         island: formData.island || null,
         latitude: latitude,
         longitude: longitude,
-        logo_url: logoUrl || null,
+        image_url: logoUrl || null, // Use image_url instead of logo_url
         owner_id: profile.id,
-        status: status as any,
+        is_verified: is_verified,
+        is_active: is_active,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -287,7 +295,7 @@ const BusinessRegister = () => {
         throw error;
       }
 
-      // Success message based on status
+      // Success message based on verification status
       const successMessage = isAdmin 
         ? "Business created successfully and is now active."
         : "Business added successfully! It is now pending approval by an administrator.";
@@ -426,7 +434,7 @@ const BusinessRegister = () => {
                         <SelectContent>
                           {categories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
-                              {category.name}
+                              {category.title}
                             </SelectItem>
                           ))}
                         </SelectContent>

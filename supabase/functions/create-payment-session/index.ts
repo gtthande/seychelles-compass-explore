@@ -78,7 +78,7 @@ serve(async (req) => {
 
     // Create payment session based on provider
     let sessionData: any = {}
-    let payment_id: string = crypto.randomUUID()
+    const payment_id: string = crypto.randomUUID()
 
     if (provider === 'stripe') {
       // Handle Stripe payment session

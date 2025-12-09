@@ -62,7 +62,7 @@ const BusinessCard = React.memo(({
         <div className="relative">
           <OptimizedImage
             src={business.cover_image_url}
-            alt={business.name}
+            alt={business.title}
             width={400}
             height={192}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
@@ -89,11 +89,11 @@ const BusinessCard = React.memo(({
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <h3 className="text-xl font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-              {business.name}
+              {business.title}
             </h3>
-            {business.category && (
+            {business.categories?.title && (
               <Badge variant="outline" className="text-xs">
-                {formatCategory(business.category)}
+                {business.categories.title}
               </Badge>
             )}
             {!business.cover_image_url && (
@@ -115,7 +115,7 @@ const BusinessCard = React.memo(({
           {business.logo_url && (
             <OptimizedImage
               src={business.logo_url}
-              alt={`${business.name} logo`}
+              alt={`${business.title} logo`}
               width={48}
               height={48}
               className="w-12 h-12 rounded-lg object-cover ml-3"

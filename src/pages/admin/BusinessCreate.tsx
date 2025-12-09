@@ -33,10 +33,10 @@ const BusinessCreate: React.FC = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
+    title: '',
     description: '',
-    category: '',
-    status: 'draft',
+    category_id: '',
+    is_active: true,
     phone: '',
     email: '',
     website: '',
@@ -44,7 +44,7 @@ const BusinessCreate: React.FC = () => {
     island: '',
     latitude: '',
     longitude: '',
-    logo_url: ''
+    image_url: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,12 +94,12 @@ const BusinessCreate: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Business name is required';
+    if (!formData.title.trim()) {
+      newErrors.title = 'Business title is required';
     }
 
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
+    if (!formData.category_id) {
+      newErrors.category_id = 'Category is required';
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -140,7 +140,7 @@ const BusinessCreate: React.FC = () => {
         .getPublicUrl(filePath);
 
       setLogoPreview(data.publicUrl);
-      setFormData(prev => ({ ...prev, logo_url: data.publicUrl }));
+      setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
       
       toast({
         title: "Success",
@@ -200,10 +200,10 @@ const BusinessCreate: React.FC = () => {
       // Prepare insert data - only use valid database fields
       // NEVER use undefined - use null for optional fields
       const insertData: Record<string, any> = {
-        name: formData.name,
+        title: formData.title,
         description: formData.description || null,
-        category: formData.category,
-        status: formData.status === 'draft' ? 'pending' : formData.status, // 'draft' is not valid, use 'pending'
+        category_id: formData.category_id || null,
+        is_active: formData.is_active,
         phone: formData.phone || null,
         email: formData.email || null,
         website: formData.website || null,
@@ -211,7 +211,7 @@ const BusinessCreate: React.FC = () => {
         island: formData.island || null,
         latitude: latitude,
         longitude: longitude,
-        logo_url: formData.logo_url || null,
+        image_url: formData.image_url || null,
         owner_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -295,20 +295,20 @@ const BusinessCreate: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Business Name *</Label>
+                  <Label htmlFor="title">Business Title *</Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className={errors.name ? 'border-red-500' : ''}
-                    placeholder="Enter business name"
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
+                    className={errors.title ? 'border-red-500' : ''}
+                    placeholder="Enter business title"
                   />
-                  {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                  {errors.title && <p className="text-sm text-red-500">{errors.title}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                    <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
+                  <Label htmlFor="category_id">Category *</Label>
+                  <Select value={formData.category_id} onValueChange={(value) => handleInputChange('category_id', value)}>
+                    <SelectTrigger className={errors.category_id ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -319,7 +319,7 @@ const BusinessCreate: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.category && <p className="text-sm text-red-500">{errors.category}</p>}
+                  {errors.category_id && <p className="text-sm text-red-500">{errors.category_id}</p>}
                 </div>
               </div>
 
@@ -335,17 +335,14 @@ const BusinessCreate: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                <Label htmlFor="is_active">Active Status</Label>
+                <Select value={formData.is_active ? 'true' : 'false'} onValueChange={(value) => handleInputChange('is_active', value === 'true')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -468,7 +465,7 @@ const BusinessCreate: React.FC = () => {
                     className="absolute top-2 right-2"
                     onClick={() => {
                       setLogoPreview('');
-                      setFormData(prev => ({ ...prev, logo_url: '' }));
+                      setFormData(prev => ({ ...prev, image_url: '' }));
                     }}
                   >
                     <X className="w-4 h-4" />

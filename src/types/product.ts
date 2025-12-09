@@ -22,6 +22,7 @@ export interface Product {
 
 /**
  * BusinessProduct interface matching business_products table schema
+ * Extended to include quantity, location, and best_buy_note for business-specific product details
  */
 export interface BusinessProduct {
   id: string;
@@ -30,5 +31,9 @@ export interface BusinessProduct {
   title_override?: string | null;
   description_override?: string | null;
   price_override?: number | null;
+  quantity?: number | null;
+  location?: string | null;
+  best_buy_note?: string | null;
+  created_at?: string;
   updated_at: string;
 }

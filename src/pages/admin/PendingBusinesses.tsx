@@ -13,17 +13,21 @@ import { subscribeToPendingBusinesses, approveBusiness, rejectBusiness } from '@
 
 interface PendingBusiness {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
-  category: string;
+  category_id: string | null;
   phone: string | null;
   email: string | null;
   website: string | null;
   address: string | null;
   island: string | null;
-  logo_url: string | null;
+  image_url: string | null;
   created_at: string;
   owner_id: string;
+  categories?: {
+    id: string;
+    title: string;
+  } | null;
   profiles?: {
     full_name: string | null;
     email: string | null;
@@ -55,7 +59,7 @@ const PendingBusinesses = () => {
         setFilteredBusinesses(prev => [newBusiness, ...prev]);
         toast({
           title: "New Pending Business",
-          description: `${newBusiness.name} is awaiting approval`,
+          description: `${newBusiness.title} is awaiting approval`,
         });
       },
       (updatedBusiness) => {
@@ -77,8 +81,8 @@ const PendingBusinesses = () => {
   useEffect(() => {
     if (searchTerm) {
       const filtered = businesses.filter(business =>
-        business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        business.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        business.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (business.categories?.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         business.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredBusinesses(filtered);
@@ -94,15 +98,15 @@ const PendingBusinesses = () => {
         .from('businesses')
         .select(`
           id,
-          name,
+          title,
           description,
-          category,
+          category_id,
           phone,
           email,
           website,
           address,
           island,
-          logo_url,
+          image_url,
           created_at,
           owner_id,
           profiles:owner_id (
@@ -110,7 +114,7 @@ const PendingBusinesses = () => {
             email
           )
         `)
-        .eq('status', 'pending')
+        .eq('is_active', false)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -257,17 +261,17 @@ const PendingBusinesses = () => {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1">
-                    {business.logo_url && (
+                    {business.image_url && (
                       <img
-                        src={business.logo_url}
-                        alt={business.name}
+                        src={business.image_url}
+                        alt={business.title}
                         className="w-12 h-12 rounded-lg object-cover"
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg truncate">{business.name}</CardTitle>
+                      <CardTitle className="text-lg truncate">{business.title}</CardTitle>
                       <Badge variant="secondary" className="mt-1">
-                        {business.category}
+                        {business.categories?.title || 'Uncategorized'}
                       </Badge>
                     </div>
                   </div>
@@ -325,7 +329,7 @@ const PendingBusinesses = () => {
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => handleApprove(business.id, business.name)}
+                    onClick={() => handleApprove(business.id, business.title)}
                     disabled={approving === business.id}
                     className="flex-1"
                   >
@@ -339,7 +343,7 @@ const PendingBusinesses = () => {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleReject(business.id, business.name)}
+                    onClick={() => handleReject(business.id, business.title)}
                     className="flex-1"
                   >
                     <XCircle className="w-4 h-4 mr-2" />

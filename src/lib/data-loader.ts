@@ -244,7 +244,7 @@ export const dataFetchers = {
         .from('categories')
         .select(`
           id,
-          name,
+          title,
           slug,
           description,
           is_active
@@ -269,14 +269,14 @@ export const dataFetchers = {
       .from('businesses')
       .select(`
         id,
-        name,
+        title,
         description,
-        category,
-        status,
+        category_id,
+        is_active,
         phone,
-        logo_url
+        image_url
       `)
-      .eq('featured', true)
+      .eq('is_active', true)
       .limit(6);
 
     if (error) {
@@ -326,20 +326,30 @@ export const dataFetchers = {
       .from('businesses')
       .select(`
         id,
-        name,
+        title,
         description,
-        category,
-        status,
+        category_id,
         phone,
-        logo_url
+        email,
+        website,
+        address,
+        is_active,
+        searchable,
+        slug,
+        image_url,
+        created_at,
+        updated_at
       `)
       .limit(20);
 
-    if (filters.category) {
-      query = query.eq('category', filters.category);
+    if (filters.categoryId) {
+      query = query.eq('category_id', filters.categoryId);
     }
     if (filters.search) {
-      query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+      query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+    }
+    if (filters.isActive !== undefined) {
+      query = query.eq('is_active', filters.isActive);
     }
 
     const { data, error } = await query;
@@ -366,11 +376,10 @@ export const dataFetchers = {
           price_override,
           business:businesses (
             id,
-            name,
+            title,
             address,
-            island,
-            category,
-            status
+            category_id,
+            is_active
           ),
           product:products (
             id,
@@ -415,6 +424,7 @@ export const dataFetchers = {
         image_url: bp.product?.image_url || null,
         stock: bp.product?.stock || 0,
         business_id: bp.business_id,
+        business_name: bp.business?.title || null,
         created_at: bp.created_at || bp.product?.created_at,
       }));
 
@@ -432,12 +442,12 @@ export const dataFetchers = {
         .from('businesses')
         .select(`
           id,
-          name,
+          title,
           description,
-          category,
-          status,
+          category_id,
+          is_active,
           phone,
-          logo_url
+          image_url
         `)
         .eq('id', id)
         .single();

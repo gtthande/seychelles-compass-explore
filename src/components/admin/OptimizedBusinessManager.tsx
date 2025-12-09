@@ -147,19 +147,19 @@ const OptimizedBusinessManager: React.FC = () => {
         .from('categories')
         .select(`
           id,
-          name,
+          title,
           slug,
           description,
           is_active
         `)
         .eq('is_active', true)
-        .order('name');
+        .order('title');
 
       if (error) throw error;
       
       const categoryOptions = data?.map(cat => ({
         value: cat.slug,
-        label: cat.name
+        label: cat.title
       })) || [];
       
       setCategories(categoryOptions);
@@ -172,9 +172,19 @@ const OptimizedBusinessManager: React.FC = () => {
     try {
       setLoading(true);
       
+      // Map status string to is_active and is_verified
+      const updateData: any = {};
+      if (newStatus === 'active') {
+        updateData.is_active = true;
+        updateData.is_verified = true;
+      } else if (newStatus === 'suspended' || newStatus === 'pending') {
+        updateData.is_active = false;
+        updateData.is_verified = false;
+      }
+      
       const { error } = await supabase
         .from('businesses')
-        .update({ status: newStatus })
+        .update(updateData)
         .eq('id', businessId);
 
       if (error) throw error;
@@ -452,7 +462,7 @@ const OptimizedBusinessManager: React.FC = () => {
                   <div key={business.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{business.name || 'Unnamed Business'}</h3>
+                        <h3 className="font-medium">{business.title || 'Unnamed Business'}</h3>
                         <Badge className={
                           business.status === 'active' ? 'bg-green-500 text-white' :
                           business.status === 'pending' ? 'bg-yellow-400 text-black' :
@@ -467,7 +477,7 @@ const OptimizedBusinessManager: React.FC = () => {
                         {business.description || 'No description available'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {business.address || 'No address'}, {business.island || 'Unknown'} • {business.category || 'uncategorized'}
+                        {business.address || 'No address'} • {business.categories?.title || 'uncategorized'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Created: {createdDate}

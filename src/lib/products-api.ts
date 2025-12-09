@@ -15,7 +15,6 @@ import { slugify } from "@/lib/utils";
  * Normalized structure: { id: join_id, product: {...}, business: {...} }
  * 
  * Unified schema: id, business_id, product_id, price_override, title_override, description_override
- * Legacy fields (price_from, price_to, etc.) kept for backward compatibility
  */
 export interface BusinessProduct {
     id: string;
@@ -30,28 +29,17 @@ export interface BusinessProduct {
     // Joined data - normalized structure with all fields
     business?: {
         id: string;
-        owner_id: string | null;
-        name: string;
+        title: string;
         description: string | null;
         category_id: string | null;
-        category: string | null;
-        status: string;
         phone: string | null;
         email: string | null;
         website: string | null;
         address: string | null;
-        latitude: number | null;
-        longitude: number | null;
-        island: string | null;
-        opening_hours: any | null;
-        services: string[] | null;
-        featured: boolean | null;
-        verified: boolean | null;
-        logo_url: string | null;
-        cover_image_url: string | null;
-        gallery_images: string[] | null;
-        average_rating: number | null;
-        total_reviews: number | null;
+        is_active: boolean;
+        searchable: boolean;
+        slug: string;
+        image_url: string | null;
         created_at: string;
         updated_at: string;
     };
@@ -81,11 +69,12 @@ export type { Product };
 
 /**
  * Parameters for fetching business products
+ * Note: category filter removed - products have NO category field
+ * Only businesses have category_id
  */
 export interface BusinessProductListParams {
     search?: string;
     businessId?: string;
-    category?: string;
     priceMin?: number;
     priceMax?: number;
     isActive?: boolean;
@@ -118,28 +107,17 @@ export async function fetchProducts(
         updated_at,
         business:businesses (
           id,
-          owner_id,
-          name,
+          title,
           description,
           category_id,
-          category,
-          status,
           phone,
           email,
           website,
           address,
-          latitude,
-          longitude,
-          island,
-          opening_hours,
-          services,
-          featured,
-          verified,
-          logo_url,
-          cover_image_url,
-          gallery_images,
-          average_rating,
-          total_reviews,
+          is_active,
+          searchable,
+          slug,
+          image_url,
           created_at,
           updated_at
         ),
@@ -240,28 +218,17 @@ export async function fetchBusinessProducts(
         updated_at,
         business:businesses (
           id,
-          owner_id,
-          name,
+          title,
           description,
           category_id,
-          category,
-          status,
           phone,
           email,
           website,
           address,
-          latitude,
-          longitude,
-          island,
-          opening_hours,
-          services,
-          featured,
-          verified,
-          logo_url,
-          cover_image_url,
-          gallery_images,
-          average_rating,
-          total_reviews,
+          is_active,
+          searchable,
+          slug,
+          image_url,
           created_at,
           updated_at
         ),
@@ -564,7 +531,22 @@ export async function createBusinessProduct(
           created_at,
           updated_at
         ),
-        business:businesses(*)
+        business:businesses (
+          id,
+          title,
+          description,
+          category_id,
+          phone,
+          email,
+          website,
+          address,
+          is_active,
+          searchable,
+          slug,
+          image_url,
+          created_at,
+          updated_at
+        )
       `)
             .single();
 
@@ -622,7 +604,22 @@ export async function updateBusinessProduct(
           created_at,
           updated_at
         ),
-        business:businesses(*)
+        business:businesses (
+          id,
+          title,
+          description,
+          category_id,
+          phone,
+          email,
+          website,
+          address,
+          is_active,
+          searchable,
+          slug,
+          image_url,
+          created_at,
+          updated_at
+        )
       `)
             .single();
 
@@ -796,10 +793,9 @@ export async function getLinkedBusinessesForProduct(productId: string): Promise<
         updated_at,
         business:businesses(
             id,
-            name,
+            title,
             address,
-            island,
-            status
+            is_active
         )
       `)
             .eq('product_id', productId)

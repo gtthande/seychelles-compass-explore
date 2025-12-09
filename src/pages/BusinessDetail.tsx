@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 interface Business {
   id: string;
   owner_id?: string;
-  name: string;
+  title: string;
   description?: string;
   category: string;
   address?: string;
@@ -64,13 +64,13 @@ const BusinessDetail: React.FC = () => {
         const { data, error: fetchError } = await supabase
           .from('businesses')
           .select(`
-            id, owner_id, name, description, category, address, latitude, longitude, island,
-            phone, website, email, facebook_url, instagram_url, opening_hours,
-            average_rating, total_reviews, featured, verified, logo_url, cover_image_url,
-            gallery_images, services, status
+            id, owner_id, title, description, category_id, address, latitude, longitude,
+            phone, website, email, image_url, is_active, is_verified,
+            created_at, updated_at,
+            categories (id, title, slug)
           `)
           .eq('id', id)
-          .eq('status', 'active')
+          .eq('is_active', true)
           .single();
 
         if (fetchError) {
@@ -118,12 +118,9 @@ const BusinessDetail: React.FC = () => {
 
   // Memoize category formatting
   const formattedCategory = useMemo(() => {
-    if (!business?.category) return '';
-    return business.category
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  }, [business?.category]);
+    if (!business?.categories?.title) return '';
+    return business.categories.title;
+  }, [business?.categories?.title]);
 
   // Memoize share handler
   const handleShare = useCallback(async () => {
@@ -132,7 +129,7 @@ const BusinessDetail: React.FC = () => {
     if (navigator.share && business) {
       try {
         await navigator.share({
-          title: business.name,
+          title: business.title,
           text: business.description,
           url: window.location.href,
         });
@@ -216,7 +213,7 @@ const BusinessDetail: React.FC = () => {
             Back
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-foreground">{business.name}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{business.title}</h1>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="secondary">{formattedCategory}</Badge>
               {business.featured && (
@@ -259,7 +256,7 @@ const BusinessDetail: React.FC = () => {
                 <CardContent className="p-0">
                   <img
                     src={business.cover_image_url}
-                    alt={business.name}
+                    alt={business.title}
                     className="w-full h-64 object-cover rounded-lg"
                   />
                 </CardContent>
@@ -308,7 +305,7 @@ const BusinessDetail: React.FC = () => {
                       <img
                         key={index}
                         src={image}
-                        alt={`${business.name} gallery ${index + 1}`}
+                        alt={`${business.title} gallery ${index + 1}`}
                         className="w-full h-32 object-cover rounded-lg"
                       />
                     ))}

@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Category {
   id: string;
-  name: string;
+  title: string;
   slug: string;
   description: string | null;
   is_active: boolean;
@@ -30,21 +30,19 @@ interface Category {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
-  category: string;
-  status: string;
-  logo_url: string | null;
-  cover_image_url: string | null;
-  average_rating: number | null;
-  total_reviews: number | null;
+  category_id: string | null;
+  is_active: boolean;
+  searchable: boolean;
+  slug: string | null;
+  image_url: string | null;
   address: string | null;
-  island: string | null;
   phone: string | null;
+  email: string | null;
   website: string | null;
-  whatsapp: string | null;
-  featured: boolean;
-  verified: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Product {
@@ -163,18 +161,34 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
         // Fetch categories
         supabase
           .from('categories')
-          .select('id, name, slug, description, is_active, created_at')
+          .select('id, title, slug, description, is_active, created_at')
           .eq('is_active', true)
-          .order('name')
+          .order('title')
           .limit(20), // Limit categories
 
-        // Fetch businesses
+        // Fetch businesses with category join
         supabase
           .from('businesses')
-          .select('*')
-          .eq('status', 'active')
-          .order('featured', { ascending: false })
-          .order('name')
+          .select(`
+            id,
+            title,
+            description,
+            category_id,
+            phone,
+            email,
+            website,
+            address,
+            is_active,
+            searchable,
+            slug,
+            image_url,
+            created_at,
+            updated_at,
+            categories (id, title, slug)
+          `)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .order('title')
           .limit(50), // Limit businesses for performance
 
         // Fetch products
@@ -231,7 +245,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
       filteredBiz = filteredBiz
         .map(business => {
           let relevanceScore = 0;
-          const name = business.name.toLowerCase();
+          const name = (business.title || '').toLowerCase();
           const description = business.description?.toLowerCase() || '';
           const address = business.address?.toLowerCase() || '';
           
@@ -286,7 +300,11 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
 
     // Apply category filter (only for businesses, products don't have category)
     if (selectedCategory) {
-      filteredBiz = filteredBiz.filter(business => business.category === selectedCategory);
+      // Find category by slug
+      const category = categories.find(c => c.slug === selectedCategory);
+      if (category) {
+        filteredBiz = filteredBiz.filter(business => business.category_id === category.id);
+      }
       // Products don't have category field anymore - skip product category filter
     }
 
@@ -305,7 +323,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
 
   const getCategoryName = (slug: string) => {
     const category = categories.find(c => c.slug === slug);
-    return category ? category.name : slug;
+    return category ? category.title : slug;
   };
 
   return (
@@ -334,7 +352,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
               <option value="">All Categories</option>
               {categories.map((category) => (
                 <option key={category.slug} value={category.slug}>
-                  {category.name}
+                  {category.title}
                 </option>
               ))}
             </select>
@@ -402,7 +420,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
             onClick={() => setSelectedCategory(selectedCategory === category.slug ? "" : category.slug)}
             className="rounded-full"
           >
-            {category.name}
+            {category.title}
           </Button>
         ))}
       </div>
@@ -488,103 +506,70 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
   );
 };
 
-const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
-  <Card className="hover:shadow-lg transition-shadow">
-    {/* Only show cover image if business uploaded one */}
-    {business.cover_image_url && (
-      <div className="relative">
-        <div className="h-48 relative overflow-hidden rounded-t-lg">
-          <img 
-            src={business.cover_image_url} 
-            alt={business.name}
-            className="w-full h-full object-cover"
-          />
+const BusinessCard: React.FC<{ business: Business }> = ({ business }) => {
+  const categoryName = (business as any).categories?.title || '';
+  
+  return (
+    <Card className="hover:shadow-lg transition-shadow">
+      {/* Only show image if business uploaded one */}
+      {business.image_url && (
+        <div className="relative">
+          <div className="h-48 relative overflow-hidden rounded-t-lg">
+            <img
+              src={business.image_url}
+              alt={business.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
         </div>
-        {business.featured && (
-          <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">
-            Featured
-          </Badge>
+      )}
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg font-semibold">{business.title}</CardTitle>
+            {categoryName && (
+              <CardDescription className="text-sm">
+                {categoryName}
+              </CardDescription>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-3">
+        {business.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {business.description}
+          </p>
         )}
-      </div>
-    )}
-    <CardHeader className="pb-3">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <CardTitle className="text-lg font-semibold">{business.name}</CardTitle>
-          <CardDescription className="text-sm">
-            {business.category}
-          </CardDescription>
-          {!business.cover_image_url && business.featured && (
-            <Badge className="bg-primary text-primary-foreground text-xs mt-2">
-              Featured
-            </Badge>
+        
+        {business.address && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="w-4 h-4" />
+            <span className="line-clamp-1">{business.address}</span>
+          </div>
+        )}
+        
+        <div className="flex gap-2 pt-2">
+          {business.phone && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={`tel:${business.phone}`}>
+                <Phone className="w-4 h-4" />
+              </a>
+            </Button>
+          )}
+          {business.website && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={business.website} target="_blank" rel="noopener noreferrer">
+                <Globe className="w-4 h-4" />
+              </a>
+            </Button>
           )}
         </div>
-        {business.logo_url && (
-          <img 
-            src={business.logo_url} 
-            alt={`${business.name} logo`}
-            className="w-10 h-10 rounded object-cover ml-3"
-          />
-        )}
-      </div>
-      
-      {business.average_rating && business.average_rating > 0 && (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm font-medium ml-1">{business.average_rating.toFixed(1)}</span>
-          </div>
-          <span className="text-sm text-muted-foreground">
-            ({business.total_reviews} reviews)
-          </span>
-        </div>
-      )}
-    </CardHeader>
-    
-    <CardContent className="space-y-3">
-      {business.description && (
-        <p className="text-sm text-muted-foreground line-clamp-2">
-          {business.description}
-        </p>
-      )}
-      
-      {business.address && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <MapPin className="w-4 h-4" />
-          <span className="line-clamp-1">{business.address}</span>
-        </div>
-      )}
-      
-      <div className="flex gap-2 pt-2">
-        {business.phone && (
-          <Button variant="outline" size="sm" asChild>
-            <a href={`tel:${business.phone}`}>
-              <Phone className="w-4 h-4" />
-            </a>
-          </Button>
-        )}
-        {business.whatsapp && (
-          <Button variant="outline" size="sm" asChild>
-            <a href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="w-4 h-4" />
-            </a>
-          </Button>
-        )}
-        {business.website && (
-          <Button variant="outline" size="sm" asChild>
-            <a href={business.website} target="_blank" rel="noopener noreferrer">
-              <Globe className="w-4 h-4" />
-            </a>
-          </Button>
-        )}
-      </div>
-      
-      {/* Temporarily disabled to fix hanging issue */}
-            {/* Map preview disabled for performance - will be lazy-loaded in detail view */}
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const title = product?.title || "Unnamed";

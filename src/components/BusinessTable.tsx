@@ -20,9 +20,10 @@ import { useNavigate } from 'react-router-dom';
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   description?: string;
-  category: string;
+  category_id?: string | null;
+  category?: string; // For backward compatibility, may come from join
   address?: string;
   island?: string;
   phone?: string;
@@ -164,7 +165,7 @@ const BusinessTable: React.FC<BusinessTableProps> = ({ businesses, searchTerm })
               <div className="col-span-3">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                    {business.name}
+                    {business.title}
                   </h3>
                   {business.featured && (
                     <Badge variant="secondary" className="text-xs">
@@ -180,7 +181,7 @@ const BusinessTable: React.FC<BusinessTableProps> = ({ businesses, searchTerm })
               {/* Category */}
               <div className="col-span-2">
                 <Badge variant="outline" className="text-xs">
-                  {formatCategory(business.category)}
+                  {business.category || 'Uncategorized'}
                 </Badge>
               </div>
 
@@ -189,7 +190,7 @@ const BusinessTable: React.FC<BusinessTableProps> = ({ businesses, searchTerm })
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <MapPin className="w-4 h-4" />
                   <span className="truncate">
-                    {business.island || business.address || 'N/A'}
+                    {business.address || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -292,13 +293,6 @@ const BusinessTable: React.FC<BusinessTableProps> = ({ businesses, searchTerm })
                             <div className="flex items-start gap-2">
                               <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
                               <span className="text-sm">{business.address}</span>
-                            </div>
-                          )}
-                          {business.island && (
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {business.island}
-                              </Badge>
                             </div>
                           )}
                           {(business.latitude && business.longitude) && (

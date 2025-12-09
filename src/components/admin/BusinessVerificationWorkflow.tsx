@@ -27,29 +27,26 @@ import {
 
 interface Business {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  status: string;
-  phone: string;
-  email: string;
-  website: string;
-  address: string;
-  island: string;
+  title: string;
+  description: string | null;
+  category_id: string | null;
+  category?: { id: string; title: string; slug: string } | null;
+  is_active: boolean;
+  is_verified: boolean;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
   latitude: number | null;
   longitude: number | null;
-  featured: boolean;
-  verified: boolean;
-  logo_url: string;
-  cover_image_url: string;
-  average_rating: number;
-  total_reviews: number;
   created_at: string;
   updated_at: string;
-  owner_id: string;
+  owner_id: string | null;
   verification_notes?: string;
   verification_date?: string;
   verified_by?: string;
+  // Computed status for UI (derived from is_active and is_verified)
+  status?: 'pending' | 'active' | 'suspended' | 'closed';
 }
 
 interface VerificationAction {
@@ -83,7 +80,22 @@ const BusinessVerificationWorkflow: React.FC = () => {
       const { data, error } = await supabase
         .from('businesses')
         .select(`
-          *,
+          id,
+          title,
+          description,
+          category_id,
+          is_active,
+          is_verified,
+          phone,
+          email,
+          website,
+          address,
+          latitude,
+          longitude,
+          created_at,
+          updated_at,
+          owner_id,
+          categories (id, title, slug),
           profiles!businesses_owner_id_fkey (
             id,
             full_name,
@@ -94,7 +106,13 @@ const BusinessVerificationWorkflow: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBusinesses(data || []);
+      // Map data to include computed status
+      const businessesWithStatus = (data || []).map((b: any) => ({
+        ...b,
+        status: !b.is_active ? 'pending' : b.is_verified ? 'active' : 'pending',
+        category: b.categories?.title || null
+      }));
+      setBusinesses(businessesWithStatus);
     } catch (error) {
       console.error('Error fetching businesses:', error);
       toast({
@@ -112,9 +130,9 @@ const BusinessVerificationWorkflow: React.FC = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(business =>
-        business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        business.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        business.category.toLowerCase().includes(searchTerm.toLowerCase())
+        business.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (business.description && business.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (business.categories?.title && business.categories.title.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -127,15 +145,27 @@ const BusinessVerificationWorkflow: React.FC = () => {
 
   const handleVerificationAction = async (action: VerificationAction) => {
     try {
+      // Map status to is_active and is_verified
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      if (action.status === 'active') {
+        updateData.is_active = true;
+        updateData.is_verified = true;
+      } else if (action.status === 'suspended') {
+        updateData.is_active = false;
+        updateData.is_verified = false;
+      } else if (action.status === 'pending') {
+        updateData.is_active = false;
+        updateData.is_verified = false;
+      } else if (action.status === 'closed') {
+        updateData.is_active = false;
+      }
+      
       const { error } = await supabase
         .from('businesses')
-        .update({
-          status: action.status,
-          verification_notes: action.notes,
-          verification_date: new Date().toISOString(),
-          verified_by: 'admin', // In real app, use current user ID
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', action.businessId);
 
       if (error) throw error;
@@ -166,12 +196,12 @@ const BusinessVerificationWorkflow: React.FC = () => {
   };
 
   const getStatusCounts = () => {
-      const counts = {
+    const counts = {
       all: businesses.length,
-      pending: businesses.filter(b => b.status === 'pending').length,
-      active: businesses.filter(b => b.status === 'active').length,
-      suspended: businesses.filter(b => b.status === 'suspended').length,
-      closed: businesses.filter(b => b.status === 'closed').length,
+      pending: businesses.filter(b => !b.is_active || (!b.is_verified && b.is_active)).length,
+      active: businesses.filter(b => b.is_active && b.is_verified).length,
+      suspended: businesses.filter(b => !b.is_active && b.is_verified === false).length,
+      closed: businesses.filter(b => !b.is_active).length,
     };
     return counts;
   };
@@ -275,8 +305,8 @@ const BusinessVerificationWorkflow: React.FC = () => {
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-lg">{business.name}</h3>
-                    <BusinessStatusBadge status={business.status} />
+                    <h3 className="font-semibold text-lg">{business.title}</h3>
+                    <BusinessStatusBadge status={business.status || (!business.is_active ? 'pending' : business.is_verified ? 'active' : 'pending')} />
                     {business.featured && (
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <Star className="w-3 h-3" />
@@ -299,7 +329,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
-                        <span>{business.address}, {business.island}</span>
+                        <span>{business.address || 'No address'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4 text-muted-foreground" />
@@ -320,7 +350,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
                     </div>
                     <div className="space-y-1">
                       <div className="text-muted-foreground">
-                        <strong>Category:</strong> {business.category}
+                        <strong>Category:</strong> {business.categories?.title || 'N/A'}
                       </div>
                       <div className="text-muted-foreground">
                         <strong>Created:</strong> {new Date(business.created_at).toLocaleDateString()}
@@ -344,7 +374,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
                     Review
                   </Button>
                   
-                  {business.status === 'pending' && (
+                  {(!business.is_active || !business.is_verified) && (
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -397,7 +427,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
       {selectedBusiness && (
         <Card className="fixed inset-4 z-50 bg-background border-2">
           <CardHeader>
-            <CardTitle>Review Business: {selectedBusiness.name}</CardTitle>
+            <CardTitle>Review Business: {selectedBusiness.title}</CardTitle>
             <CardDescription>
               Review business details and make verification decision
             </CardDescription>
@@ -407,10 +437,9 @@ const BusinessVerificationWorkflow: React.FC = () => {
               <div>
                 <h4 className="font-semibold mb-2">Business Information</h4>
                 <div className="space-y-2 text-sm">
-                  <div><strong>Name:</strong> {selectedBusiness.name}</div>
-                  <div><strong>Category:</strong> {selectedBusiness.category}</div>
-                  <div><strong>Address:</strong> {selectedBusiness.address}</div>
-                  <div><strong>Island:</strong> {selectedBusiness.island}</div>
+                  <div><strong>Name:</strong> {selectedBusiness.title}</div>
+                  <div><strong>Category:</strong> {selectedBusiness.category || 'N/A'}</div>
+                  <div><strong>Address:</strong> {selectedBusiness.address || 'N/A'}</div>
                   <div><strong>Phone:</strong> {selectedBusiness.phone}</div>
                   <div><strong>Email:</strong> {selectedBusiness.email}</div>
                 </div>

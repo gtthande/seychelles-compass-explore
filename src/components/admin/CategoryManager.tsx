@@ -47,7 +47,7 @@ import * as z from "zod";
 const CATEGORY_IMAGES_BUCKET = import.meta.env.VITE_IMAGE_BUCKET_CATEGORIES || import.meta.env.VITE_CATEGORY_IMAGES_BUCKET || 'category-images';
 
 const categorySchema = z.object({
-  name: z.string().min(2, "Category name must be at least 2 characters"),
+  title: z.string().min(2, "Category title must be at least 2 characters"),
   description: z.string().optional(),
   slug: z.string().min(2, "Slug must be at least 2 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
 });
@@ -56,7 +56,7 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 
 interface Category {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
   slug: string;
   is_active: boolean;
@@ -79,7 +79,7 @@ const CategoryManager = () => {
   const form = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
-      name: "",
+      title: "",
       description: "",
       slug: "",
     },
@@ -107,7 +107,7 @@ const CategoryManager = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .order('name', { ascending: true });
+        .order('title', { ascending: true });
 
       if (error) throw error;
       setCategories(data || []);
@@ -377,7 +377,7 @@ const CategoryManager = () => {
       if (editingCategory) {
         // Update existing category
         const updateData: any = {
-          name: data.name,
+          title: data.title,
           description: data.description || null,
           slug: data.slug,
         };
@@ -401,7 +401,7 @@ const CategoryManager = () => {
       } else {
         // Create new category
         const insertData: any = {
-          name: data.name,
+          title: data.title,
           description: data.description || null,
           slug: data.slug,
         };
@@ -439,7 +439,7 @@ const CategoryManager = () => {
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
     form.reset({
-      name: category.name,
+      title: category.title,
       description: category.description || "",
       slug: category.slug,
     });
@@ -565,13 +565,13 @@ const CategoryManager = () => {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Category Name</FormLabel>
+                      <FormLabel>Category Title</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Enter category name" 
+                          placeholder="Enter category title" 
                           {...field}
                           onChange={(e) => {
                             field.onChange(e);
@@ -644,7 +644,7 @@ const CategoryManager = () => {
           <Card key={category.id} className="hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{category.name}</CardTitle>
+                <CardTitle className="text-lg">{category.title}</CardTitle>
                 <Badge variant={category.is_active ? "default" : "secondary"}>
                   {category.is_active ? "Active" : "Inactive"}
                 </Badge>
@@ -689,7 +689,7 @@ const CategoryManager = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Category</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete "{category.name}"? This action cannot be undone and will affect all products using this category.
+                        Are you sure you want to delete "{category.title}"? This action cannot be undone and will affect all products using this category.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

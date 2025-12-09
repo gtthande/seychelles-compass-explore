@@ -17,10 +17,7 @@ export interface Product {
   description?: string | null;
   image_url?: string | null;
   price?: number | null;
-  price_from?: number | null;
-  price_to?: number | null;
   price_override?: number | null;
-  currency_code?: string;
   duration?: string | null;
   is_active: boolean;
   stock?: number | null;
@@ -92,18 +89,14 @@ const Products = () => {
             title_override,
             description_override,
             price_override,
-            price_from,
-            price_to,
-            currency_code,
             is_active,
             created_at,
             updated_at,
             business:businesses (
               id,
-              name,
-              island,
+              title,
               address,
-              status
+              is_active
             ),
             product:products (
               id,
@@ -119,11 +112,9 @@ const Products = () => {
               slug,
               created_at,
               updated_at
-            ),
-            price_override
+            )
           `, { count: 'exact' })
           .eq('is_active', true)
-          .eq('business.status', 'active')
           .order('created_at', { ascending: false });
 
         // Apply filters
@@ -140,11 +131,11 @@ const Products = () => {
         // }
 
         if (priceRange.min) {
-          query = query.or(`price_override.gte.${priceRange.min},price_from.gte.${priceRange.min}`);
+          query = query.gte('price_override', priceRange.min);
         }
 
         if (priceRange.max) {
-          query = query.or(`price_override.lte.${priceRange.max},price_to.lte.${priceRange.max}`);
+          query = query.lte('price_override', priceRange.max);
         }
 
         if (selectedIsland && selectedIsland !== "__all__") {
@@ -176,10 +167,7 @@ const Products = () => {
           description: bp.description_override || bp.product?.description || '',
           image_url: bp.product?.image_url || null,  // Single string, not array
           price_override: bp.price_override || null,
-          price_from: bp.price_from || null,
-          price_to: bp.price_to || null,
-          price: bp.price_override || bp.price_from || bp.product?.price || null,  // Use price_override as primary
-          currency_code: bp.currency_code || 'SCR',
+          price: bp.price_override || bp.product?.price || null,  // Use price_override as primary
           duration: bp.product?.duration || null,
           is_active: bp.is_active,
           stock: bp.product?.stock || 0,
@@ -268,18 +256,9 @@ const Products = () => {
     }
   };
 
-  const formatPrice = (price: number | null | undefined, priceFrom: number | null | undefined, priceTo: number | null | undefined, currency: string | null | undefined) => {
-    const currencyCode = currency || 'SCR';
-    const symbol = currencyCode === "USD" ? "$" : currencyCode === "EUR" ? "€" : "₨";
-    
-    if (priceFrom && priceTo && priceFrom !== priceTo) {
-      return `${symbol}${priceFrom.toLocaleString()} - ${symbol}${priceTo.toLocaleString()}`;
-    }
-    if (priceFrom) {
-      return `From ${symbol}${priceFrom.toLocaleString()}`;
-    }
+  const formatPrice = (price: number | null | undefined) => {
     if (price) {
-      return `${symbol}${price.toLocaleString()}`;
+      return `₨${price.toLocaleString()}`;
     }
     return "Price on request";
   };
@@ -340,7 +319,7 @@ const Products = () => {
           </div>
         </div>
         <div className="text-primary font-semibold">
-          {formatPrice(product.price, product.price_from, product.price_to, product.currency_code)}
+          {formatPrice(product.price)}
         </div>
       </CardHeader>
 
@@ -353,7 +332,7 @@ const Products = () => {
           {product.business?.name && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="w-3 h-3" />
-              <span>{product.business.name}</span>
+              <span>{product.business.title}</span>
               {product.business.island && <span>• {product.business.island}</span>}
             </div>
           )}
@@ -403,7 +382,7 @@ const Products = () => {
             </div>
 
             <div className="text-primary font-semibold mb-2">
-              {formatPrice(product.price, product.price_from, product.price_to, product.currency_code)}
+              {formatPrice(product.price)}
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -414,7 +393,7 @@ const Products = () => {
               {product.business?.name && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="w-3 h-3" />
-                  <span>{product.business.name}</span>
+                  <span>{product.business.title}</span>
                   {product.business.island && <span>• {product.business.island}</span>}
                 </div>
               )}

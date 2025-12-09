@@ -47,23 +47,24 @@ export const useUnifiedSearch = () => {
         .from('businesses')
         .select(`
           id,
-          name,
+          title,
           description,
-          category,
-          logo_url,
+          category_id,
+          image_url,
           address,
-          island,
-          status
+          is_active,
+          searchable,
+          slug
         `)
-        .eq('status', 'active')
+        .eq('is_active', true)
         .limit(limit / 2);
 
       if (query) {
-        businessQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+        businessQuery.or(`title.ilike.%${query}%,description.ilike.%${query}%`);
       }
 
       if (category) {
-        businessQuery.eq('category', category);
+        businessQuery.eq('category_id', category);
       }
 
       // Search products via business_products join table
@@ -89,9 +90,9 @@ export const useUnifiedSearch = () => {
           ),
           business:businesses!inner (
             id,
-            name,
+            title,
             address,
-            island
+            category_id
           )
         `)
         .eq('is_active', true)
@@ -133,18 +134,18 @@ export const useUnifiedSearch = () => {
       if (businessResult.error) throw businessResult.error;
       if (productResult.error) throw productResult.error;
 
-      // Format results
+      // Format results - businesses use category_id, not category field
       const businessResults: SearchResult[] = (businessResult.data || []).map(business => ({
         id: business.id,
         type: 'business' as const,
-        name: business.name,
+        name: business.title || '',
         description: business.description || '',
-        category: business.category,
-        image_url: business.logo_url,
-        business_name: business.name,
-        business_address: business.address,
-        business_island: business.island,
-        rank: calculateRank(business.name, business.description || '', query)
+        category: '', // Category is now via category_id join, not a direct field
+        image_url: business.image_url || null,
+        business_name: business.title || '',
+        business_address: business.address || '',
+        business_island: undefined, // Not selected in query
+        rank: calculateRank(business.title || '', business.description || '', query)
       }));
 
       const productResults: SearchResult[] = (productResult.data || []).map((bp: any) => {
@@ -160,9 +161,9 @@ export const useUnifiedSearch = () => {
           category: '', // Category removed from products schema
           price: bp.price_override || product.price || 0,
           image_url: product.image_url,
-          business_name: business.name,
-          business_address: business.address,
-          business_island: business.island,
+          business_name: business.title || '',
+          business_address: business.address || '',
+          business_island: undefined, // Not selected in query
           rank: calculateRank(displayName, displayDescription, query)
         };
       });
@@ -192,15 +193,15 @@ export const useUnifiedSearch = () => {
         .from('businesses')
         .select(`
           id,
-          name,
+          title,
           description,
-          category,
-          logo_url,
+          category_id,
+          image_url,
           address,
-          island
+          is_active
         `)
-        .eq('status', 'active')
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+        .eq('is_active', true)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
         .limit(limit);
 
       if (error) throw error;
@@ -208,14 +209,14 @@ export const useUnifiedSearch = () => {
       return (data || []).map(business => ({
         id: business.id,
         type: 'business' as const,
-        name: business.name,
+        name: business.title || '',
         description: business.description || '',
-        category: business.category,
-        image_url: business.logo_url,
-        business_name: business.name,
-        business_address: business.address,
-        business_island: business.island,
-        rank: calculateRank(business.name, business.description || '', query)
+        category: '', // Category is now via category_id join, not a direct field
+        image_url: business.image_url || null,
+        business_name: business.title || '',
+        business_address: business.address || '',
+        business_island: undefined, // Not selected in query
+        rank: calculateRank(business.title || '', business.description || '', query)
       }));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Business search failed';
@@ -257,9 +258,9 @@ export const useUnifiedSearch = () => {
           ),
           business:businesses!inner (
             id,
-            name,
+            title,
             address,
-            island
+            category_id
           )
         `)
         .eq('is_active', true)
@@ -287,9 +288,9 @@ export const useUnifiedSearch = () => {
           category: '', // Category removed from products schema
           price: bp.price_override || product.price || 0,
           image_url: product.image_url,  // Single string, not array
-          business_name: business.name,
-          business_address: business.address,
-          business_island: business.island,
+          business_name: business.title || '',
+          business_address: business.address || '',
+          business_island: undefined, // Not selected in query
           rank: calculateRank(displayName, displayDescription, query)
         };
       });

@@ -117,9 +117,9 @@ export const useAdvancedSearch = () => {
       // Basic business search using the improved pattern - optimized with specific fields and limits
       const { data: businessMatches, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, description, category, address, island, featured, status')
-        .eq('status', 'active')
-        .ilike('name', `%${query}%`)
+        .select('id, title, description, category_id, address, is_active, searchable, slug, image_url')
+        .eq('is_active', true)
+        .ilike('title', `%${query}%`)
         .or(`description.ilike.%${query}%`)
         .limit(limit);
 
@@ -149,17 +149,14 @@ export const useAdvancedSearch = () => {
           ),
           business:businesses!inner(
             id,
-            name,
-            category,
+            title,
+            category_id,
             description,
-            address,
-            island,
-            status
+            address
           )
         `)
         .eq('is_active', true)
         .eq('product.is_active', true)
-        .eq('business.status', 'active')
         .or(`product.title.ilike.%${query}%,product.description.ilike.%${query}%,title_override.ilike.%${query}%,description_override.ilike.%${query}%`)
         .limit(limit);
 
@@ -171,37 +168,29 @@ export const useAdvancedSearch = () => {
       const businessResults: SearchResult[] = (businessMatches || []).map(business => {
         let relevanceScore = 0;
         let matchedField: 'name' | 'description' | 'category' | 'services' = 'name';
-        let highlight = business.name;
+        const businessName = business.title || '';
+        let highlight = businessName;
 
         const queryLower = query.toLowerCase();
-        const name = business.name?.toLowerCase() || '';
+        const name = businessName.toLowerCase();
         const description = business.description?.toLowerCase() || '';
-        const category = business.category?.toLowerCase() || '';
 
         if (name.includes(queryLower)) {
           relevanceScore += 100;
           matchedField = 'name';
-          highlight = business.name;
+          highlight = businessName;
         } else if (description.includes(queryLower)) {
           relevanceScore += 75;
           matchedField = 'description';
-          highlight = `${business.name} – ${business.description}`;
-        } else if (category.includes(queryLower)) {
-          relevanceScore += 50;
-          matchedField = 'category';
-          highlight = `${business.name} – ${business.category}`;
-        }
-
-        if (business.featured) {
-          relevanceScore += 30;
+          highlight = `${businessName} – ${business.description}`;
         }
 
         return {
           business_id: business.id,
-          business_name: business.name,
+          business_name: businessName,
           business_description: business.description,
           business_address: business.address,
-          business_island: business.island,
+          business_island: undefined, // Not selected in query
           match_source: 'business' as const,
           matched_field: matchedField,
           highlight,
@@ -210,13 +199,15 @@ export const useAdvancedSearch = () => {
       });
 
       // Process product results using the improved pattern
+      // Note: Products have NO category field - only businesses have category_id
       const productResults: SearchResult[] = (productMatches || []).map((bp: any) => {
         let relevanceScore = 0;
         let matchedField: 'name' | 'description' | 'category' | 'services' = 'name';
         const product = bp.product || {};
         const business = bp.business || {};
         const productTitle = bp.title_override || product.title || '';
-        let highlight = `${business.name} – ${productTitle}`;
+        const businessName = business.title || '';
+        let highlight = `${businessName} – ${productTitle}`;
 
         const queryLower = query.toLowerCase();
         const productTitleLower = productTitle.toLowerCase();
@@ -225,19 +216,19 @@ export const useAdvancedSearch = () => {
         if (productTitleLower.includes(queryLower)) {
           relevanceScore += 100;
           matchedField = 'name';
-          highlight = `${business.name} – offers ${productTitle}`;
+          highlight = `${businessName} – offers ${productTitle}`;
         } else if (productDescription.includes(queryLower)) {
           relevanceScore += 75;
           matchedField = 'description';
-          highlight = `${business.name} – ${productTitle}: ${bp.description_override || product.description}`;
+          highlight = `${businessName} – ${productTitle}: ${bp.description_override || product.description}`;
         }
 
         return {
           business_id: bp.business_id,
-          business_name: business.name || '',
+          business_name: businessName,
           business_description: business.description,
           business_address: business.address,
-          business_island: business.island,
+          business_island: undefined, // Not selected in query
           match_source: 'product' as const,
           matched_field: matchedField,
           highlight,

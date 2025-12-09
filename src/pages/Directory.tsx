@@ -62,32 +62,31 @@ import {
 
 interface Business {
   id: string;
-  owner_id: string;
-  name: string;
-  description: string;
-  category: string;
-  status: string;
-  phone: string;
-  whatsapp: string;
-  email: string;
-  website: string;
-  facebook_url: string;
-  instagram_url: string;
-  linkedin_url: string;
-  youtube_url: string;
-  address: string;
-  island: string;
-  latitude: number | null;
-  longitude: number | null;
-  featured: boolean;
-  verified: boolean;
-  logo_url: string;
-  cover_image_url: string;
-  average_rating: number;
-  total_reviews: number;
-  created_at: string;
+  owner_id?: string;
+  title: string;
+  description: string | null;
+  category_id: string | null;
+  is_active: boolean;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  website?: string | null;
+  facebook_url?: string | null;
+  instagram_url?: string | null;
+  linkedin_url?: string | null;
+  youtube_url?: string | null;
+  address?: string | null;
+  island?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  featured?: boolean;
+  verified?: boolean;
+  image_url?: string | null;
+  slug?: string | null;
+  created_at?: string;
   services?: string[];
   subcategory?: string;
+  categories?: { id: string; title: string; slug: string } | null;
 }
 
 interface CategoryGroup {
@@ -141,32 +140,32 @@ const Directory = () => {
   const { data: categoriesData, loading: categoriesLoading } = useStaticData(
     'directory_categories',
     async () => {
-      const { data, error } = await supabase
-        .from('businesses')
-        .select('category')
-        .eq('status', 'active')
-        .not('category', 'is', null);
+      // Fetch categories from categories table
+      const { data: categories, error: categoriesError } = await supabase
+        .from('categories')
+        .select('id, title, slug')
+        .eq('is_active', true)
+        .order('title');
 
-      if (error) throw error;
-      
-      // Get distinct categories with counts
-      const categoryMap: Record<string, { label: string; count: number }> = {};
-      
-      data?.forEach(business => {
-        const categoryValue = business.category;
-        if (categoryValue) {
-          if (!categoryMap[categoryValue]) {
-            categoryMap[categoryValue] = { label: categoryValue, count: 0 };
-          }
-          categoryMap[categoryValue].count++;
-        }
-      });
+      if (categoriesError) throw categoriesError;
 
-      // Convert to array and format labels
-      return Object.entries(categoryMap).map(([value, data]) => ({
-        value,
-        label: `${data.label} (${data.count})`
-      })).sort((a, b) => a.label.localeCompare(b.label));
+      // Count businesses per category
+      const categoriesWithCounts = await Promise.all(
+        (categories || []).map(async (category) => {
+          const { count, error } = await supabase
+            .from('businesses')
+            .select('id', { count: 'exact', head: true })
+            .eq('category_id', category.id)
+            .eq('is_active', true);
+
+          return {
+            value: category.id,
+            label: `${category.title} (${count || 0})`
+          };
+        })
+      );
+
+      return categoriesWithCounts.sort((a, b) => a.label.localeCompare(b.label));
     },
     {
       fallback: [
@@ -228,27 +227,43 @@ const Directory = () => {
       try {
         let query = supabase
           .from('businesses')
-          .select('*')
-          .order('featured', { ascending: false })
+          .select(`
+            id,
+            title,
+            description,
+            category_id,
+            phone,
+            email,
+            website,
+            address,
+            is_active,
+            searchable,
+            slug,
+            image_url,
+            created_at,
+            updated_at,
+            categories (id, title, slug)
+          `)
           .order('created_at', { ascending: false })
           .limit(100); // Increased limit to get more results, will deduplicate
 
         // For non-admin users, filter to only show active businesses
         // RLS will enforce this at the database level, but client-side filter improves UX
         if (!isAdmin) {
-          query = query.eq('status', 'active');
+          query = query.eq('is_active', true);
         }
         // Admins can see all businesses (including pending) - RLS will allow this
 
         // Apply filters
-        if (selectedCategory) {
-          query = query.eq('category', selectedCategory);
-        }
-        if (selectedIsland) {
-          query = query.eq('island', selectedIsland);
+        if (selectedCategory && selectedCategory !== "__all__") {
+          // Find category by slug or use ID directly
+          const category = categories.find(c => c.value === selectedCategory || c.slug === selectedCategory);
+          if (category) {
+            query = query.eq('category_id', category.value);
+          }
         }
         if (searchTerm) {
-          query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
         }
 
         // Execute query with retry logic for network errors
@@ -282,22 +297,18 @@ const Directory = () => {
               // Recreate query for retry (queries can't be reused after execution)
               query = supabase
                 .from('businesses')
-                .select('*')
-                .order('featured', { ascending: false })
+                .select('id, title, description, category_id, phone, email, website, address, is_active, searchable, slug, image_url, created_at, updated_at')
                 .order('created_at', { ascending: false })
                 .limit(100);
               
               if (!isAdmin) {
-                query = query.eq('status', 'active');
+                query = query.eq('is_active', true);
               }
               if (selectedCategory) {
-                query = query.eq('category', selectedCategory);
-              }
-              if (selectedIsland) {
-                query = query.eq('island', selectedIsland);
+                query = query.eq('category_id', selectedCategory);
               }
               if (searchTerm) {
-                query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+                query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
               }
               continue;
             }
@@ -322,10 +333,10 @@ const Directory = () => {
                 .limit(100);
               
               if (!isAdmin) {
-                query = query.eq('status', 'active');
+                query = query.eq('is_active', true);
               }
               if (selectedCategory) {
-                query = query.eq('category', selectedCategory);
+                query = query.eq('category_id', selectedCategory);
               }
               if (selectedIsland) {
                 query = query.eq('island', selectedIsland);
@@ -508,23 +519,21 @@ const Directory = () => {
         .from('products')
         .select(`
           id,
-          name,
+          title,
           description,
-          category,
-          images,
           price,
-          currency,
-          stock,
+          duration,
           is_active,
-          status,
+          searchable,
+          image_url,
+          stock,
           business_id,
+          slug,
           created_at,
           updated_at,
-          slug,
-          business:businesses(id, name, category, status, island, address)
+          business:businesses(id, title, category_id, address)
         `)
         .eq('is_active', true)
-        .eq('business.status', 'active')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -544,7 +553,7 @@ const Directory = () => {
   const handleEditBusiness = (business: Business) => {
     setEditingBusiness(business);
     setEditForm({
-      name: business.name || "",
+      name: business.title || "",
       description: business.description || "",
       phone: business.phone || "",
       email: business.email || "",
@@ -726,15 +735,15 @@ const Directory = () => {
       filtered = filtered
         .map(business => {
           let relevanceScore = 0;
-          const name = business.name?.toLowerCase() || '';
+          const name = (business.title || '').toLowerCase();
           const description = business.description?.toLowerCase() || '';
-          const category = business.category?.toLowerCase() || '';
+          const categoryName = (business.categories?.title || '').toLowerCase();
           const address = business.address?.toLowerCase() || '';
           const island = business.island?.toLowerCase() || '';
           
           // Prioritize exact name matches (highest score)
           if (name.includes(searchLower)) {
-            console.log(`🔍 Name match found: "${business.name}" contains "${searchLower}"`);
+            console.log(`🔍 Name match found: "${business.title}" contains "${searchLower}"`);
             relevanceScore += 100;
             // Bonus for exact name match
             if (name === searchLower) relevanceScore += 50;
@@ -743,7 +752,7 @@ const Directory = () => {
           }
           
           // Category match (high relevance)
-          if (category.includes(searchLower)) {
+          if (categoryName.includes(searchLower)) {
             relevanceScore += 75;
           }
           
@@ -780,7 +789,7 @@ const Directory = () => {
       
       console.log('🔍 Enhanced search results:', filtered.length, 'businesses found');
       filtered.forEach((business, index) => {
-        console.log(`  ${index + 1}. ${business.name} (score: ${(business as any).relevanceScore})`);
+        console.log(`  ${index + 1}. ${business.title} (score: ${(business as any).relevanceScore})`);
       });
 
       // Also search products and add matching businesses
@@ -843,7 +852,11 @@ const Directory = () => {
     }
 
     if (selectedCategory && selectedCategory !== "__all__") {
-      filtered = filtered.filter(business => business.category === selectedCategory);
+      // Find category by slug or use ID directly
+      const category = categories.find(c => c.value === selectedCategory || c.slug === selectedCategory);
+      if (category) {
+        filtered = filtered.filter(business => business.category_id === category.value);
+      }
     }
 
     if (selectedIsland && selectedIsland !== "__all__") {
@@ -867,7 +880,7 @@ const Directory = () => {
     if (business.latitude && business.longitude) {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const coords = `${business.latitude},${business.longitude}`;
-      const query = encodeURIComponent(business.name + ', ' + business.address);
+      const query = encodeURIComponent(business.title + ', ' + business.address);
       
       if (isMobile) {
         // Try Apple Maps first on iOS, Google Maps on Android
@@ -885,7 +898,7 @@ const Directory = () => {
       }
     } else {
       // Fallback to address search with directions
-      const query = encodeURIComponent(business.name + ', ' + business.address + ', Seychelles');
+      const query = encodeURIComponent(business.title + ', ' + business.address + ', Seychelles');
       window.open(`https://maps.google.com/maps?daddr=${query}&dirflg=d`);
     }
   };
@@ -901,16 +914,15 @@ const Directory = () => {
       window.open(url, '_blank', 'noopener,noreferrer');
     } else {
       // Fallback to address search
-      const address = `${business.name}, ${business.address}, Seychelles`;
+      const address = `${business.title}, ${business.address}, Seychelles`;
       const url = getAddressDirectionsUrl(address);
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
-  const formatCategory = (category: string) => {
-    if (!category) return 'Unknown';
-    const found = categories.find(c => c.value === category);
-    return found ? found.label : category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const formatCategory = (categoryName: string) => {
+    if (!categoryName) return 'Unknown';
+    return categoryName;
   };
 
   // Group businesses by category and subcategory
@@ -918,21 +930,16 @@ const Directory = () => {
     const grouped: { [category: string]: { [subcategory: string]: Business[] } } = {};
 
     businesses.forEach(business => {
-      if (!business || !business.category) return;
-      const category = formatCategory(business.category);
+      if (!business || !business.category_id) return;
+      const categoryName = business.categories?.title || 'Uncategorized';
+      const category = formatCategory(categoryName);
       
       // Create proper subcategories based on business type
       let subcategory = 'General';
-      if (business.category === 'healthcare') {
-        subcategory = business.verified ? 'Government' : 'Private';
-      } else if (business.category === 'hospitality') {
-        subcategory = business.verified ? 'Licensed Hotels' : 'Guesthouses & B&Bs';
-      } else if (business.category === 'education') {
-        subcategory = business.verified ? 'Government Schools' : 'Private Institutions';
-      } else if (business.category === 'financial_services') {
-        subcategory = business.verified ? 'Banks' : 'Other Financial Services';
+      if (business.verified) {
+        subcategory = 'Verified';
       } else {
-        subcategory = business.verified ? 'Verified' : 'General';
+        subcategory = 'General';
       }
 
       if (!grouped[category]) {
@@ -947,7 +954,7 @@ const Directory = () => {
     // Sort businesses alphabetically within each subcategory
     Object.keys(grouped).forEach(category => {
       Object.keys(grouped[category]).forEach(subcategory => {
-        grouped[category][subcategory].sort((a, b) => a.name.localeCompare(b.name));
+        grouped[category][subcategory].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       });
     });
 
@@ -975,7 +982,7 @@ const Directory = () => {
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
-                      {business.name}
+                      {business.title}
                     </h3>
                     {business.verified && (
                       <Badge variant="secondary" className="text-xs">
@@ -1158,10 +1165,10 @@ const Directory = () => {
                    </div>
                  </div>
 
-                {business.logo_url && (
-                  <img 
-                    src={business.logo_url} 
-                    alt={`${business.name} logo`}
+                {business.image_url && (
+                  <img
+                    src={business.image_url}
+                    alt={`${business.title} logo`}
                     className="w-12 h-12 rounded-lg object-cover ml-4 flex-shrink-0"
                   />
                 )}

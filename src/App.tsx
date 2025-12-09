@@ -32,6 +32,7 @@ const PaymentTest = lazy(() => import("./pages/PaymentTest"));
 const EmailPreview = lazy(() => import("./pages/EmailPreview"));
 const PendingBusinesses = lazy(() => import("./pages/admin/PendingBusinesses"));
 const Search = lazy(() => import("./pages/Search"));
+const MyProductsPage = lazy(() => import("./pages/dashboard/my-products"));
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const App = () => {
                 <Route path="/search" element={<Search />} />
                 <Route path="/business/:id" element={<BusinessDetail />} />
                 <Route path="/business" element={<RouteGuard><BusinessDashboard /></RouteGuard>} />
+                <Route path="/business/products" element={<RouteGuard><MyProductsPage /></RouteGuard>} />
                 <Route path="/business/register" element={<BusinessRegister />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/docs" element={<Documentation />} />

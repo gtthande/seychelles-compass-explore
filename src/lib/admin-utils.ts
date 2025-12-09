@@ -35,7 +35,7 @@ export async function getPendingBusinessesCount(): Promise<number> {
     const { count, error } = await supabase
       .from('businesses')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
+      .eq('is_active', false);
 
     if (error) {
       console.error('Error getting pending count:', error);
@@ -64,7 +64,7 @@ export function subscribeToPendingBusinesses(
         event: 'INSERT',
         schema: 'public',
         table: 'businesses',
-        filter: 'status=eq.pending',
+        filter: 'is_active=eq.false',
       },
       (payload) => {
         onInsert(payload.new);
@@ -76,7 +76,7 @@ export function subscribeToPendingBusinesses(
         event: 'UPDATE',
         schema: 'public',
         table: 'businesses',
-        filter: 'status=eq.pending',
+        filter: 'is_active=eq.false',
       },
       (payload) => {
         onUpdate(payload.new);
@@ -96,7 +96,7 @@ export async function approveBusiness(businessId: string): Promise<{ success: bo
   try {
     const { error } = await supabase
       .from('businesses')
-      .update({ status: 'active' })
+      .update({ is_active: true, is_verified: true })
       .eq('id', businessId);
 
     if (error) {
@@ -116,7 +116,7 @@ export async function rejectBusiness(businessId: string): Promise<{ success: boo
   try {
     const { error } = await supabase
       .from('businesses')
-      .update({ status: 'suspended' })
+      .update({ is_active: false, is_verified: false })
       .eq('id', businessId);
 
     if (error) {

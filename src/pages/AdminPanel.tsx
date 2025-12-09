@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 // Performance profiling utility
@@ -41,10 +41,16 @@ const AdminPanel = () => {
   const { user, profile, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [ready, setReady] = useState(false);
   
-  // Determine default tab based on URL
+  // Determine default tab based on URL and query params
   const getDefaultTab = () => {
+    // Check for tab query parameter first
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      return tabParam;
+    }
     if (location.pathname === '/admin/settings') {
       return 'settings';
     }
@@ -93,19 +99,22 @@ const AdminPanel = () => {
     };
   }, []);
 
-  // Update active tab when URL changes
+  // Update active tab when URL or query params change
   useEffect(() => {
     setActiveTab(getDefaultTab());
-  }, [location.pathname]);
+  }, [location.pathname, searchParams]);
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
     if (value === 'settings') {
       navigate('/admin/settings');
     } else {
-      navigate('/admin');
+      // Preserve other query params if any, but set tab
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set('tab', value);
+      navigate(`/admin?${newSearchParams.toString()}`);
     }
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   // RouteGuard handles all auth/loading checks, so by the time we reach here:
   // - User is authenticated

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Building, Package, Plus, Edit, Trash2, MapPin, Phone, Mail, Globe, Navigation } from "lucide-react";
+import { Building, Package, Plus, Edit, Trash2, MapPin, Phone, Mail, Globe, Navigation, ShoppingCart } from "lucide-react";
 import { geocodeAddress as geocodeAddressLib } from "@/lib/geocoding";
 import {
   Dialog,
@@ -31,9 +31,10 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  category: string;
+  category_id: string | null;
+  categories?: { id: string; title: string; slug: string } | null;
   phone: string;
   email: string;
   website: string;
@@ -46,15 +47,14 @@ interface Business {
 
 export interface Product {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  price: number | null;
+  price_override: number | null;
+  currency_code: string;
   is_active: boolean;
-  stock: number;
-  status: string;
+  stock: number | null;
   business_id: string | null;
   created_at: string;
   updated_at: string;
@@ -77,7 +77,7 @@ const BusinessDashboard = () => {
   const [businessForm, setBusinessForm] = useState({
     name: "",
     description: "",
-    category: "",
+    category_id: "",
     phone: "",
     email: "",
     website: "",
@@ -96,7 +96,6 @@ const BusinessDashboard = () => {
     name: "",
     description: "",
     price: 0,
-    category: "",
     image_url: ""
   });
 
@@ -114,15 +113,14 @@ const BusinessDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .select('slug, name')
-        .eq('is_active', true)
-        .order('name');
+        .select('id, title, slug')
+        .order('title');
 
       if (error) throw error;
       
       const categoryOptions = data?.map(cat => ({
-        value: cat.slug,
-        label: cat.name
+        value: cat.id,
+        label: cat.title
       })) || [];
       
       setCategories(categoryOptions);
@@ -295,7 +293,10 @@ const BusinessDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('*')
+        .select(`
+          *,
+          categories (id, name, slug)
+        `)
         .eq('owner_id', user.id)
         .single();
 
@@ -310,7 +311,7 @@ const BusinessDashboard = () => {
         setBusinessForm({
           name: data.name || "",
           description: data.description || "",
-          category: data.category || "",
+          category_id: data.category_id || "",
           phone: data.phone || "",
           email: data.email || "",
           website: data.website || "",
@@ -474,7 +475,7 @@ const BusinessDashboard = () => {
       });
       setIsProductDialogOpen(false);
       setEditingProduct(null);
-      setProductForm({ name: "", description: "", price: 0, category: "", image_url: "" });
+      setProductForm({ name: "", description: "", price: 0, image_url: "" });
       fetchProducts();
     } catch (error: any) {
       console.error('Error saving product:', error);
@@ -517,12 +518,11 @@ const BusinessDashboard = () => {
         name: product.title || '',
         description: product.description,
         price: product.price,
-        category: product.category,
         image_url: product.image_url || ""
       });
     } else {
       setEditingProduct(null);
-      setProductForm({ name: "", description: "", price: 0, category: "", image_url: "" });
+      setProductForm({ name: "", description: "", price: 0, image_url: "" });
     }
     setIsProductDialogOpen(true);
   };
@@ -572,7 +572,7 @@ const BusinessDashboard = () => {
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
-                  <Select value={businessForm.category} onValueChange={(value) => setBusinessForm({ ...businessForm, category: value })}>
+                  <Select value={businessForm.category_id} onValueChange={(value) => setBusinessForm({ ...businessForm, category_id: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
@@ -723,7 +723,10 @@ const BusinessDashboard = () => {
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="products" onClick={() => navigate('/business/products')}>
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            My Products
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -732,7 +735,7 @@ const BusinessDashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="w-5 h-5" />
-                  {business.name}
+                  {business.title}
                 </CardTitle>
                 <CardDescription>{business.description}</CardDescription>
               </CardHeader>
@@ -760,9 +763,11 @@ const BusinessDashboard = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{business.category}</Badge>
-                  <Badge variant={business.status === 'active' ? 'default' : 'secondary'}>
-                    {business.status}
+                  {business.categories && (
+                    <Badge variant="outline">{business.categories.title}</Badge>
+                  )}
+                  <Badge variant={business.is_active && business.is_verified ? 'default' : 'secondary'}>
+                    {business.is_active && business.is_verified ? 'Active' : business.is_active ? 'Pending' : 'Inactive'}
                   </Badge>
                 </div>
               </CardContent>
@@ -784,63 +789,21 @@ const BusinessDashboard = () => {
         </TabsContent>
 
         <TabsContent value="products" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Products & Services</h2>
-            <Button onClick={() => openProductDialog()}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </div>
-
-          {products.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No Products Yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Add your first product or service to get started.
-                </p>
-                <Button onClick={() => openProductDialog()}>
-                  Add Product
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((product) => (
-                <Card key={product.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{product.title || 'Product'}</CardTitle>
-                    <CardDescription>{product.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">${product.price}</span>
-                        <Badge variant="outline">{product.category}</Badge>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openProductDialog(product)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteProduct(product.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <Card>
+            <CardContent className="text-center py-8">
+              <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Manage Your Products</h3>
+              <p className="text-muted-foreground mb-4">
+                Select products from the global catalog and customize them for your business.
+              </p>
+              <Button asChild>
+                <Link to="/business/products">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Go to My Products
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -879,21 +842,6 @@ const BusinessDashboard = () => {
                   value={productForm.price}
                   onChange={(e) => setProductForm({ ...productForm, price: parseFloat(e.target.value) || 0 })}
                 />
-              </div>
-              <div>
-                <Label htmlFor="product-category">Category</Label>
-                <Select value={productForm.category} onValueChange={(value) => setProductForm({ ...productForm, category: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             <div>

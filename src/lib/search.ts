@@ -22,19 +22,30 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
   const searchTerm = query.trim();
 
   try {
-    // Search businesses - simplified to ilike(name) only
+    // Search businesses - use correct field names: title (not name), is_active (not status)
+    // Join with categories to get category title (businesses.category_id -> categories.id)
     const { data: businesses, error: businessError } = await supabase
       .from('businesses')
-      .select('*')
-      .eq('status', 'active')
-      .ilike('name', `%${searchTerm}%`)
+      .select(`
+        id,
+        title,
+        description,
+        category_id,
+        address,
+        latitude,
+        longitude,
+        is_active,
+        categories (id, title, slug)
+      `)
+      .eq('is_active', true)
+      .ilike('title', `%${searchTerm}%`)
       .limit(25);
 
     if (businessError) {
       console.error('Business search error:', businessError);
     }
 
-    // Search products - simplified to basic query
+    // Search products - simplified to basic query (products have NO category field)
     const { data: products, error: productError } = await supabase
       .from('products')
       .select(`
@@ -61,14 +72,17 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
     }
 
     // Format business results
-    const businessResults: UnifiedSearchResult[] = (businesses || []).map(business => ({
-      type: 'business' as const,
-      id: business.id,
-      title: business.name,
-      subtitle: business.description || business.category || business.address || '',
-      latitude: business.latitude,
-      longitude: business.longitude,
-    }));
+    const businessResults: UnifiedSearchResult[] = (businesses || []).map(business => {
+      const categoryTitle = (business.categories as any)?.title || '';
+      return {
+        type: 'business' as const,
+        id: business.id,
+        title: business.title || '',
+        subtitle: business.description || categoryTitle || business.address || '',
+        latitude: business.latitude,
+        longitude: business.longitude,
+      };
+    });
 
     // Format product results
     const productResults: UnifiedSearchResult[] = (products || []).map(product => ({

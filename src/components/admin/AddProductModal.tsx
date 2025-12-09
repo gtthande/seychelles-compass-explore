@@ -31,7 +31,7 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   address: string;
   island: string;
 }
@@ -87,9 +87,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, address, island')
-        .eq('status', 'active')
-        .order('name');
+        .select('id, title, address, island')
+        .eq('is_active', true)
+        .order('title');
 
       if (error) throw error;
       setBusinesses(data || []);
@@ -313,13 +313,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
       // Step 1: Create master product (catalogue item) - no business_id
       const imageUrl = formData.images.length > 0 ? formData.images[0] : imagePreview || null;
       const newProduct = await createProductMaster({
-        name: formData.name,
         title: formData.name,
         description: formData.description || null,
-        category: formData.category || null,
+        price: formData.price ? Number(formData.price) : null,
         image_url: imageUrl,
-        status: formData.status === 'draft' ? 'active' : formData.status,
-        searchable: true
+        is_active: formData.is_active,
+        searchable: true,
+        stock: formData.stock || 0
       });
 
       if (!newProduct) {
@@ -333,12 +333,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
           product_id: newProduct.id,
           title_override: null,
           description_override: null,
-          price_from: Number(formData.price),
-          price_to: null,
-          currency_code: formData.currency || 'SCR',
-          duration_minutes: null,
-          booking_url: null,
-          notes: null,
+          price_override: formData.price ? Number(formData.price) : null,
           is_active: formData.is_active
         });
 
@@ -419,7 +414,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
                   <SelectItem value="">None</SelectItem>
                   {businesses.map(business => (
                     <SelectItem key={business.id} value={business.id}>
-                      {business.name} - {business.island}
+                      {business.title} - {business.island}
                     </SelectItem>
                   ))}
                 </SelectContent>

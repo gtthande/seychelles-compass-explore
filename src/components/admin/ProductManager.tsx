@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,13 +38,14 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   address: string;
   island: string;
 }
 
 const ProductManager: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [businessProducts, setBusinessProducts] = useState<BusinessProduct[]>([]);
   const [masterProducts, setMasterProducts] = useState<Product[]>([]);
@@ -60,6 +61,7 @@ const ProductManager: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+  const lastLocationRef = useRef<string>('');
 
   // Categories removed - products don't have category field
   // const categories = [
@@ -73,42 +75,54 @@ const ProductManager: React.FC = () => {
     { value: 'inactive', label: 'Inactive', color: 'bg-red-500' }
   ];
 
-  // Load all data immediately on mount
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        // Load all three data sources in parallel for faster loading
-        const [businessProductsResult, productsResult, businessesResult] = await Promise.all([
-          fetchBusinessProducts({ limit: 200 }),
-          fetchAllProducts(),
-          supabase
-            .from('businesses')
-            .select('id, name, address, island')
-            .eq('status', 'active')
-            .order('name')
-        ]);
+  // Load all data immediately on mount and when navigating back from create/edit
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Load all three data sources in parallel for faster loading
+      const [businessProductsResult, productsResult, businessesResult] = await Promise.all([
+        fetchBusinessProducts({ limit: 200 }),
+        fetchAllProducts(),
+        supabase
+          .from('businesses')
+          .select('id, title, address, island')
+          .eq('is_active', true)
+          .order('title')
+      ]);
 
-        setBusinessProducts(businessProductsResult.businessProducts);
-        setMasterProducts(productsResult || []);
-        if (businessesResult.data) {
-          setBusinesses(businessesResult.data);
-        }
-      } catch (error) {
-        console.error('Error loading products data:', error);
-        // Don't override product list on error - keep existing data
-        toast({
-          title: "Error",
-          description: "Failed to fetch products",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+      setBusinessProducts(businessProductsResult.businessProducts);
+      setMasterProducts(productsResult || []);
+      if (businessesResult.data) {
+        setBusinesses(businessesResult.data);
       }
-    };
+    } catch (error) {
+      console.error('Error loading products data:', error);
+      // Don't override product list on error - keep existing data
+      toast({
+        title: "Error",
+        description: "Failed to fetch products",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, []);
+
+  // Refresh data when navigating back from create/edit pages
+  useEffect(() => {
+    const currentPath = location.pathname + location.search;
+    // If we're coming back from a product create/edit page, refresh data
+    if (lastLocationRef.current.includes('/admin/products/') && 
+        currentPath === '/admin' && 
+        lastLocationRef.current !== currentPath) {
+      loadData();
+    }
+    lastLocationRef.current = currentPath;
+  }, [location]);
 
   useEffect(() => {
     applyFilters();
@@ -122,7 +136,7 @@ const ProductManager: React.FC = () => {
       filtered = filtered.filter(bp => {
         const title = bp.title_override || bp.product?.title || '';
         const description = bp.description_override || bp.product?.description || '';
-        const businessName = bp.business?.name || '';
+        const businessName = bp.business?.title || '';
         return (
           title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -319,7 +333,7 @@ const ProductManager: React.FC = () => {
                 <SelectItem value="all">All Businesses</SelectItem>
                 {businesses.map(business => (
                   <SelectItem key={business.id} value={business.id}>
-                    {business.name}
+                    {business.title}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -439,7 +453,7 @@ const ProductManager: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Building className="w-4 h-4" />
-                        <span className="truncate">{bp.business?.name}</span>
+                        <span className="truncate">{bp.business?.title}</span>
                       </div>
                       <div className="flex gap-2 pt-2">
                         <Button
@@ -513,7 +527,7 @@ const ProductManager: React.FC = () => {
                             )}
                             <div className="flex items-center gap-2">
                               <Building className="w-4 h-4 text-muted-foreground" />
-                              <span>{bp.business?.name}</span>
+                              <span>{bp.business?.title}</span>
                             </div>
                           </div>
                           <div className="flex gap-2 mt-4">

@@ -40,8 +40,6 @@ const ProductEdit: React.FC = () => {
     title_override: '',
     description_override: '',
     price_override: '',
-    price_from: '',  // Legacy support
-    price_to: '',  // Legacy support
     currency_code: 'SCR',
     duration_minutes: '',
     booking_url: '',
@@ -73,9 +71,7 @@ const ProductEdit: React.FC = () => {
       setFormData({
         title_override: bp.title_override || '',
         description_override: bp.description_override || '',
-        price_override: bp.price_override?.toString() || bp.price_from?.toString() || '',
-        price_from: bp.price_from?.toString() || '',  // Legacy support
-        price_to: bp.price_to?.toString() || '',  // Legacy support
+        price_override: bp.price_override?.toString() || '',
         currency_code: bp.currency_code || 'SCR',
         duration_minutes: bp.duration_minutes?.toString() || '',
         booking_url: bp.booking_url || '',
@@ -106,13 +102,9 @@ const ProductEdit: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    const priceValue = formData.price_override || formData.price_from;
+    const priceValue = formData.price_override;
     if (!priceValue || isNaN(Number(priceValue)) || Number(priceValue) <= 0) {
       newErrors.price_override = 'Valid price is required';
-    }
-
-    if (formData.price_to && (isNaN(Number(formData.price_to)) || Number(formData.price_to) < Number(priceValue))) {
-      newErrors.price_to = 'Maximum price must be greater than minimum price';
     }
 
     setErrors(newErrors);
@@ -136,13 +128,7 @@ const ProductEdit: React.FC = () => {
       const updated = await updateBusinessProduct(id, {
         title_override: formData.title_override || null,
         description_override: formData.description_override || null,
-        price_override: Number(formData.price_override || formData.price_from),
-        price_from: Number(formData.price_from),  // Legacy support
-        price_to: formData.price_to ? Number(formData.price_to) : null,  // Legacy support
-        currency_code: formData.currency_code,
-        duration_minutes: formData.duration_minutes ? Number(formData.duration_minutes) : null,
-        booking_url: formData.booking_url || null,
-        notes: formData.notes || null,
+        price_override: Number(formData.price_override || 0) || null,
         is_active: formData.is_active
       });
 
@@ -350,30 +336,13 @@ const ProductEdit: React.FC = () => {
                       id="price_override"
                       type="number"
                       step="0.01"
-                      value={formData.price_override || formData.price_from}
+                      value={formData.price_override}
                       onChange={(e) => handleInputChange('price_override', e.target.value)}
                       className={`pl-10 ${errors.price_override ? 'border-red-500' : ''}`}
                       placeholder="0.00"
                     />
                   </div>
                   {errors.price_override && <p className="text-sm text-red-500">{errors.price_override}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price_to">Price To (Optional)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="price_to"
-                      type="number"
-                      step="0.01"
-                      value={formData.price_to}
-                      onChange={(e) => handleInputChange('price_to', e.target.value)}
-                      className={`pl-10 ${errors.price_to ? 'border-red-500' : ''}`}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  {errors.price_to && <p className="text-sm text-red-500">{errors.price_to}</p>}
                 </div>
 
                 <div className="space-y-2">

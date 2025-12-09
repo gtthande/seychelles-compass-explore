@@ -33,7 +33,7 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   address: string;
   island: string;
 }
@@ -68,8 +68,6 @@ const ProductCreate: React.FC = () => {
     title_override: '',
     description_override: '',
     price_override: '',
-    price_from: '',  // Legacy support
-    price_to: '',  // Legacy support
     currency_code: 'SCR',
     duration_minutes: '',
     booking_url: '',
@@ -94,9 +92,9 @@ const ProductCreate: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, address, island')
-        .eq('status', 'active')
-        .order('name');
+        .select('id, title, address, island')
+        .eq('is_active', true)
+        .order('title');
 
       if (error) throw error;
       setBusinesses(data || []);
@@ -154,8 +152,9 @@ const ProductCreate: React.FC = () => {
       if (!masterProductData.title.trim()) {
         newErrors.master_title = 'Product title is required';
       }
-      if (!masterProductData.price || isNaN(Number(masterProductData.price)) || Number(masterProductData.price) <= 0) {
-        newErrors.master_price = 'Valid price is required';
+      // Price is optional for master product - can be set in business-product link
+      if (masterProductData.price && (isNaN(Number(masterProductData.price)) || Number(masterProductData.price) < 0)) {
+        newErrors.master_price = 'Price must be a valid number';
       }
     } else {
       if (!linkData.product_id) {
@@ -163,13 +162,23 @@ const ProductCreate: React.FC = () => {
       }
     }
 
-    const priceValue = linkData.price_override || linkData.price_from;
-    if (!priceValue || isNaN(Number(priceValue)) || Number(priceValue) <= 0) {
-      newErrors.price_override = 'Valid price is required';
+    // Price override is optional - if not provided, will use master product price
+    // But if provided, it must be valid
+    const priceValue = linkData.price_override;
+    if (priceValue && (isNaN(Number(priceValue)) || Number(priceValue) < 0)) {
+      newErrors.price_override = 'Price must be a valid number';
     }
 
-    if (linkData.price_to && (isNaN(Number(linkData.price_to)) || Number(linkData.price_to) < Number(priceValue))) {
-      newErrors.price_to = 'Maximum price must be greater than minimum price';
+    // Ensure at least one price is provided (either master product price or override)
+    if (createNewProduct) {
+      const hasMasterPrice = masterProductData.price && !isNaN(Number(masterProductData.price)) && Number(masterProductData.price) > 0;
+      const hasOverridePrice = priceValue && !isNaN(Number(priceValue)) && Number(priceValue) > 0;
+      if (!hasMasterPrice && !hasOverridePrice) {
+        newErrors.price_override = 'Please provide a price (either in master product or business-specific price)';
+      }
+    } else {
+      // When linking existing product, price override is optional (can use product's default price)
+      // No validation needed here
     }
 
     setErrors(newErrors);
@@ -264,18 +273,19 @@ const ProductCreate: React.FC = () => {
       }
 
       // Step 2: Create business-product link
+      // Use price_override if provided, otherwise use master product price
+      const businessPrice = linkData.price_override && !isNaN(Number(linkData.price_override)) && Number(linkData.price_override) > 0
+        ? Number(linkData.price_override)
+        : (createNewProduct && masterProductData.price && !isNaN(Number(masterProductData.price)) && Number(masterProductData.price) > 0
+          ? Number(masterProductData.price)
+          : null);
+
       const businessProduct = await createBusinessProduct({
         business_id: linkData.business_id,
         product_id: productId,
         title_override: linkData.title_override || null,
         description_override: linkData.description_override || null,
-        price_override: Number(linkData.price_override || linkData.price_from),
-        price_from: Number(linkData.price_from),  // Legacy support
-        price_to: linkData.price_to ? Number(linkData.price_to) : undefined,  // Legacy support
-        currency_code: linkData.currency_code,
-        duration_minutes: linkData.duration_minutes ? Number(linkData.duration_minutes) : undefined,
-        booking_url: linkData.booking_url || null,
-        notes: linkData.notes || null,
+        price_override: businessPrice,
         is_active: linkData.is_active
       });
 
@@ -285,10 +295,13 @@ const ProductCreate: React.FC = () => {
 
       toast({
         title: "Success",
-        description: "Product linked to business successfully",
+        description: createNewProduct 
+          ? "Product created and linked to business successfully" 
+          : "Product linked to business successfully",
       });
 
-      navigate('/admin');
+      // Navigate back to admin products tab
+      navigate('/admin?tab=products');
     } catch (error: any) {
       console.error('Error creating product:', error);
       toast({
@@ -380,7 +393,9 @@ const ProductCreate: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="master_price">Price *</Label>
+                    <Label htmlFor="master_price">
+                      Default Price (Optional - can be set in business-specific price below)
+                    </Label>
                     <Input
                       id="master_price"
                       type="number"
@@ -391,6 +406,9 @@ const ProductCreate: React.FC = () => {
                       placeholder="0.00"
                     />
                     {errors.master_price && <p className="text-sm text-red-500">{errors.master_price}</p>}
+                    <p className="text-xs text-muted-foreground">
+                      You can set a default price here or specify it in the business-specific configuration below
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -532,7 +550,7 @@ const ProductCreate: React.FC = () => {
                 <SelectContent>
                   {businesses.map(business => (
                     <SelectItem key={business.id} value={business.id}>
-                      {business.name} - {business.island}
+                      {business.title} - {business.island}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -582,37 +600,34 @@ const ProductCreate: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price_override">Price (SCR) *</Label>
+                <Label htmlFor="price_override">
+                  Business-Specific Price (SCR) 
+                  {createNewProduct && masterProductData.price && !isNaN(Number(masterProductData.price)) && Number(masterProductData.price) > 0 
+                    ? ' (Optional - will use master product price if not set)' 
+                    : ' *'}
+                </Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="price_override"
                     type="number"
                     step="0.01"
-                    value={linkData.price_override || linkData.price_from}
+                    value={linkData.price_override}
                     onChange={(e) => handleInputChange('price_override', e.target.value)}
                     className={`pl-10 ${errors.price_override ? 'border-red-500' : ''}`}
-                    placeholder="0.00"
+                    placeholder={createNewProduct && masterProductData.price 
+                      ? `Default: ${masterProductData.price}` 
+                      : "0.00"}
                   />
                 </div>
                 {errors.price_override && <p className="text-sm text-red-500">{errors.price_override}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="price_to">Price To (Optional)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="price_to"
-                    type="number"
-                    step="0.01"
-                    value={linkData.price_to}
-                    onChange={(e) => handleInputChange('price_to', e.target.value)}
-                    className={`pl-10 ${errors.price_to ? 'border-red-500' : ''}`}
-                    placeholder="0.00"
-                  />
-                </div>
-                {errors.price_to && <p className="text-sm text-red-500">{errors.price_to}</p>}
+                {!createNewProduct && linkData.product_id && (
+                  <p className="text-xs text-muted-foreground">
+                    Default product price: {masterProducts.find(p => p.id === linkData.product_id)?.price 
+                      ? `₨${masterProducts.find(p => p.id === linkData.product_id)?.price}` 
+                      : 'Not set'}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

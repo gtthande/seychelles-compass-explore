@@ -27,26 +27,23 @@ import {
 
 interface Business {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  status: string;
-  phone: string;
-  email: string;
-  website: string;
-  address: string;
-  island: string;
-  latitude: number | null;
-  longitude: number | null;
-  featured: boolean;
-  verified: boolean;
-  logo_url: string;
-  cover_image_url: string;
-  average_rating: number;
-  total_reviews: number;
+  title: string;
+  description: string | null;
+  category_id: string | null;
+  categories?: { id: string; title: string; slug: string } | null;
+  is_active: boolean;
+  is_verified: boolean;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
-  owner_id: string;
+  owner_id: string | null;
+  // Computed fields
+  status?: string; // Computed from is_active and is_verified
+  category?: string; // Computed from categories.title
 }
 
 const BusinessManager = () => {
@@ -74,12 +71,39 @@ const BusinessManager = () => {
   const fetchBusinessesData = async () => {
     setLoading(true);
     try {
-      const result = await fetchBusinesses({
-        limit: 100,
-        orderBy: 'created_at',
-        ascending: false,
-      });
-      setBusinesses(result.businesses || result);
+      // Query businesses with categories join
+      const { data, error } = await supabase
+        .from('businesses')
+        .select(`
+          id,
+          title,
+          description,
+          category_id,
+          phone,
+          email,
+          website,
+          address,
+          image_url,
+          is_active,
+          is_verified,
+          owner_id,
+          created_at,
+          updated_at,
+          categories (id, title, slug)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      // Transform data to include computed fields
+      const businessesWithComputed = (data || []).map((b: any) => ({
+        ...b,
+        status: !b.is_active ? 'pending' : b.is_verified ? 'active' : 'pending',
+        category: b.categories?.title || null,
+      }));
+
+      setBusinesses(businessesWithComputed);
     } catch (error) {
       console.error('Error fetching businesses:', error);
       toast({
@@ -97,15 +121,14 @@ const BusinessManager = () => {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .select('slug, name')
-        .eq('is_active', true)
-        .order('name');
+        .select('id, title, slug')
+        .order('title');
 
       if (error) throw error;
       
       const categoryOptions = data?.map(cat => ({
-        value: cat.slug,
-        label: cat.name
+        value: cat.id,
+        label: cat.title
       })) || [];
       
       setCategories(categoryOptions);
@@ -121,7 +144,7 @@ const BusinessManager = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(business =>
-        business.name.toLowerCase().includes(searchLower) ||
+        business.title.toLowerCase().includes(searchLower) ||
         business.description?.toLowerCase().includes(searchLower) ||
         business.email?.toLowerCase().includes(searchLower) ||
         business.address?.toLowerCase().includes(searchLower)
@@ -135,7 +158,7 @@ const BusinessManager = () => {
 
     // Category filter
     if (categoryFilter !== "all") {
-      filtered = filtered.filter(business => business.category === categoryFilter);
+      filtered = filtered.filter(business => business.category_id === categoryFilter);
     }
 
     // Island filter
@@ -148,9 +171,19 @@ const BusinessManager = () => {
 
   const updateBusinessStatus = async (businessId: string, newStatus: string) => {
     try {
+      // Map status string to is_active and is_verified
+      const updateData: any = {};
+      if (newStatus === 'active') {
+        updateData.is_active = true;
+        updateData.is_verified = true;
+      } else if (newStatus === 'suspended' || newStatus === 'pending') {
+        updateData.is_active = false;
+        updateData.is_verified = false;
+      }
+      
       const { error } = await supabase
         .from('businesses')
-        .update({ status: newStatus })
+        .update(updateData)
         .eq('id', businessId);
 
       if (error) throw error;
@@ -158,7 +191,11 @@ const BusinessManager = () => {
       setBusinesses(prev => 
         prev.map(business => 
           business.id === businessId 
-            ? { ...business, status: newStatus }
+            ? { 
+                ...business, 
+                ...updateData,
+                status: newStatus
+              }
             : business
         )
       );
@@ -177,42 +214,19 @@ const BusinessManager = () => {
     }
   };
 
+  // Note: featured field removed from schema - keeping function for backward compatibility
   const toggleFeatured = async (businessId: string, currentFeatured: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('businesses')
-        .update({ featured: !currentFeatured })
-        .eq('id', businessId);
-
-      if (error) throw error;
-
-      setBusinesses(prev => 
-        prev.map(business => 
-          business.id === businessId 
-            ? { ...business, featured: !currentFeatured }
-            : business
-        )
-      );
-
-      toast({
-        title: "Success",
-        description: `Business ${!currentFeatured ? 'featured' : 'unfeatured'}`,
-      });
-    } catch (error) {
-      console.error('Error toggling featured status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update featured status",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Info",
+      description: "Featured status is not available in current schema",
+    });
   };
 
   const toggleVerified = async (businessId: string, currentVerified: boolean) => {
     try {
       const { error } = await supabase
         .from('businesses')
-        .update({ verified: !currentVerified })
+        .update({ is_verified: !currentVerified })
         .eq('id', businessId);
 
       if (error) throw error;
@@ -220,7 +234,11 @@ const BusinessManager = () => {
       setBusinesses(prev => 
         prev.map(business => 
           business.id === businessId 
-            ? { ...business, verified: !currentVerified }
+            ? { 
+                ...business, 
+                is_verified: !currentVerified,
+                status: !business.is_active ? 'pending' : (!currentVerified ? 'active' : 'pending')
+              }
             : business
         )
       );
@@ -243,15 +261,15 @@ const BusinessManager = () => {
     const csvContent = [
       ['Name', 'Category', 'Status', 'Island', 'Phone', 'Email', 'Address', 'Featured', 'Verified', 'Created At'],
       ...filteredBusinesses.map(business => [
-        business.name,
-        business.category,
-        business.status,
-        business.island,
+        business.title,
+        business.category || 'Uncategorized',
+        business.status || 'pending',
+        business.address || '',
         business.phone || '',
         business.email || '',
         business.address || '',
-        business.featured ? 'Yes' : 'No',
-        business.verified ? 'Yes' : 'No',
+        business.is_verified ? 'Yes' : 'No',
+        business.is_verified ? 'Yes' : 'No',
         new Date(business.created_at).toLocaleDateString()
       ])
     ].map(row => row.join(',')).join('\n');
@@ -387,15 +405,9 @@ const BusinessManager = () => {
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-lg">{business.name}</h3>
-                        <BusinessStatusBadge status={business.status} />
-                        {business.featured && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            <Star className="w-3 h-3" />
-                            Featured
-                          </Badge>
-                        )}
-                        {business.verified && (
+                        <h3 className="font-semibold text-lg">{business.title}</h3>
+                        <BusinessStatusBadge status={business.status || 'pending'} />
+                        {business.is_verified && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" />
                             Verified
@@ -408,10 +420,12 @@ const BusinessManager = () => {
                       </p>
 
                       <div className="flex flex-wrap gap-4 text-sm">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          <span>{business.island}</span>
-                        </div>
+                        {business.address && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4 text-muted-foreground" />
+                            <span>{business.address}</span>
+                          </div>
+                        )}
                         {business.phone && (
                           <div className="flex items-center gap-1">
                             <Phone className="w-4 h-4 text-muted-foreground" />
@@ -448,16 +462,9 @@ const BusinessManager = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleFeatured(business.id, business.featured)}
+                        onClick={() => toggleVerified(business.id, business.is_verified)}
                       >
-                        {business.featured ? 'Unfeature' : 'Feature'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleVerified(business.id, business.verified)}
-                      >
-                        {business.verified ? 'Unverify' : 'Verify'}
+                        {business.is_verified ? 'Unverify' : 'Verify'}
                       </Button>
                     </div>
                   </div>

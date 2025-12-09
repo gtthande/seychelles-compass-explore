@@ -124,7 +124,7 @@ const BusinessLocationCard: React.FC<BusinessLocationCardProps> = ({
 
       {/* Interactive Map */}
       <GoogleMapsEmbed
-        businessName={business.name}
+        businessName={business.title}
         address={business.address || 'Address not available'}
         latitude={business.latitude}
         longitude={business.longitude}

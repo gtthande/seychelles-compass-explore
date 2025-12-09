@@ -61,13 +61,8 @@ const BusinessDashboard = () => {
             id,
             title_override,
             description_override,
-            price_from,
-            price_to,
-            currency_code,
-            duration_minutes,
+            price_override,
             is_active,
-            booking_url,
-            notes,
             created_at,
             updated_at,
             product:products!inner (
@@ -91,12 +86,13 @@ const BusinessDashboard = () => {
         // Transform to match Product interface
         const transformedProducts = (data || []).map((bp: any) => ({
           id: bp.id,
-          name: bp.title_override || bp.product?.title || 'Unknown Product',
+          title: bp.title_override || bp.product?.title || 'Unknown Product',
           description: bp.description_override || bp.product?.description || null,
-          price: bp.price_from || bp.product?.price || null,
-          currency: bp.currency_code || 'SCR',
-          category: '', // Category removed from products schema
-          status: bp.is_active ? 'active' : 'inactive', // Use is_active from business_products
+          image_url: bp.product?.image_url || null,
+          price: bp.price_override || bp.product?.price || null,
+          price_override: bp.price_override || null,
+          is_active: bp.is_active,
+          stock: bp.product?.stock || null,
           in_stock: bp.is_active,
           stock_quantity: bp.product?.stock || null,
           images: bp.product?.image_url ? [bp.product.image_url] : null,
@@ -162,9 +158,9 @@ const BusinessDashboard = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-foreground">{business.name}</h1>
-          <Badge className={`${getStatusColor(business.status)} text-white`}>
-            {business.status.charAt(0).toUpperCase() + business.status.slice(1)}
+          <h1 className="text-3xl font-bold text-foreground">{business.title}</h1>
+          <Badge className={`${getStatusColor(business.is_active && business.is_verified ? 'active' : business.is_active ? 'pending' : 'inactive')} text-white`}>
+            {business.is_active && business.is_verified ? 'Active' : business.is_active ? 'Pending' : 'Inactive'}
           </Badge>
         </div>
         <p className="text-muted-foreground">{business.description}</p>

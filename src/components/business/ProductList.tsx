@@ -34,15 +34,14 @@ import {
 
 export interface Product {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  price: number | null;
+  price_override: number | null;
+  currency_code: string;
   is_active: boolean;
-  stock: number;
-  status: string;
+  stock: number | null;
   business_id: string | null;
   created_at: string;
   updated_at: string;
@@ -128,18 +127,14 @@ const ProductList = () => {
         const displayPrice = bp.price_override || bp.product?.price || null;
         return {
           id: bp.id,
-          name: displayTitle,
           title: displayTitle,
           description: displayDescription,
-          category: '', // Category removed from products schema
-          images: bp.product?.image_url ? [bp.product.image_url] : [],
           image_url: bp.product?.image_url || null,
           price: displayPrice,
-          currency: 'SCR',
+          price_override: bp.price_override || null,
           currency_code: 'SCR',
           is_active: bp.is_active,
           stock: bp.product?.stock || null,
-          status: bp.is_active ? 'active' : 'inactive', // Use is_active from business_products
           business_id: bp.business_id,
           created_at: bp.created_at,
           updated_at: bp.updated_at,
@@ -311,10 +306,10 @@ const ProductList = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {products.map((product) => (
               <Card key={product.id} className="hover:shadow-md transition-shadow">
-                {(product.image_url || (product.images && product.images.length > 0)) && (
+                {product.image_url && (
                   <div className="h-48 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-lg relative overflow-hidden">
                     <img 
-                      src={product.image_url || (product.images && product.images[0]) || ''} 
+                      src={product.image_url} 
                       alt={product.title || 'Product'}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -338,7 +333,7 @@ const ProductList = () => {
                   <div className="flex items-center justify-between">
                     {product.price && (
                       <div className="text-lg font-semibold text-foreground">
-                        {product.currency_code || product.currency || 'SCR'} {product.price}
+                        {product.currency_code || 'SCR'} {product.price}
                       </div>
                     )}
                   </div>

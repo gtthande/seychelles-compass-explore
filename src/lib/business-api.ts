@@ -11,32 +11,17 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export interface BusinessRow {
   id: string;
-  owner_id: string | null;
-  name: string;
+  title: string;
   description: string | null;
-  category: string | null;
-  status: string | null;
+  category_id: string | null;
   phone: string | null;
-  whatsapp: string | null;
   email: string | null;
   website: string | null;
-  facebook_url: string | null;
-  instagram_url: string | null;
-  linkedin_url: string | null;
-  youtube_url: string | null;
   address: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  island: string | null;
-  opening_hours: any | null;
-  featured: boolean;
-  verified: boolean;
-  logo_url: string | null;
-  cover_image_url: string | null;
-  gallery_images: string[] | null;
-  average_rating: number | null;
-  total_reviews: number | null;
-  services: string[] | null;
+  is_active: boolean;
+  searchable: boolean;
+  slug: string;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,12 +31,10 @@ export interface BusinessRow {
  */
 export interface BusinessListParams {
   search?: string;
-  status?: string;
-  category?: string;
-  island?: string;
+  isActive?: boolean;
+  categoryId?: string;
   page?: number;
   pageSize?: number;
-  featured?: boolean;
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -61,32 +44,17 @@ const DEFAULT_PAGE_SIZE = 20;
  */
 const VALID_BUSINESS_FIELDS = `
   id,
-  owner_id,
-  name,
+  title,
   description,
-  category,
-  status,
+  category_id,
   phone,
-  whatsapp,
   email,
   website,
-  facebook_url,
-  instagram_url,
-  linkedin_url,
-  youtube_url,
   address,
-  latitude,
-  longitude,
-  island,
-  opening_hours,
-  featured,
-  verified,
-  logo_url,
-  cover_image_url,
-  gallery_images,
-  average_rating,
-  total_reviews,
-  services,
+  is_active,
+  searchable,
+  slug,
+  image_url,
   created_at,
   updated_at
 `;
@@ -99,10 +67,8 @@ const VALID_BUSINESS_FIELDS = `
 export async function fetchBusinesses(params: BusinessListParams = {}) {
   const {
     search = "",
-    status,
-    category,
-    island,
-    featured,
+    isActive,
+    categoryId,
     page = 1,
     pageSize = DEFAULT_PAGE_SIZE,
   } = params;
@@ -110,53 +76,40 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  // Select businesses with explicit fields
+  // Select businesses with explicit valid fields only
   let query = supabase
     .from("businesses")
     .select(`
       id,
-      name,
+      title,
       description,
-      category,
-      status,
+      category_id,
       phone,
-      logo_url
+      email,
+      website,
+      address,
+      is_active,
+      searchable,
+      slug,
+      image_url,
+      created_at,
+      updated_at
     `, { count: "exact" })
-    .order("featured", { ascending: false })
     .order("created_at", { ascending: false })
     .range(from, to);
 
   // Apply filters
   if (search.trim()) {
-    query = query.or(`name.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
+    query = query.or(`title.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
   }
 
-  if (status && status !== "all") {
-    query = query.eq("status", status);
+  if (isActive !== undefined) {
+    query = query.eq("is_active", isActive);
   }
 
-  // Filter by category via business_categories join
-  // Note: This filter might not work with nested joins in Supabase
-  // If filtering fails, we'll filter client-side instead
-  // TODO: Verify FK relationship between businesses and business_categories exists
-  // If PGRST200 errors occur, the join table name or FK constraint may need alignment
-  if (category && category !== "all") {
-    // Try to filter via join - if this fails, we'll filter client-side
-    // Supabase might not support nested filtering on joined tables
-    try {
-      query = query.eq("business_categories.categories.name", category);
-    } catch (e) {
-      // Filter will be done client-side if join filter fails
-      console.warn("[fetchBusinesses] Category filter via join not supported, will filter client-side");
-    }
-  }
-
-  if (island && island !== "all") {
-    query = query.eq("island", island);
-  }
-
-  if (featured !== undefined) {
-    query = query.eq("featured", featured);
+  // Filter by category_id
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
   }
 
   const { data, error, count } = await query;
@@ -180,21 +133,14 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   }
 
   // Transform data
-  let businesses = data ?? [];
-  
-  // Client-side category filter
-  if (category && category !== "all") {
-    businesses = businesses.filter((business: any) => {
-      return business.category === category;
-    });
-  }
+  const businesses = data ?? [];
 
   if (import.meta.env.DEV) {
     console.debug('[Home] fetchBusinesses: Loaded businesses', {
       count: businesses.length,
       total: count ?? 0,
-      featured: featured !== undefined ? featured : 'all',
-      categoryFilter: category || 'none'
+      isActive: isActive !== undefined ? isActive : 'all',
+      categoryFilter: categoryId || 'none'
     });
   }
 
@@ -211,26 +157,20 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
 export async function getBusinessesCount(
   filters: Omit<BusinessListParams, "page" | "pageSize"> = {}
 ): Promise<number> {
-  const { search = "", status, category, island, featured } = filters;
+  const { search = "", isActive, categoryId } = filters;
 
   let query = supabase
     .from("businesses")
     .select("id", { count: "exact", head: true });
 
   if (search.trim()) {
-    query = query.ilike("name", `%${search.trim()}%`);
+    query = query.ilike("title", `%${search.trim()}%`);
   }
-  if (status && status !== "all") {
-    query = query.eq("status", status);
+  if (isActive !== undefined) {
+    query = query.eq("is_active", isActive);
   }
-  if (category && category !== "all") {
-    query = query.eq("category", category);
-  }
-  if (island && island !== "all") {
-    query = query.eq("island", island);
-  }
-  if (featured !== undefined) {
-    query = query.eq("featured", featured);
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
   }
 
   const { error, count } = await query;

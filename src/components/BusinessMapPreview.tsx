@@ -80,7 +80,7 @@ export const BusinessMapPreview: React.FC<BusinessMapPreviewProps> = ({
                 })
                 .eq('id', business.id);
 
-              console.log(`Geocoded and cached coordinates for ${business.name}:`, coords);
+              console.log(`Geocoded and cached coordinates for ${business.title}:`, coords);
               return;
             } else {
               // Fallback to client-side geocoding
@@ -102,7 +102,7 @@ export const BusinessMapPreview: React.FC<BusinessMapPreviewProps> = ({
                   })
                   .eq('id', business.id);
 
-                console.log(`Client-side geocoded and cached coordinates for ${business.name}:`, coords);
+                console.log(`Client-side geocoded and cached coordinates for ${business.title}:`, coords);
               } else {
                 setGeocodingError(result.error || 'Failed to geocode address');
               }
@@ -195,7 +195,7 @@ export const BusinessMapPreview: React.FC<BusinessMapPreviewProps> = ({
           allowFullScreen
           src={mapUrl}
           onError={handleMapError}
-          title={`Map of ${business.name}`}
+          title={`Map of ${business.title}`}
         />
       </a>
       

@@ -4,7 +4,7 @@ import { useAuth } from "./useAuth";
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   category: string;
   status: string;
   owner_id: string;

@@ -171,7 +171,7 @@ const DataSeeder = () => {
   const checkExistingData = async () => {
     const { data: businesses } = await supabase
       .from('businesses')
-      .select('id, name')
+      .select('id, title')
       .limit(1);
     
     return businesses && businesses.length > 0;
@@ -206,7 +206,7 @@ const DataSeeder = () => {
 
         if (error) {
           console.error('Error creating business:', error);
-          throw new Error(`Failed to create business: ${business.name}`);
+          throw new Error(`Failed to create business: ${(business as any).title || (business as any).name || 'Unknown'}`);
         }
 
         if (newBusiness) {

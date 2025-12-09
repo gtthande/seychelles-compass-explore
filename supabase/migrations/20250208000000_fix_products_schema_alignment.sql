@@ -253,3 +253,4 @@ CREATE INDEX IF NOT EXISTS idx_business_products_price_override ON public.busine
 CREATE INDEX IF NOT EXISTS idx_business_products_title_override ON public.business_products(title_override) WHERE title_override IS NOT NULL;
 
 COMMIT;
+

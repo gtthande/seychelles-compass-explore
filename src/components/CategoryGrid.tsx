@@ -30,7 +30,7 @@ import entertainmentImg from '@/assets/category-entertainment.jpg';
 
 interface Category {
   id: string;
-  name: string;
+  title: string;
   slug?: string; // May not exist in schema
   description: string | null;
   is_active: boolean;
@@ -120,9 +120,9 @@ const CategoryGrid = () => {
       // Fetch categories with error handling
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
-        .select('id, name, slug, description, is_active, created_at')
+        .select('id, title, slug, description, is_active, created_at')
         .eq('is_active', true)
-        .order('name', { ascending: true });
+        .order('title', { ascending: true });
 
       if (categoriesError) {
         console.error('[CategoryGrid] Failed to load categories', categoriesError);
@@ -137,85 +137,37 @@ const CategoryGrid = () => {
       // Use fallback empty arrays if no data
       const categories = categoriesData || [];
 
-      // Fetch business counts via business_categories join
-      const { data: activeBusinesses, error: businessError } = await supabase
-        .from('businesses')
-        .select(`
-          id,
-          business_categories (
-            category_id
-          )
-        `)
-        .eq('status', 'active');
-
-      if (businessError) {
-        console.error('Business counts error:', businessError);
-        if (import.meta.env.DEV) {
-          console.error('   Error details:', JSON.stringify(businessError, null, 2));
-        }
-      }
-
-      // Fetch product counts by category via business_products
-      const { data: businessProductsData, error: productError } = await supabase
-        .from('business_products')
-        .select(`
-          is_active,
-          product:products (
-            category
-          ),
-          business:businesses (
-            status
-          )
-        `)
-        .eq('is_active', true);
-
-      if (productError) {
-        console.error('Product counts error:', productError);
-        if (import.meta.env.DEV) {
-          console.error('   Error details:', JSON.stringify(productError, null, 2));
-        }
-      }
-
-      // Count businesses by category_id
+      // Count businesses by category_id using the new schema: businesses.category_id → categories.id
       const businessCountMap: Record<string, number> = {};
-      if (activeBusinesses) {
-        activeBusinesses.forEach((business: any) => {
-          const businessCategories = business.business_categories || [];
-          businessCategories.forEach((bc: any) => {
-            const categoryId = bc.category_id;
-            if (categoryId) {
-              businessCountMap[categoryId] = (businessCountMap[categoryId] || 0) + 1;
-            }
-          });
-        });
+      
+      // For each category, count businesses with matching category_id
+      for (const category of categories) {
+        const { count, error: businessError } = await supabase
+          .from('businesses')
+          .select('id', { count: 'exact', head: true })
+          .eq('category_id', category.id)
+          .eq('is_active', true);
+
+        if (businessError) {
+          console.error('Business counts error:', businessError);
+          if (import.meta.env.DEV) {
+            console.error('   Error details:', JSON.stringify(businessError, null, 2));
+          }
+        } else {
+          businessCountMap[category.id] = count || 0;
+        }
       }
 
-      // Count products by category name from business_products
+      // Products don't have categories anymore - set productCount to 0 for all categories
       const productCountMap: Record<string, number> = {};
-      if (businessProductsData && businessProductsData.length > 0) {
-        businessProductsData.forEach((bp: any) => {
-          // Only count if business is active
-          if (bp.business?.status === 'active' && bp.product?.category) {
-            const category = bp.product.category;
-            // Find category by name match
-            const matchingCategory = categories.find(cat => 
-              cat.name.toLowerCase() === category.toLowerCase() ||
-              cat.slug === category
-            );
-            if (matchingCategory) {
-              productCountMap[matchingCategory.id] = (productCountMap[matchingCategory.id] || 0) + 1;
-            }
-          }
-        });
-      }
 
       // Combine data with safe fallbacks - generate slug from name if missing
       const categoriesWithCounts = categories.map(category => {
         const categoryId = category.id;
-        const slug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
+        const slug = category.slug || category.title.toLowerCase().replace(/\s+/g, '-');
         const businessCount = businessCountMap[categoryId] || 0;
-        const productCount = productCountMap[categoryId] || 0;
-        const count = businessCount + productCount;
+        const productCount = 0; // Products don't have categories anymore
+        const count = businessCount; // Only count businesses
         
         return {
           ...category,
@@ -318,7 +270,7 @@ const CategoryGrid = () => {
                 <div className="relative h-32 overflow-hidden">
                   <OptimizedImage
                     src={categoryImage}
-                    alt={category.name}
+                    alt={category.title}
                     width={300}
                     height={128}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
@@ -342,7 +294,7 @@ const CategoryGrid = () => {
                 <CardContent className="p-4 text-center">
                   
                   <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
-                    {category.name}
+                    {category.title}
                   </h3>
                   
                   <div className="text-sm text-muted-foreground space-y-1">

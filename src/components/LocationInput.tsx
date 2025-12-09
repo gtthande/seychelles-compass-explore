@@ -34,7 +34,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ onParsed, className = '' 
 
     try {
       let lat: number, lon: number;
-      let parsedLink = input.trim();
+      const parsedLink = input.trim();
 
       // Pattern 1: Raw coordinates (lat, lon or lat lon)
       // Match: -4.6515, 55.4863 or -4.6515 55.4863

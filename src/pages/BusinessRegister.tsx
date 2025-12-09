@@ -259,9 +259,12 @@ const BusinessRegister = () => {
         throw new Error('Invalid category selected');
       }
 
-      // Determine verification and active status based on user role
+      // HYBRID APPROVAL MODEL (Option C): 
+      // - Admin-created businesses start as 'approved' (is_verified=true, is_active=true)
+      // - Public user-created businesses start as 'pending' (is_verified=false, is_active=false)
       const is_verified = isAdmin ? true : false;
       const is_active = isAdmin ? true : false;
+      const status = isAdmin ? 'approved' : 'pending';
 
       // Prepare insert data - only use valid database fields
       // NEVER use undefined - use null for optional fields
@@ -278,6 +281,7 @@ const BusinessRegister = () => {
         longitude: longitude,
         image_url: logoUrl || null, // Use image_url instead of logo_url
         owner_id: profile.id,
+        status: status, // Set status based on user role
         is_verified: is_verified,
         is_active: is_active,
         created_at: new Date().toISOString(),

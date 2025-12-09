@@ -26,6 +26,7 @@ const BusinessEdit = lazy(() => import("./pages/admin/BusinessEdit"));
 const BusinessCreate = lazy(() => import("./pages/admin/BusinessCreate"));
 const ProductEdit = lazy(() => import("./pages/admin/ProductEdit"));
 const ProductCreate = lazy(() => import("./pages/admin/ProductCreate"));
+const ProductNew = lazy(() => import("./pages/admin/ProductNew"));
 const BusinessDetail = lazy(() => import("./pages/BusinessDetail"));
 const BusinessRegister = lazy(() => import("./pages/BusinessRegister"));
 const PaymentTest = lazy(() => import("./pages/PaymentTest"));
@@ -84,6 +85,7 @@ const App = () => {
                 <Route path="/admin/businesses/edit/:id" element={<RouteGuard><BusinessEdit /></RouteGuard>} />
                 <Route path="/admin/businesses/pending" element={<RouteGuard><PendingBusinesses /></RouteGuard>} />
                 <Route path="/admin/products/create" element={<RouteGuard><ProductCreate /></RouteGuard>} />
+                <Route path="/admin/products/new" element={<RouteGuard><ProductNew /></RouteGuard>} />
                 <Route path="/admin/products/edit/:id" element={<RouteGuard><ProductEdit /></RouteGuard>} />
                 <Route path="/payments/test" element={<PaymentTest />} />
                 <Route path="/dev/email-preview" element={<EmailPreview />} />

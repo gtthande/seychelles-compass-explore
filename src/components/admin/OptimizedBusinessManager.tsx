@@ -18,8 +18,15 @@ interface Business extends BusinessRow {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  island?: string | null;
+  status?: string | null;
+  is_verified?: boolean;
   updated_at?: string;
   owner_id?: string | null;
+  categories?: {
+    id: string;
+    title: string;
+  } | null;
 }
 
 interface Category {
@@ -44,27 +51,28 @@ const sanitizeBusiness = (raw: any): Business | null => {
     // Sanitize all fields with safe defaults
     const sanitized: Business = {
       id: String(raw.id),
-      name: raw.name ? String(raw.name).trim() : 'Unnamed Business',
-      description: raw.description ? String(raw.description).trim() : '',
-      address: raw.address ? String(raw.address).trim() : '',
-      island: raw.island ? String(raw.island).trim() : 'Unknown',
-      category: raw.category ? String(raw.category).trim() : 'uncategorized',
-      status: raw.status && ['active', 'pending', 'suspended', 'closed', 'draft'].includes(String(raw.status))
+      title: raw.title ? String(raw.title).trim() : 'Unnamed Business',
+      description: raw.description ? String(raw.description).trim() : null,
+      address: raw.address ? String(raw.address).trim() : null,
+      island: raw.island ? String(raw.island).trim() : null,
+      category_id: raw.category_id ? String(raw.category_id) : null,
+      status: raw.status && ['pending', 'approved', 'suspended', 'closed'].includes(String(raw.status))
         ? String(raw.status)
         : 'pending',
+      is_verified: raw.is_verified === true,
+      is_active: raw.is_active === true,
       created_at: raw.created_at ? String(raw.created_at) : new Date().toISOString(),
       updated_at: raw.updated_at ? String(raw.updated_at) : new Date().toISOString(),
       owner_id: raw.owner_id ? String(raw.owner_id) : null,
       phone: raw.phone ? String(raw.phone).trim() : null,
       email: raw.email ? String(raw.email).trim() : null,
       website: raw.website ? String(raw.website).trim() : null,
+      categories: raw.categories || null,
     };
 
     // Log if we had to fix any fields
     const fixes: string[] = [];
-    if (!raw.name || raw.name !== sanitized.name) fixes.push('name');
-    if (!raw.description || raw.description !== sanitized.description) fixes.push('description');
-    if (!raw.category || raw.category !== sanitized.category) fixes.push('category');
+    if (!raw.title || raw.title !== sanitized.title) fixes.push('title');
     if (!raw.status || raw.status !== sanitized.status) fixes.push('status');
     if (fixes.length > 0) {
       console.debug(`🔧 [sanitizeBusiness] Fixed fields for business ${sanitized.id}:`, fixes);
@@ -111,7 +119,7 @@ const OptimizedBusinessManager: React.FC = () => {
       const { businesses, total } = await fetchBusinesses({
         search: searchTerm || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
-        category: categoryFilter !== "all" ? categoryFilter : undefined,
+        categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
         island: islandFilter !== "all" ? islandFilter : undefined,
         page: currentPage,
         pageSize: USERS_PER_PAGE,
@@ -172,12 +180,21 @@ const OptimizedBusinessManager: React.FC = () => {
     try {
       setLoading(true);
       
-      // Map status string to is_active and is_verified
-      const updateData: any = {};
-      if (newStatus === 'active') {
+      // Map status string to is_active, is_verified, and status
+      const updateData: any = {
+        status: newStatus
+      };
+      
+      if (newStatus === 'approved') {
         updateData.is_active = true;
         updateData.is_verified = true;
-      } else if (newStatus === 'suspended' || newStatus === 'pending') {
+      } else if (newStatus === 'pending') {
+        updateData.is_active = false;
+        updateData.is_verified = false;
+      } else if (newStatus === 'suspended') {
+        updateData.is_active = false;
+        updateData.is_verified = true; // Keep verified but inactive
+      } else if (newStatus === 'closed') {
         updateData.is_active = false;
         updateData.is_verified = false;
       }
@@ -464,10 +481,10 @@ const OptimizedBusinessManager: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium">{business.title || 'Unnamed Business'}</h3>
                         <Badge className={
-                          business.status === 'active' ? 'bg-green-500 text-white' :
+                          business.status === 'approved' ? 'bg-green-500 text-white' :
                           business.status === 'pending' ? 'bg-yellow-400 text-black' :
                           business.status === 'suspended' ? 'bg-red-500 text-white' :
-                          business.status === 'draft' ? 'bg-gray-300 text-gray-700' :
+                          business.status === 'closed' ? 'bg-gray-500 text-white' :
                           'bg-gray-300 text-gray-700'
                         }>
                           {business.status || 'pending'}
@@ -493,7 +510,7 @@ const OptimizedBusinessManager: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="suspended">Suspended</SelectItem>
                           <SelectItem value="closed">Closed</SelectItem>
                         </SelectContent>

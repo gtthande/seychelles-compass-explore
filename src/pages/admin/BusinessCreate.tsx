@@ -199,11 +199,15 @@ const BusinessCreate: React.FC = () => {
 
       // Prepare insert data - only use valid database fields
       // NEVER use undefined - use null for optional fields
+      // HYBRID APPROVAL MODEL (Option C): Admin-created businesses start as approved
       const insertData: Record<string, any> = {
         title: formData.title,
         description: formData.description || null,
         category_id: formData.category_id || null,
-        is_active: formData.is_active,
+        // Admin-created businesses are automatically approved and active
+        status: 'approved',
+        is_verified: true,
+        is_active: formData.is_active !== undefined ? formData.is_active : true,
         phone: formData.phone || null,
         email: formData.email || null,
         website: formData.website || null,

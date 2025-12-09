@@ -79,25 +79,35 @@ const ProductManager: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load all three data sources in parallel for faster loading
-      const [businessProductsResult, productsResult, businessesResult] = await Promise.all([
-        fetchBusinessProducts({ limit: 200 }),
+      // Load global products (master catalog) and business link counts
+      const [productsResult, businessProductsResult] = await Promise.all([
         fetchAllProducts(),
         supabase
-          .from('businesses')
-          .select('id, title, address, island')
+          .from('business_products')
+          .select('product_id')
           .eq('is_active', true)
-          .order('title')
       ]);
 
-      setBusinessProducts(businessProductsResult.businessProducts);
-      setMasterProducts(productsResult || []);
-      if (businessesResult.data) {
-        setBusinesses(businessesResult.data);
+      const products = productsResult || [];
+      
+      // Count how many businesses have linked each product
+      const linkCounts: Record<string, number> = {};
+      if (businessProductsResult.data) {
+        businessProductsResult.data.forEach((bp: any) => {
+          linkCounts[bp.product_id] = (linkCounts[bp.product_id] || 0) + 1;
+        });
       }
+      
+      // Add link count to each product
+      const productsWithCounts = products.map((p: any) => ({
+        ...p,
+        linkedBusinessCount: linkCounts[p.id] || 0
+      }));
+
+      setMasterProducts(productsWithCounts);
+      setBusinessProducts([]); // Not used for global products view
     } catch (error) {
       console.error('Error loading products data:', error);
-      // Don't override product list on error - keep existing data
       toast({
         title: "Error",
         description: "Failed to fetch products",
@@ -126,68 +136,65 @@ const ProductManager: React.FC = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [businessProducts, searchTerm, businessFilter, statusFilter, priceRange]);
+  }, [masterProducts, searchTerm, businessFilter, statusFilter, priceRange]);
 
 
   const applyFilters = () => {
-    let filtered = [...businessProducts];
+    // Filter global products (master catalog)
+    let filtered = [...masterProducts];
 
     if (searchTerm) {
-      filtered = filtered.filter(bp => {
-        const title = bp.title_override || bp.product?.title || '';
-        const description = bp.description_override || bp.product?.description || '';
-        const businessName = bp.business?.title || '';
+      filtered = filtered.filter(p => {
+        const title = p.title || '';
+        const description = p.description || '';
         return (
           title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          businessName.toLowerCase().includes(searchTerm.toLowerCase())
+          description.toLowerCase().includes(searchTerm.toLowerCase())
         );
       });
     }
 
-    // Category filter removed - products don't have category field
-    // if (categoryFilter !== 'all') {
-    //   filtered = filtered.filter(bp => bp.product?.category === categoryFilter);
-    // }
-
-    if (businessFilter !== 'all') {
-      filtered = filtered.filter(bp => bp.business_id === businessFilter);
-    }
-
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(bp => bp.is_active === (statusFilter === 'active'));
+      filtered = filtered.filter(p => p.is_active === (statusFilter === 'active'));
     }
 
     if (priceRange.min) {
-      filtered = filtered.filter(bp => {
-        const displayPrice = bp.price_override || bp.product?.price || 0;
+      filtered = filtered.filter(p => {
+        const displayPrice = p.price || 0;
         return displayPrice >= Number(priceRange.min);
       });
     }
 
     if (priceRange.max) {
-      filtered = filtered.filter(bp => {
-        const displayPrice = bp.price_override || bp.product?.price || 0;
+      filtered = filtered.filter(p => {
+        const displayPrice = p.price || 0;
         return displayPrice <= Number(priceRange.max);
       });
     }
 
-    setFilteredProducts(filtered);
+    // Note: businessFilter is kept for future use but doesn't apply to global products
+    // Global products are not tied to a specific business
+
+    setFilteredProducts(filtered as any);
     setCurrentPage(1);
   };
 
   const handleStatusChange = async (id: string, isActive: boolean) => {
     try {
-      const updated = await updateBusinessProduct(id, { is_active: isActive });
-      if (updated) {
-        setBusinessProducts(prev => 
-          prev.map(bp => bp.id === id ? updated : bp)
-        );
-        toast({
-          title: "Success",
-          description: "Product status updated",
-        });
-      }
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: isActive })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setMasterProducts(prev => 
+        prev.map(p => p.id === id ? { ...p, is_active: isActive } : p)
+      );
+      toast({
+        title: "Success",
+        description: "Product status updated",
+      });
     } catch (error) {
       console.error('Error updating product status:', error);
       toast({
@@ -199,24 +206,29 @@ const ProductManager: React.FC = () => {
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this product from the business?')) {
+    if (!confirm('Are you sure you want to delete this global product? This will remove it from all businesses.')) {
       return;
     }
 
     try {
-      const success = await deleteBusinessProduct(id);
-      if (success) {
-        setBusinessProducts(prev => prev.filter(bp => bp.id !== id));
-        toast({
-          title: "Success",
-          description: "Product removed successfully",
-        });
-      }
-    } catch (error) {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setMasterProducts(prev => prev.filter(p => p.id !== id));
+      toast({
+        title: "Success",
+        description: "Product deleted successfully",
+      });
+      loadData(); // Reload to refresh link counts
+    } catch (error: any) {
       console.error('Error deleting product:', error);
       toast({
         title: "Error",
-        description: "Failed to remove product",
+        description: error?.message || "Failed to delete product",
         variant: "destructive",
       });
     }
@@ -284,13 +296,19 @@ const ProductManager: React.FC = () => {
                 Product Management
               </CardTitle>
               <CardDescription className="mt-1">
-                Manage business-product links • {filteredProducts.length} of {businessProducts.length} products
+                Manage global product catalog • {filteredProducts.length} of {masterProducts.length} products
               </CardDescription>
             </div>
-            <Button onClick={() => navigate('/admin/products/create')} size="lg">
-              <Plus className="w-4 h-4 mr-2" />
-              Link Product to Business
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate('/admin/products/new')} size="lg" className="bg-primary">
+                <Plus className="w-4 h-4 mr-2" />
+                + Add Global Product
+              </Button>
+              <Button onClick={() => navigate('/admin/products/create')} size="lg" variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Link Product to Business
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -400,11 +418,11 @@ const ProductManager: React.FC = () => {
             <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
             <h3 className="text-xl font-semibold mb-2">No products found</h3>
             <p className="text-muted-foreground mb-4">
-              Link a product to a business to get started.
+              Create your first global product to get started.
             </p>
-            <Button onClick={() => navigate('/admin/products/create')}>
+            <Button onClick={() => navigate('/admin/products/new')}>
               <Plus className="w-4 h-4 mr-2" />
-              Link Product to Business
+              + Add Global Product
             </Button>
           </CardContent>
         </Card>
@@ -412,15 +430,16 @@ const ProductManager: React.FC = () => {
         <>
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paginatedProducts.map((bp) => {
-                const displayTitle = bp.title_override || bp.product?.title || 'Unknown Product';
-                const displayDescription = bp.description_override || bp.product?.description || '';
+              {paginatedProducts.map((product: any) => {
+                const displayTitle = product.title || 'Unknown Product';
+                const displayDescription = product.description || '';
+                const linkedCount = product.linkedBusinessCount || 0;
                 return (
-                  <Card key={bp.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+                  <Card key={product.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
                     <div className="relative">
-                      {bp.product?.image_url ? (
+                      {product.image_url ? (
                         <img
-                          src={bp.product.image_url}
+                          src={product.image_url}
                           alt={displayTitle}
                           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -430,8 +449,8 @@ const ProductManager: React.FC = () => {
                         </div>
                       )}
                       <div className="absolute top-2 right-2 flex gap-2">
-                        <Badge className={bp.is_active ? 'bg-green-500' : 'bg-red-500'}>
-                          {bp.is_active ? 'Active' : 'Inactive'}
+                        <Badge className={product.is_active ? 'bg-green-500' : 'bg-red-500'}>
+                          {product.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
                     </div>
@@ -442,25 +461,27 @@ const ProductManager: React.FC = () => {
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-primary">
-                          {formatPrice(bp.price_override, bp.product?.price, bp.currency_code)}
+                          {product.price ? `₨${product.price.toLocaleString()}` : 'Price on request'}
                         </span>
-                        {bp.product?.duration && (
+                        {product.duration && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {bp.product.duration}
+                            {product.duration}
                           </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Building className="w-4 h-4" />
-                        <span className="truncate">{bp.business?.title}</span>
+                        <span className="truncate">
+                          {linkedCount} {linkedCount === 1 ? 'business' : 'businesses'} linked
+                        </span>
                       </div>
                       <div className="flex gap-2 pt-2">
                         <Button
                           variant="outline"
                           size="sm"
                           className="flex-1"
-                          onClick={() => navigate(`/admin/products/edit/${bp.id}`)}
+                          onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                         >
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
@@ -468,7 +489,7 @@ const ProductManager: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteProduct(bp.id)}
+                          onClick={() => handleDeleteProduct(product.id)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -480,17 +501,18 @@ const ProductManager: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {paginatedProducts.map((bp) => {
-                const displayTitle = bp.title_override || bp.product?.title || 'Unknown Product';
-                const displayDescription = bp.description_override || bp.product?.description || '';
+              {paginatedProducts.map((product: any) => {
+                const displayTitle = product.title || 'Unknown Product';
+                const displayDescription = product.description || '';
+                const linkedCount = product.linkedBusinessCount || 0;
                 return (
-                  <Card key={bp.id} className="hover:shadow-md transition-shadow">
+                  <Card key={product.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-6">
                       <div className="flex gap-6">
                         <div className="flex-shrink-0">
-                          {bp.product?.image_url ? (
+                          {product.image_url ? (
                             <img
-                              src={bp.product.image_url}
+                              src={product.image_url}
                               alt={displayTitle}
                               className="w-32 h-32 object-cover rounded-lg"
                             />
@@ -507,8 +529,8 @@ const ProductManager: React.FC = () => {
                               <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{displayDescription}</p>
                             </div>
                             <div className="flex gap-2 ml-4">
-                              <Badge className={bp.is_active ? 'bg-green-500' : 'bg-red-500'}>
-                                {bp.is_active ? 'Active' : 'Inactive'}
+                              <Badge className={product.is_active ? 'bg-green-500' : 'bg-red-500'}>
+                                {product.is_active ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
                           </div>
@@ -516,25 +538,25 @@ const ProductManager: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <DollarSign className="w-4 h-4 text-muted-foreground" />
                               <span className="font-semibold text-lg">
-                                {formatPrice(bp.price_override, bp.product?.price, bp.currency_code)}
+                                {product.price ? `₨${product.price.toLocaleString()}` : 'Price on request'}
                               </span>
                             </div>
-                            {bp.product?.duration && (
+                            {product.duration && (
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-muted-foreground" />
-                                <span>{bp.product.duration}</span>
+                                <span>{product.duration}</span>
                               </div>
                             )}
                             <div className="flex items-center gap-2">
                               <Building className="w-4 h-4 text-muted-foreground" />
-                              <span>{bp.business?.title}</span>
+                              <span>{linkedCount} {linkedCount === 1 ? 'business' : 'businesses'} linked</span>
                             </div>
                           </div>
                           <div className="flex gap-2 mt-4">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => navigate(`/admin/products/edit/${bp.id}`)}
+                              onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                             >
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
@@ -542,10 +564,10 @@ const ProductManager: React.FC = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteProduct(bp.id)}
+                              onClick={() => handleDeleteProduct(product.id)}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
-                              Remove
+                              Delete
                             </Button>
                           </div>
                         </div>

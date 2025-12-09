@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Package, Plus, Edit, Trash2, ShoppingCart, MapPin, Star } from "lucide-react";
 import {
@@ -38,8 +39,9 @@ const MyProductsPage = () => {
   const [formData, setFormData] = useState({
     price_override: "",
     quantity: "",
-    location: "",
+    location_note: "",
     best_buy_note: "",
+    is_active: true,
   });
 
   useEffect(() => {
@@ -111,8 +113,9 @@ const MyProductsPage = () => {
           product_id,
           price_override,
           quantity,
-          location,
+          location_note,
           best_buy_note,
+          is_active,
           created_at,
           updated_at,
           product:products (
@@ -147,8 +150,9 @@ const MyProductsPage = () => {
     setFormData({
       price_override: product.price?.toString() || "",
       quantity: "0",
-      location: "",
+      location_note: "",
       best_buy_note: "",
+      is_active: true,
     });
     setIsDialogOpen(true);
   };
@@ -159,8 +163,9 @@ const MyProductsPage = () => {
     setFormData({
       price_override: businessProduct.price_override?.toString() || "",
       quantity: businessProduct.quantity?.toString() || "0",
-      location: businessProduct.location || "",
+      location_note: businessProduct.location_note || "",
       best_buy_note: businessProduct.best_buy_note || "",
+      is_active: businessProduct.is_active !== undefined ? businessProduct.is_active : true,
     });
     setIsDialogOpen(true);
   };
@@ -186,8 +191,9 @@ const MyProductsPage = () => {
           .update({
             price_override: priceValue,
             quantity: formData.quantity ? parseInt(formData.quantity) : 0,
-            location: formData.location || null,
+            location_note: formData.location_note || null,
             best_buy_note: formData.best_buy_note || null,
+            is_active: formData.is_active,
           })
           .eq("id", editingProduct.id);
 
@@ -204,8 +210,9 @@ const MyProductsPage = () => {
           product_id: selectedProduct.id,
           price_override: priceValue,
           quantity: formData.quantity ? parseInt(formData.quantity) : 0,
-          location: formData.location || null,
+          location_note: formData.location_note || null,
           best_buy_note: formData.best_buy_note || null,
+          is_active: formData.is_active,
         });
 
         if (error) throw error;
@@ -345,10 +352,10 @@ const MyProductsPage = () => {
                         <span className="font-medium">{bp.quantity}</span>
                       </div>
                     )}
-                    {bp.location && (
+                    {bp.location_note && (
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{bp.location}</span>
+                        <span className="text-sm text-muted-foreground">{bp.location_note}</span>
                       </div>
                     )}
                     {bp.best_buy_note && (
@@ -495,14 +502,29 @@ const MyProductsPage = () => {
               />
             </div>
 
-            {/* Location */}
+            {/* Location Note */}
             <div>
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="location_note">Location Note</Label>
               <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="e.g., Mahé, Praslin, or specific neighborhood"
+                id="location_note"
+                value={formData.location_note}
+                onChange={(e) => setFormData({ ...formData, location_note: e.target.value })}
+                placeholder="e.g., Beau Vallon, Mahé or La Digue only"
+              />
+            </div>
+
+            {/* Is Active */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="is_active">Active</Label>
+                <p className="text-sm text-muted-foreground">
+                  Active products are visible to customers
+                </p>
+              </div>
+              <Switch
+                id="is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
             </div>
 

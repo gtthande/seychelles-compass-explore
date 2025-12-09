@@ -18,12 +18,19 @@ export interface BusinessRow {
   email: string | null;
   website: string | null;
   address: string | null;
+  island: string | null;
+  status: string | null;
+  is_verified: boolean;
   is_active: boolean;
   searchable: boolean;
   slug: string;
   image_url: string | null;
   created_at: string;
   updated_at: string;
+  categories?: {
+    id: string;
+    title: string;
+  } | null;
 }
 
 /**
@@ -31,8 +38,10 @@ export interface BusinessRow {
  */
 export interface BusinessListParams {
   search?: string;
+  status?: string; // 'pending', 'approved', 'suspended', 'closed', or 'all'
   isActive?: boolean;
   categoryId?: string;
+  island?: string;
   page?: number;
   pageSize?: number;
 }
@@ -67,8 +76,10 @@ const VALID_BUSINESS_FIELDS = `
 export async function fetchBusinesses(params: BusinessListParams = {}) {
   const {
     search = "",
+    status,
     isActive,
     categoryId,
+    island,
     page = 1,
     pageSize = DEFAULT_PAGE_SIZE,
   } = params;
@@ -77,6 +88,7 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   const to = from + pageSize - 1;
 
   // Select businesses with explicit valid fields only
+  // Join with categories to get category title
   let query = supabase
     .from("businesses")
     .select(`
@@ -88,12 +100,19 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
       email,
       website,
       address,
+      island,
+      status,
+      is_verified,
       is_active,
       searchable,
       slug,
       image_url,
       created_at,
-      updated_at
+      updated_at,
+      categories (
+        id,
+        title
+      )
     `, { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
@@ -103,6 +122,11 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
     query = query.or(`title.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
   }
 
+  // Filter by status (if not 'all')
+  if (status && status !== 'all') {
+    query = query.eq("status", status);
+  }
+
   if (isActive !== undefined) {
     query = query.eq("is_active", isActive);
   }
@@ -110,6 +134,11 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   // Filter by category_id
   if (categoryId) {
     query = query.eq("category_id", categoryId);
+  }
+
+  // Filter by island
+  if (island) {
+    query = query.eq("island", island);
   }
 
   const { data, error, count } = await query;
@@ -157,7 +186,7 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
 export async function getBusinessesCount(
   filters: Omit<BusinessListParams, "page" | "pageSize"> = {}
 ): Promise<number> {
-  const { search = "", isActive, categoryId } = filters;
+  const { search = "", status, isActive, categoryId, island } = filters;
 
   let query = supabase
     .from("businesses")
@@ -166,11 +195,17 @@ export async function getBusinessesCount(
   if (search.trim()) {
     query = query.ilike("title", `%${search.trim()}%`);
   }
+  if (status && status !== 'all') {
+    query = query.eq("status", status);
+  }
   if (isActive !== undefined) {
     query = query.eq("is_active", isActive);
   }
   if (categoryId) {
     query = query.eq("category_id", categoryId);
+  }
+  if (island) {
+    query = query.eq("island", island);
   }
 
   const { error, count } = await query;

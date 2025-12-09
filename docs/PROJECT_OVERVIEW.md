@@ -31,11 +31,12 @@
 - Business detail pages
 - Business registration workflow
 
-### 3. **Product Catalog Module**
+### 3. **Product Catalog Module** (WIP)
 - Master product catalog (`products` table)
 - Business-product linking (`business_products` join table)
 - Product search and discovery
 - Product management for business owners
+- **Current Status:** Global product creation implemented. Product edit UI has known issue (see `WIP_PRODUCT_EDIT_ISSUE.md`)
 
 ### 4. **Admin Panel Module**
 - Comprehensive administrative dashboard
@@ -72,17 +73,20 @@ The Admin Panel (`/admin`) provides comprehensive management capabilities:
 - Manage category images and descriptions
 - Activate/deactivate categories
 
-### 3. **Business Management**
+### 3. **Business Management** (WIP)
 - View all businesses
-- Create new businesses
+- Create new businesses (admin-created businesses start as approved)
 - Edit business details
 - Approve/reject pending businesses
 - Manage business verification status
 - View business statistics
+- **Current Status:** Hybrid approval model implemented (public users create pending, admins create approved). Business status filtering and display WIP.
 
-### 4. **Product Management**
+### 4. **Product Management** (WIP)
 - Manage master product catalog
-- Create, edit, and delete products
+- Create global products (implemented)
+- Edit products (known issue - see `WIP_PRODUCT_EDIT_ISSUE.md`)
+- Delete products
 - Link products to businesses
 - Manage product images and pricing
 

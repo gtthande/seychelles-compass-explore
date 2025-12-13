@@ -254,3 +254,11 @@ CREATE INDEX IF NOT EXISTS idx_business_products_title_override ON public.busine
 
 COMMIT;
 
+
+
+
+
+
+
+
+

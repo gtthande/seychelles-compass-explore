@@ -179,6 +179,17 @@ const BusinessCreate: React.FC = () => {
         throw new Error('User not authenticated');
       }
 
+      // Get user profile for owner_id
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error('User profile not found. Please complete your profile first.');
+      }
+
       // Parse and validate coordinates - only use valid numbers or null
       const parseCoordinate = (value: string | null | undefined): number | null => {
         if (!value || !value.trim()) return null;
@@ -197,44 +208,33 @@ const BusinessCreate: React.FC = () => {
         throw new Error('Longitude must be between -180 and 180');
       }
 
-      // Prepare insert data - only use valid database fields
-      // NEVER use undefined - use null for optional fields
-      // HYBRID APPROVAL MODEL (Option C): Admin-created businesses start as approved
-      const insertData: Record<string, any> = {
-        title: formData.title,
-        description: formData.description || null,
-        category_id: formData.category_id || null,
-        // Admin-created businesses are automatically approved and active
-        status: 'approved',
-        is_verified: true,
-        is_active: formData.is_active !== undefined ? formData.is_active : true,
-        phone: formData.phone || null,
-        email: formData.email || null,
-        website: formData.website || null,
-        address: formData.address || null,
-        island: formData.island || null,
-        latitude: latitude,
-        longitude: longitude,
-        image_url: formData.image_url || null,
-        owner_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      // Use centralized business creation API (implements Hybrid Option C)
+      // Admin-created businesses are automatically approved
+      const { createBusiness } = await import('@/lib/business-create-api');
       
-      console.log('Insert data prepared:', insertData);
+      const result = await createBusiness(
+        {
+          title: formData.title,
+          description: formData.description || null,
+          category_id: formData.category_id || null,
+          phone: formData.phone || null,
+          email: formData.email || null,
+          website: formData.website || null,
+          address: formData.address || null,
+          island: formData.island || null,
+          latitude: latitude,
+          longitude: longitude,
+          image_url: formData.image_url || null,
+          owner_id: profile.id
+        },
+        true // Admin-created businesses are approved
+      );
 
-      const { data, error } = await supabase
-        .from('businesses')
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase insert error:', error);
-        throw error;
+      if (!result.success || !result.business) {
+        throw new Error(result.error || "Failed to create business");
       }
-      
-      console.log('Business created successfully:', data);
+
+      const data = result.business;
 
       toast({
         title: "Success",

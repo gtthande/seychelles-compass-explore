@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import BusinessStatusBadge from "@/components/ui/BusinessStatusBadge";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fetchBusinesses } from "@/lib/business-api";
@@ -283,15 +283,6 @@ const BusinessManager = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500 text-white';
-      case 'pending': return 'bg-yellow-400 text-black';
-      case 'suspended': return 'bg-red-500 text-white';
-      case 'draft': return 'bg-gray-300 text-gray-700';
-      default: return 'bg-gray-300 text-gray-700';
-    }
-  };
 
   if (loading) {
     return (
@@ -406,7 +397,7 @@ const BusinessManager = () => {
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-lg">{business.title}</h3>
-                        <BusinessStatusBadge status={business.status || 'pending'} />
+                        <StatusBadge status={business.status} />
                         {business.is_verified && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" />

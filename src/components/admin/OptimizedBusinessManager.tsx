@@ -11,6 +11,7 @@ import { Search, Eye, Edit, Trash2, Loader2, AlertCircle, RefreshCw, Plus, Check
 import { useNavigate } from 'react-router-dom';
 import PendingCountBadge from './PendingCountBadge';
 import { fetchBusinesses, BusinessRow } from '@/lib/business-api';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 interface Business extends BusinessRow {
   description?: string | null;
@@ -480,15 +481,7 @@ const OptimizedBusinessManager: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium">{business.title || 'Unnamed Business'}</h3>
-                        <Badge className={
-                          business.status === 'approved' ? 'bg-green-500 text-white' :
-                          business.status === 'pending' ? 'bg-yellow-400 text-black' :
-                          business.status === 'suspended' ? 'bg-red-500 text-white' :
-                          business.status === 'closed' ? 'bg-gray-500 text-white' :
-                          'bg-gray-300 text-gray-700'
-                        }>
-                          {business.status || 'pending'}
-                        </Badge>
+                        <StatusBadge status={business.status} />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {business.description || 'No description available'}

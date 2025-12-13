@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import BusinessStatusBadge from '@/components/ui/BusinessStatusBadge';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { 
   CheckCircle, 
   XCircle, 
@@ -306,7 +306,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-lg">{business.title}</h3>
-                    <BusinessStatusBadge status={business.status || (!business.is_active ? 'pending' : business.is_verified ? 'active' : 'pending')} />
+                    <StatusBadge status={business.status} />
                     {business.featured && (
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <Star className="w-3 h-3" />

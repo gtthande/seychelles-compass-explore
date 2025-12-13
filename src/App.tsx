@@ -29,6 +29,7 @@ const ProductCreate = lazy(() => import("./pages/admin/ProductCreate"));
 const ProductNew = lazy(() => import("./pages/admin/ProductNew"));
 const BusinessDetail = lazy(() => import("./pages/BusinessDetail"));
 const BusinessRegister = lazy(() => import("./pages/BusinessRegister"));
+const AddBusinessPage = lazy(() => import("./pages/business/AddBusinessPage"));
 const PaymentTest = lazy(() => import("./pages/PaymentTest"));
 const EmailPreview = lazy(() => import("./pages/EmailPreview"));
 const PendingBusinesses = lazy(() => import("./pages/admin/PendingBusinesses"));
@@ -77,6 +78,7 @@ const App = () => {
                 <Route path="/business" element={<RouteGuard><BusinessDashboard /></RouteGuard>} />
                 <Route path="/business/products" element={<RouteGuard><MyProductsPage /></RouteGuard>} />
                 <Route path="/business/register" element={<BusinessRegister />} />
+                <Route path="/business/add" element={<AddBusinessPage />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/docs" element={<Documentation />} />
                 <Route path="/admin" element={<RouteGuard><AdminPanel /></RouteGuard>} />

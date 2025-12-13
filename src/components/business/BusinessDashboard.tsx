@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,17 +122,10 @@ const BusinessDashboard = () => {
     }
   }, [business, toast]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-500';
-      case 'pending':
-        return 'bg-yellow-500';
-      case 'inactive':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
+  const getStatusForBadge = (isActive: boolean, isVerified: boolean): "active" | "pending" | "draft" => {
+    if (isActive && isVerified) return "active";
+    if (isActive) return "pending";
+    return "draft";
   };
 
   if (loading) {
@@ -159,9 +153,7 @@ const BusinessDashboard = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-foreground">{business.title}</h1>
-          <Badge className={`${getStatusColor(business.is_active && business.is_verified ? 'active' : business.is_active ? 'pending' : 'inactive')} text-white`}>
-            {business.is_active && business.is_verified ? 'Active' : business.is_active ? 'Pending' : 'Inactive'}
-          </Badge>
+          <StatusBadge status={getStatusForBadge(business.is_active, business.is_verified)} />
         </div>
         <p className="text-muted-foreground">{business.description}</p>
       </div>

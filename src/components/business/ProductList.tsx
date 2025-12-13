@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -217,16 +218,6 @@ const ProductList = () => {
 
   const totalPages = Math.ceil(totalProducts / ITEMS_PER_PAGE);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-500 text-white';
-      case 'draft':
-        return 'bg-yellow-500 text-white';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
 
   if (loading) {
     return (
@@ -321,9 +312,7 @@ const ProductList = () => {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg line-clamp-1">{product.title || 'Product'}</CardTitle>
-                    <Badge className={getStatusColor(product.is_active ? 'active' : 'draft')}>
-                      {product.is_active ? 'active' : 'inactive'}
-                    </Badge>
+                    <StatusBadge status={product.is_active ? 'active' : 'draft'} />
                   </div>
                   {product.description && (
                     <CardDescription className="line-clamp-2">

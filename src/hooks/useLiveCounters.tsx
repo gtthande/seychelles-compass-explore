@@ -51,10 +51,9 @@ export const useLiveCounters = () => {
         console.log('🔄 useLiveCounters: Falling back to individual queries...');
         try {
           const [businessesResult, productsResult] = await Promise.all([
-            supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('is_active', true),
+            supabase.from('businesses').select('id', { count: 'exact', head: true }),
             supabase.from('business_products')
               .select('id', { count: 'exact', head: true })
-              .eq('is_active', true)
           ]);
 
           if (businessesResult.error) {

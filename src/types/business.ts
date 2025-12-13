@@ -17,7 +17,10 @@ export interface Business {
   
   // Category and status
   category_id: string | null;
-  island_id: string | null;
+  island_id?: string | null;
+  island?: string | null; // Alternative field name used in some queries
+  status?: string | null; // 'pending', 'approved', 'suspended', 'closed'
+  is_verified?: boolean;
   is_active: boolean;
   
   // Media

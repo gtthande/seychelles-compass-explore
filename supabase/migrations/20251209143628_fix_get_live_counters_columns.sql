@@ -30,3 +30,11 @@ AS $$
      WHERE b.is_active = true AND b.is_verified = true) as total_reviews;
 $$;
 
+
+
+
+
+
+
+
+

@@ -259,45 +259,32 @@ const BusinessRegister = () => {
         throw new Error('Invalid category selected');
       }
 
-      // HYBRID APPROVAL MODEL (Option C): 
-      // - Admin-created businesses start as 'approved' (is_verified=true, is_active=true)
-      // - Public user-created businesses start as 'pending' (is_verified=false, is_active=false)
-      const is_verified = isAdmin ? true : false;
-      const is_active = isAdmin ? true : false;
-      const status = isAdmin ? 'approved' : 'pending';
+      // Use centralized business creation API (implements Hybrid Option C)
+      const { createBusiness } = await import('@/lib/business-create-api');
+      
+      const result = await createBusiness(
+        {
+          title: formData.name.trim(),
+          description: formData.description.trim() || null,
+          category_id: selectedCategory.id,
+          phone: formData.phone.trim() || null,
+          email: formData.email.trim() || null,
+          website: formData.website.trim() || null,
+          address: formData.address.trim() || null,
+          island: formData.island || null,
+          latitude: latitude,
+          longitude: longitude,
+          image_url: logoUrl || null,
+          owner_id: profile.id
+        },
+        isAdmin
+      );
 
-      // Prepare insert data - only use valid database fields
-      // NEVER use undefined - use null for optional fields
-      const insertData: Record<string, any> = {
-        title: formData.name.trim(), // Map form 'name' to database 'title'
-        description: formData.description.trim() || null,
-        category_id: selectedCategory.id, // Map form 'category' (slug) to database 'category_id' (UUID)
-        phone: formData.phone.trim() || null,
-        email: formData.email.trim() || null,
-        website: formData.website.trim() || null,
-        address: formData.address.trim() || null,
-        island: formData.island || null,
-        latitude: latitude,
-        longitude: longitude,
-        image_url: logoUrl || null, // Use image_url instead of logo_url
-        owner_id: profile.id,
-        status: status, // Set status based on user role
-        is_verified: is_verified,
-        is_active: is_active,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error } = await supabase
-        .from('businesses')
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase insert error:', error);
-        throw error;
+      if (!result.success || !result.business) {
+        throw new Error(result.error || "Failed to create business");
       }
+
+      const data = result.business;
 
       // Success message based on verification status
       const successMessage = isAdmin 

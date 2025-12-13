@@ -195,3 +195,11 @@ COMMENT ON COLUMN businesses.category_id IS 'Foreign key to categories (replaces
 COMMENT ON COLUMN businesses.is_verified IS 'Verification status (replaces old "status" enum)';
 COMMENT ON COLUMN categories.title IS 'Category name (replaces old "name" field)';
 
+
+
+
+
+
+
+
+

@@ -87,9 +87,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, address, island')
+        .select('id, title, address, island')
         .eq('status', 'active')
-        .order('name');
+        .order('title');
 
       if (error) throw error;
       setBusinesses(data || []);

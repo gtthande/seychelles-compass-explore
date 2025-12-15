@@ -82,9 +82,9 @@ const ProductManager: React.FC = () => {
           fetchAllProducts(),
           supabase
             .from('businesses')
-            .select('id, name, address, island')
+            .select('id, title, address, island')
             .eq('status', 'active')
-            .order('name')
+            .order('title')
         ]);
 
         setBusinessProducts(businessProductsResult.businessProducts);

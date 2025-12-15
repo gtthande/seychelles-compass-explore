@@ -27,7 +27,7 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   description: string;
   category: string;
   status: string;
@@ -112,7 +112,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(business =>
-        business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        business.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         business.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         business.category.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -275,7 +275,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-lg">{business.name}</h3>
+                    <h3 className="font-semibold text-lg">{business.title}</h3>
                     <BusinessStatusBadge status={business.status} />
                     {business.featured && (
                       <Badge variant="secondary" className="flex items-center gap-1">
@@ -397,7 +397,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
       {selectedBusiness && (
         <Card className="fixed inset-4 z-50 bg-background border-2">
           <CardHeader>
-            <CardTitle>Review Business: {selectedBusiness.name}</CardTitle>
+            <CardTitle>Review Business: {selectedBusiness.title}</CardTitle>
             <CardDescription>
               Review business details and make verification decision
             </CardDescription>
@@ -407,7 +407,7 @@ const BusinessVerificationWorkflow: React.FC = () => {
               <div>
                 <h4 className="font-semibold mb-2">Business Information</h4>
                 <div className="space-y-2 text-sm">
-                  <div><strong>Name:</strong> {selectedBusiness.name}</div>
+                  <div><strong>Name:</strong> {selectedBusiness.title}</div>
                   <div><strong>Category:</strong> {selectedBusiness.category}</div>
                   <div><strong>Address:</strong> {selectedBusiness.address}</div>
                   <div><strong>Island:</strong> {selectedBusiness.island}</div>

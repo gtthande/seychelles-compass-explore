@@ -13,7 +13,7 @@ import { subscribeToPendingBusinesses, approveBusiness, rejectBusiness } from '@
 
 interface PendingBusiness {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
   category: string;
   phone: string | null;
@@ -55,7 +55,7 @@ const PendingBusinesses = () => {
         setFilteredBusinesses(prev => [newBusiness, ...prev]);
         toast({
           title: "New Pending Business",
-          description: `${newBusiness.name} is awaiting approval`,
+          description: `${newBusiness.title} is awaiting approval`,
         });
       },
       (updatedBusiness) => {
@@ -77,7 +77,7 @@ const PendingBusinesses = () => {
   useEffect(() => {
     if (searchTerm) {
       const filtered = businesses.filter(business =>
-        business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        business.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         business.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         business.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -260,12 +260,12 @@ const PendingBusinesses = () => {
                     {business.logo_url && (
                       <img
                         src={business.logo_url}
-                        alt={business.name}
+                        alt={business.title}
                         className="w-12 h-12 rounded-lg object-cover"
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg truncate">{business.name}</CardTitle>
+                      <CardTitle className="text-lg truncate">{business.title}</CardTitle>
                       <Badge variant="secondary" className="mt-1">
                         {business.category}
                       </Badge>
@@ -325,7 +325,7 @@ const PendingBusinesses = () => {
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => handleApprove(business.id, business.name)}
+                    onClick={() => handleApprove(business.id, business.title)}
                     disabled={approving === business.id}
                     className="flex-1"
                   >
@@ -339,7 +339,7 @@ const PendingBusinesses = () => {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleReject(business.id, business.name)}
+                    onClick={() => handleReject(business.id, business.title)}
                     className="flex-1"
                   >
                     <XCircle className="w-4 h-4 mr-2" />

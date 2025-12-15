@@ -29,7 +29,7 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   description: string;
   category: string;
   status: string;

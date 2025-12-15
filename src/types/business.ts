@@ -9,7 +9,7 @@ export interface Business {
   // Core identifiers
   id: string;
   owner_id: string | null;
-  name: string;
+  title: string;
   description: string | null;
   
   // Category and status

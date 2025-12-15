@@ -102,7 +102,7 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
           slug
         `)
         .eq("is_active", true)
-        .order("name");
+        .order("title");
 
       if (productsError) {
         console.error("[AdminPanel] Failed to load available products", {

@@ -47,7 +47,7 @@ export const useUnifiedSearch = () => {
         .from('businesses')
         .select(`
           id,
-          name,
+          title,
           description,
           category,
           logo_url,
@@ -59,7 +59,7 @@ export const useUnifiedSearch = () => {
         .limit(limit / 2);
 
       if (query) {
-        businessQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+        businessQuery.or(`title.ilike.%${query}%,description.ilike.%${query}%`);
       }
 
       if (category) {
@@ -87,7 +87,7 @@ export const useUnifiedSearch = () => {
           ),
           business:businesses!inner (
             id,
-            name,
+            title,
             address,
             island
           )
@@ -134,14 +134,14 @@ export const useUnifiedSearch = () => {
       const businessResults: SearchResult[] = (businessResult.data || []).map(business => ({
         id: business.id,
         type: 'business' as const,
-        name: business.name,
+        name: business.title,
         description: business.description || '',
         category: business.category,
         image_url: business.logo_url,
-        business_name: business.name,
+        business_name: business.title,
         business_address: business.address,
         business_island: business.island,
-        rank: calculateRank(business.name, business.description || '', query)
+        rank: calculateRank(business.title, business.description || '', query)
       }));
 
       const productResults: SearchResult[] = (productResult.data || []).map((bp: any) => {
@@ -157,7 +157,7 @@ export const useUnifiedSearch = () => {
           category: product.category,
           price: bp.price_from || 0,
           image_url: product.image_url,
-          business_name: business.name,
+          business_name: business.title,
           business_address: business.address,
           business_island: business.island,
           rank: calculateRank(displayName, displayDescription, query)
@@ -189,7 +189,7 @@ export const useUnifiedSearch = () => {
         .from('businesses')
         .select(`
           id,
-          name,
+          title,
           description,
           category,
           logo_url,
@@ -197,7 +197,7 @@ export const useUnifiedSearch = () => {
           island
         `)
         .eq('status', 'active')
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
         .limit(limit);
 
       if (error) throw error;
@@ -205,14 +205,14 @@ export const useUnifiedSearch = () => {
       return (data || []).map(business => ({
         id: business.id,
         type: 'business' as const,
-        name: business.name,
+        name: business.title,
         description: business.description || '',
         category: business.category,
         image_url: business.logo_url,
-        business_name: business.name,
+        business_name: business.title,
         business_address: business.address,
         business_island: business.island,
-        rank: calculateRank(business.name, business.description || '', query)
+        rank: calculateRank(business.title, business.description || '', query)
       }));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Business search failed';
@@ -256,7 +256,7 @@ export const useUnifiedSearch = () => {
                 category: product.category,
                 price: bp.price,
                 image_url: product.image_url,
-                business_name: bp.businesses?.name,
+                business_name: bp.businesses?.title,
                 business_address: bp.businesses?.address,
                 business_island: bp.businesses?.island,
                 rank: calculateRank(product.name, product.description || '', query)

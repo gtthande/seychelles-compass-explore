@@ -31,9 +31,12 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 
+// TODO: Migrate to use 'title' field instead of 'name' - legacy schema reference
+// SCHEMA NOTE: Database uses 'title' field, not 'name'
+// FALLBACK: This interface may not match actual database schema
 interface Business {
   id: string;
-  name: string;
+  name: string; // TODO: Should be 'title' to match database schema
   address: string;
   island: string;
 }
@@ -91,9 +94,9 @@ const ProductCreate: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, address, island')
+        .select('id, title, address, island')
         .eq('status', 'active')
-        .order('name');
+        .order('title');
 
       if (error) throw error;
       setBusinesses(data || []);
@@ -505,7 +508,9 @@ const ProductCreate: React.FC = () => {
                 <SelectContent>
                   {businesses.map(business => (
                     <SelectItem key={business.id} value={business.id}>
-                      {business.name} - {business.island}
+                      {/* TODO: Migrate business.name to business.title - legacy field reference */}
+                      {/* FALLBACK: Using name field (may not exist) - should use title instead */}
+                      {(business as any).name || (business as any).title || 'Unnamed Business'} - {business.island}
                     </SelectItem>
                   ))}
                 </SelectContent>

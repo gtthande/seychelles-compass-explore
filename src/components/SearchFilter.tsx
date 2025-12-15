@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Category {
   id: string;
-  name: string;
+  title: string;
   slug: string;
   description: string | null;
   is_active: boolean;
@@ -30,7 +30,7 @@ interface Category {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
   category: string;
   status: string;
@@ -49,7 +49,8 @@ interface Business {
 
 export interface Product {
   id: string;
-  name: string;
+  title: string;
+  name?: string; // Legacy field, prefer title
   description: string;
   category: string;
   images: string[];
@@ -164,9 +165,9 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
         // Fetch categories
         supabase
           .from('categories')
-          .select('id, name, slug, description, is_active, created_at')
+          .select('id, title, slug, description, is_active, created_at')
           .eq('is_active', true)
-          .order('name')
+          .order('title')
           .limit(20), // Limit categories
 
         // Fetch businesses
@@ -175,7 +176,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           .select('*')
           .eq('status', 'active')
           .order('featured', { ascending: false })
-          .order('name')
+          .order('title')
           .limit(50), // Limit businesses for performance
 
         // Fetch products
@@ -183,7 +184,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           .from('products')
           .select(`
             id,
-            name,
+            title,
             description,
             category,
             images,
@@ -202,20 +203,29 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           .limit(100) // Limit products for performance
       ]);
 
-      if (categoriesResult.error) throw categoriesResult.error;
-      if (businessesResult.error) throw businessesResult.error;
-      if (productsResult.error) throw productsResult.error;
+      // Treat SearchFilter as NON-CRITICAL - don't throw errors
+      // Log warnings but allow homepage to render normally
+      if (categoriesResult.error) {
+        console.warn('[SearchFilter] Search filter unavailable - categories:', categoriesResult.error.message);
+      }
+      if (businessesResult.error) {
+        console.warn('[SearchFilter] Search filter unavailable - businesses:', businessesResult.error.message);
+      }
+      if (productsResult.error) {
+        console.warn('[SearchFilter] Search filter unavailable - products:', productsResult.error.message);
+      }
 
+      // Set data with fallbacks - allow partial data
       setCategories(categoriesResult.data || []);
       setBusinesses(businessesResult.data || []);
       setProducts(productsResult.data || []);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load data. Please try again.",
-        variant: "destructive",
-      });
+      // Non-critical component - log warning only, no error UI
+      console.warn('[SearchFilter] Search filter unavailable:', error instanceof Error ? error.message : 'Unknown error');
+      // Set empty arrays as fallback - allow homepage to render normally
+      setCategories([]);
+      setBusinesses([]);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -233,7 +243,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
       filteredBiz = filteredBiz
         .map(business => {
           let relevanceScore = 0;
-          const name = business.name.toLowerCase();
+          const name = business.title.toLowerCase();
           const description = business.description?.toLowerCase() || '';
           const address = business.address?.toLowerCase() || '';
           
@@ -264,18 +274,18 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
       filteredProd = filteredProd
         .map(product => {
           let relevanceScore = 0;
-          const name = product.name.toLowerCase();
+          const name = (product.title || product.name || '').toLowerCase();
           const description = product.description?.toLowerCase() || '';
-          const businessName = product.businesses?.name?.toLowerCase() || '';
+          const businessName = product.businesses?.title?.toLowerCase() || '';
           
-          // Prioritize product name matches
+          // Prioritize product title matches
           if (name.includes(searchLower)) {
             relevanceScore += 100;
             if (name === searchLower) relevanceScore += 50;
             if (name.startsWith(searchLower)) relevanceScore += 25;
           }
           
-          // Business name match
+          // Business title match
           if (businessName.includes(searchLower)) {
             relevanceScore += 75;
           }
@@ -313,7 +323,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
 
   const getCategoryName = (slug: string) => {
     const category = categories.find(c => c.slug === slug);
-    return category ? category.name : slug;
+    return category ? category.title : slug;
   };
 
   return (
@@ -342,7 +352,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
               <option value="">All Categories</option>
               {categories.map((category) => (
                 <option key={category.slug} value={category.slug}>
-                  {category.name}
+                  {category.title}
                 </option>
               ))}
             </select>
@@ -410,7 +420,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
             onClick={() => setSelectedCategory(selectedCategory === category.slug ? "" : category.slug)}
             className="rounded-full"
           >
-            {category.name}
+            {category.title}
           </Button>
         ))}
       </div>
@@ -504,7 +514,7 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
         <div className="h-48 relative overflow-hidden rounded-t-lg">
           <img 
             src={business.cover_image_url} 
-            alt={business.name}
+            alt={business.title}
             className="w-full h-full object-cover"
           />
         </div>
@@ -518,7 +528,7 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
     <CardHeader className="pb-3">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <CardTitle className="text-lg font-semibold">{business.name}</CardTitle>
+          <CardTitle className="text-lg font-semibold">{business.title}</CardTitle>
           <CardDescription className="text-sm">
             {business.category}
           </CardDescription>
@@ -531,7 +541,7 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
         {business.logo_url && (
           <img 
             src={business.logo_url} 
-            alt={`${business.name} logo`}
+            alt={`${business.title} logo`}
             className="w-10 h-10 rounded object-cover ml-3"
           />
         )}
@@ -595,7 +605,7 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
 );
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
-  const name = product?.name ?? "Unnamed";
+  const name = product?.title || product?.name || "Unnamed";
   
   return (
   <Card className="hover:shadow-lg transition-shadow">
@@ -617,9 +627,9 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     
     <CardHeader className="pb-2">
       <CardTitle className="text-base font-semibold line-clamp-1">{name}</CardTitle>
-      {product.businesses?.name && (
+      {product.businesses?.title && (
         <CardDescription className="text-xs">
-          by {product.businesses.name}
+          by {product.businesses.title}
         </CardDescription>
       )}
     </CardHeader>

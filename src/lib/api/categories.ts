@@ -8,8 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface Category {
     id: string;
-    name: string;
-    slug?: string; // May not exist in schema, generated from name
+    title: string;
+    slug?: string; // May not exist in schema, generated from title
     description: string | null;
     is_active: boolean;
     created_at: string;
@@ -21,9 +21,9 @@ export interface Category {
 export async function fetchCategories(): Promise<Category[]> {
     const { data, error } = await supabase
         .from('categories')
-        .select('id, name, slug, description, is_active, created_at')
+        .select('id, title, slug, description, is_active, created_at')
         .eq('is_active', true)
-        .order('name', { ascending: true });
+        .order('title', { ascending: true });
 
     if (import.meta.env.DEV) {
         console.log('[HOMEPAGE] categories returned:', data, 'error:', error);
@@ -47,7 +47,7 @@ export async function fetchCategories(): Promise<Category[]> {
 export async function fetchCategoryBySlug(slug: string): Promise<Category | null> {
     const { data, error } = await supabase
         .from('categories')
-        .select('id, name, slug, description, is_active, created_at')
+        .select('id, title, slug, description, is_active, created_at')
         .eq('slug', slug)
         .eq('is_active', true)
         .maybeSingle();

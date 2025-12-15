@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface BusinessSearchResult {
   id: string;
-  name: string;
+  title: string;
   category: string;
   description?: string;
   address?: string;
@@ -53,11 +53,11 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
       // Enhanced search with relevance scoring
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, category, description, address, island, featured')
+        .select('id, title, category, description, address, island, featured')
         .eq('status', 'active')
-        .or(`name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        .or(`title.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
         .order('featured', { ascending: false })
-        .order('name')
+        .order('title')
         .limit(15); // Get more results for better scoring
 
       if (error) {
@@ -68,7 +68,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
         const scoredResults = (data || [])
           .map(business => {
             let relevanceScore = 0;
-            const name = business.name?.toLowerCase() || '';
+            const name = business.title?.toLowerCase() || '';
             const category = business.category?.toLowerCase() || '';
             const searchLower = searchTerm.toLowerCase();
             
@@ -109,7 +109,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
 
   // Memoize handlers to prevent unnecessary re-renders
   const handleSelect = useCallback((business: BusinessSearchResult) => {
-    setQuery(business.name);
+    setQuery(business.title);
     setIsOpen(false);
     navigate(`/business/${business.id}`);
   }, [navigate]);
@@ -218,7 +218,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-medium text-sm truncate">
-                        {business.name}
+                        {business.title}
                       </h3>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                         {formatCategory(business.category)}

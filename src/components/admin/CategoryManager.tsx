@@ -56,7 +56,7 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 
 interface Category {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
   slug: string;
   is_active: boolean;
@@ -107,7 +107,7 @@ const CategoryManager = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .order('name', { ascending: true });
+        .order('title', { ascending: true });
 
       if (error) throw error;
       setCategories(data || []);
@@ -377,7 +377,7 @@ const CategoryManager = () => {
       if (editingCategory) {
         // Update existing category
         const updateData: any = {
-          name: data.name,
+          title: data.name, // Map form field 'name' to database field 'title'
           description: data.description || null,
           slug: data.slug,
         };
@@ -401,7 +401,7 @@ const CategoryManager = () => {
       } else {
         // Create new category
         const insertData: any = {
-          name: data.name,
+          title: data.name, // Map form field 'name' to database field 'title'
           description: data.description || null,
           slug: data.slug,
         };
@@ -439,7 +439,7 @@ const CategoryManager = () => {
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
     form.reset({
-      name: category.name,
+      name: category.title, // Map database field 'title' to form field 'name'
       description: category.description || "",
       slug: category.slug,
     });
@@ -644,7 +644,7 @@ const CategoryManager = () => {
           <Card key={category.id} className="hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{category.name}</CardTitle>
+                <CardTitle className="text-lg">{category.title}</CardTitle>
                 <Badge variant={category.is_active ? "default" : "secondary"}>
                   {category.is_active ? "Active" : "Inactive"}
                 </Badge>
@@ -689,7 +689,7 @@ const CategoryManager = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Category</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete "{category.name}"? This action cannot be undone and will affect all products using this category.
+                        Are you sure you want to delete "{category.title}"? This action cannot be undone and will affect all products using this category.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

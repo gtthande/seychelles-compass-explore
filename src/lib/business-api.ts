@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface BusinessRow {
   id: string;
   owner_id: string | null;
-  name: string;
+  title: string;
   description: string | null;
   category: string | null;
   status: string | null;
@@ -62,7 +62,7 @@ const DEFAULT_PAGE_SIZE = 20;
 const VALID_BUSINESS_FIELDS = `
   id,
   owner_id,
-  name,
+  title,
   description,
   category,
   status,
@@ -115,7 +115,7 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
     .from("businesses")
     .select(`
       id,
-      name,
+      title,
       description,
       category,
       status,
@@ -128,25 +128,20 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
 
   // Apply filters
   if (search.trim()) {
-    query = query.or(`name.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
+    query = query.or(`title.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
   }
 
   if (status && status !== "all") {
     query = query.eq("status", status);
   }
 
-  // Filter by category via business_categories join
-  // Note: This filter might not work with nested joins in Supabase
-  // If filtering fails, we'll filter client-side instead
+  // Filter by category via direct category_id FK
+  // SCHEMA NOTE: Uses businesses.category (text field) for filtering
+  // TODO: Consider using category_id FK if available for better performance
+  // NOTE: Currently filters client-side after fetching (see below)
   if (category && category !== "all") {
-    // Try to filter via join - if this fails, we'll filter client-side
-    // Supabase might not support nested filtering on joined tables
-    try {
-      query = query.eq("business_categories.categories.name", category);
-    } catch (e) {
-      // Filter will be done client-side if join filter fails
-      console.warn("[fetchBusinesses] Category filter via join not supported, will filter client-side");
-    }
+    // FALLBACK: Client-side filtering - category_id FK query may not be available
+    // Will filter client-side after fetching (see line 177)
   }
 
   if (island && island !== "all") {
@@ -160,6 +155,8 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
   const { data, error, count } = await query;
 
   if (error) {
+    // SAFETY: Non-fatal error - return empty array instead of throwing
+    // This prevents blank screens and infinite loading states
     console.error("[fetchBusinesses] Error", error);
     if (import.meta.env.DEV) {
       console.error("[fetchBusinesses] Error details:", {
@@ -169,8 +166,7 @@ export async function fetchBusinesses(params: BusinessListParams = {}) {
         hint: error.hint
       });
     }
-    // Don't throw - return empty result with error info
-    // This prevents infinite loading states
+    // FALLBACK: Return empty result - prevents component crashes
     return {
       businesses: [] as BusinessRow[],
       total: 0,
@@ -216,7 +212,7 @@ export async function getBusinessesCount(
     .select("id", { count: "exact", head: true });
 
   if (search.trim()) {
-    query = query.ilike("name", `%${search.trim()}%`);
+    query = query.ilike("title", `%${search.trim()}%`);
   }
   if (status && status !== "all") {
     query = query.eq("status", status);

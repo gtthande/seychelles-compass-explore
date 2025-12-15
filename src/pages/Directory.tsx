@@ -248,7 +248,7 @@ const Directory = () => {
           query = query.eq('island', selectedIsland);
         }
         if (searchTerm) {
-          query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
         }
 
         // Execute query with retry logic for network errors
@@ -544,7 +544,7 @@ const Directory = () => {
   const handleEditBusiness = (business: Business) => {
     setEditingBusiness(business);
     setEditForm({
-      name: business.name || "",
+      name: business.title || "",
       description: business.description || "",
       phone: business.phone || "",
       email: business.email || "",
@@ -726,7 +726,7 @@ const Directory = () => {
       filtered = filtered
         .map(business => {
           let relevanceScore = 0;
-          const name = business.name?.toLowerCase() || '';
+          const name = business.title?.toLowerCase() || '';
           const description = business.description?.toLowerCase() || '';
           const category = business.category?.toLowerCase() || '';
           const address = business.address?.toLowerCase() || '';
@@ -734,7 +734,7 @@ const Directory = () => {
           
           // Prioritize exact name matches (highest score)
           if (name.includes(searchLower)) {
-            console.log(`🔍 Name match found: "${business.name}" contains "${searchLower}"`);
+            console.log(`🔍 Name match found: "${business.title}" contains "${searchLower}"`);
             relevanceScore += 100;
             // Bonus for exact name match
             if (name === searchLower) relevanceScore += 50;
@@ -780,7 +780,7 @@ const Directory = () => {
       
       console.log('🔍 Enhanced search results:', filtered.length, 'businesses found');
       filtered.forEach((business, index) => {
-        console.log(`  ${index + 1}. ${business.name} (score: ${(business as any).relevanceScore})`);
+        console.log(`  ${index + 1}. ${business.title} (score: ${(business as any).relevanceScore})`);
       });
 
       // Also search products and add matching businesses
@@ -789,7 +789,7 @@ const Directory = () => {
           let relevanceScore = 0;
           const name = product.name?.toLowerCase() || '';
           const description = product.description?.toLowerCase() || '';
-          const businessName = product.business?.name?.toLowerCase() || '';
+          const businessName = product.business?.title?.toLowerCase() || '';
           const searchLower = searchTerm.toLowerCase();
 
           // Product name match (highest priority)
@@ -867,7 +867,7 @@ const Directory = () => {
     if (business.latitude && business.longitude) {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const coords = `${business.latitude},${business.longitude}`;
-      const query = encodeURIComponent(business.name + ', ' + business.address);
+      const query = encodeURIComponent(business.title + ', ' + business.address);
       
       if (isMobile) {
         // Try Apple Maps first on iOS, Google Maps on Android
@@ -885,7 +885,7 @@ const Directory = () => {
       }
     } else {
       // Fallback to address search with directions
-      const query = encodeURIComponent(business.name + ', ' + business.address + ', Seychelles');
+      const query = encodeURIComponent(business.title + ', ' + business.address + ', Seychelles');
       window.open(`https://maps.google.com/maps?daddr=${query}&dirflg=d`);
     }
   };
@@ -901,7 +901,7 @@ const Directory = () => {
       window.open(url, '_blank', 'noopener,noreferrer');
     } else {
       // Fallback to address search
-      const address = `${business.name}, ${business.address}, Seychelles`;
+      const address = `${business.title}, ${business.address}, Seychelles`;
       const url = getAddressDirectionsUrl(address);
       window.open(url, '_blank', 'noopener,noreferrer');
     }
@@ -947,7 +947,7 @@ const Directory = () => {
     // Sort businesses alphabetically within each subcategory
     Object.keys(grouped).forEach(category => {
       Object.keys(grouped[category]).forEach(subcategory => {
-        grouped[category][subcategory].sort((a, b) => a.name.localeCompare(b.name));
+        grouped[category][subcategory].sort((a, b) => a.title.localeCompare(b.title));
       });
     });
 
@@ -975,7 +975,7 @@ const Directory = () => {
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
-                      {business.name}
+                      {business.title}
                     </h3>
                     {business.verified && (
                       <Badge variant="secondary" className="text-xs">
@@ -1161,7 +1161,7 @@ const Directory = () => {
                 {business.logo_url && (
                   <img 
                     src={business.logo_url} 
-                    alt={`${business.name} logo`}
+                    alt={`${business.title} logo`}
                     className="w-12 h-12 rounded-lg object-cover ml-4 flex-shrink-0"
                   />
                 )}
@@ -1828,7 +1828,7 @@ const Directory = () => {
               setMapModalOpen(false);
               setSelectedBusinessForMap(null);
             }}
-            businessName={selectedBusinessForMap.name}
+            businessName={selectedBusinessForMap.title}
             latitude={selectedBusinessForMap.latitude!}
             longitude={selectedBusinessForMap.longitude!}
             address={selectedBusinessForMap.address}

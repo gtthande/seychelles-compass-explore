@@ -426,7 +426,7 @@ const BusinessRegister = () => {
                         <SelectContent>
                           {categories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
-                              {category.name}
+                              {category.title}
                             </SelectItem>
                           ))}
                         </SelectContent>

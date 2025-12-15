@@ -132,7 +132,7 @@ const BusinessDetail: React.FC = () => {
     if (navigator.share && business) {
       try {
         await navigator.share({
-          title: business.name,
+          title: business.title,
           text: business.description,
           url: window.location.href,
         });
@@ -259,7 +259,7 @@ const BusinessDetail: React.FC = () => {
                 <CardContent className="p-0">
                   <img
                     src={business.cover_image_url}
-                    alt={business.name}
+                    alt={business.title}
                     className="w-full h-64 object-cover rounded-lg"
                   />
                 </CardContent>
@@ -308,7 +308,7 @@ const BusinessDetail: React.FC = () => {
                       <img
                         key={index}
                         src={image}
-                        alt={`${business.name} gallery ${index + 1}`}
+                        alt={`${business.title} gallery ${index + 1}`}
                         className="w-full h-32 object-cover rounded-lg"
                       />
                     ))}

@@ -44,7 +44,7 @@ const sanitizeBusiness = (raw: any): Business | null => {
     // Sanitize all fields with safe defaults
     const sanitized: Business = {
       id: String(raw.id),
-      name: raw.name ? String(raw.name).trim() : 'Unnamed Business',
+      title: raw.title ? String(raw.title).trim() : 'Unnamed Business',
       description: raw.description ? String(raw.description).trim() : '',
       address: raw.address ? String(raw.address).trim() : '',
       island: raw.island ? String(raw.island).trim() : 'Unknown',
@@ -62,7 +62,7 @@ const sanitizeBusiness = (raw: any): Business | null => {
 
     // Log if we had to fix any fields
     const fixes: string[] = [];
-    if (!raw.name || raw.name !== sanitized.name) fixes.push('name');
+    if (!raw.title || raw.title !== sanitized.title) fixes.push('title');
     if (!raw.description || raw.description !== sanitized.description) fixes.push('description');
     if (!raw.category || raw.category !== sanitized.category) fixes.push('category');
     if (!raw.status || raw.status !== sanitized.status) fixes.push('status');
@@ -147,19 +147,19 @@ const OptimizedBusinessManager: React.FC = () => {
         .from('categories')
         .select(`
           id,
-          name,
+          title,
           slug,
           description,
           is_active
         `)
         .eq('is_active', true)
-        .order('name');
+        .order('title');
 
       if (error) throw error;
       
       const categoryOptions = data?.map(cat => ({
         value: cat.slug,
-        label: cat.name
+        label: cat.title
       })) || [];
       
       setCategories(categoryOptions);
@@ -452,7 +452,7 @@ const OptimizedBusinessManager: React.FC = () => {
                   <div key={business.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{business.name || 'Unnamed Business'}</h3>
+                        <h3 className="font-medium">{business.title || 'Unnamed Business'}</h3>
                         <Badge className={
                           business.status === 'active' ? 'bg-green-500 text-white' :
                           business.status === 'pending' ? 'bg-yellow-400 text-black' :

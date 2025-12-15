@@ -27,7 +27,7 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   description: string;
   category: string;
   status: string;
@@ -97,15 +97,15 @@ const BusinessManager = () => {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .select('slug, name')
+        .select('slug, title')
         .eq('is_active', true)
-        .order('name');
+        .order('title');
 
       if (error) throw error;
       
       const categoryOptions = data?.map(cat => ({
         value: cat.slug,
-        label: cat.name
+        label: cat.title
       })) || [];
       
       setCategories(categoryOptions);
@@ -121,7 +121,7 @@ const BusinessManager = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(business =>
-        business.name.toLowerCase().includes(searchLower) ||
+        business.title.toLowerCase().includes(searchLower) ||
         business.description?.toLowerCase().includes(searchLower) ||
         business.email?.toLowerCase().includes(searchLower) ||
         business.address?.toLowerCase().includes(searchLower)
@@ -387,7 +387,7 @@ const BusinessManager = () => {
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-lg">{business.name}</h3>
+                        <h3 className="font-semibold text-lg">{business.title}</h3>
                         <BusinessStatusBadge status={business.status} />
                         {business.featured && (
                           <Badge variant="secondary" className="flex items-center gap-1">

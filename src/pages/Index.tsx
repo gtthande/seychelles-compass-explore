@@ -11,7 +11,9 @@ const CategoryGrid = lazy(() => import("@/components/OptimizedCategoryGrid"));
 const FeaturedListings = lazy(() => import("@/components/OptimizedFeaturedListings"));
 const SearchFilter = lazy(() => import("@/components/SearchFilter"));
 
-// Error boundary component for lazy loading failures - Memoized to prevent unnecessary re-renders
+// SAFETY: Error boundary component for lazy loading failures
+// FALLBACK: Prevents blank screens if lazy-loaded components fail to load
+// Memoized to prevent unnecessary re-renders
 const LazyErrorBoundary = React.memo(({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) => {
   const [hasError, setHasError] = React.useState(false);
 
@@ -21,6 +23,7 @@ const LazyErrorBoundary = React.memo(({ children, fallback }: { children: React.
     return () => window.removeEventListener('error', handleError);
   }, []);
 
+  // FALLBACK: Render skeleton/placeholder instead of crashing
   if (hasError) {
     return <>{fallback}</>;
   }

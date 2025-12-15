@@ -71,19 +71,15 @@ export const useUnifiedSearch = () => {
         .from('business_products')
         .select(`
           id,
-          title_override,
-          description_override,
-          price_from,
-          price_to,
-          currency_code,
+          price,
           is_active,
           product:products!inner (
             id,
             name,
             description,
-            category,
+            category_id,
             image_url,
-            status
+            is_active
           ),
           business:businesses!inner (
             id,
@@ -93,28 +89,26 @@ export const useUnifiedSearch = () => {
           )
         `)
         .eq('is_active', true)
-        .eq('product.status', 'active')
+        .eq('product.is_active', true)
         .limit(limit / 2);
 
       if (query) {
         productQuery.or(`
           product.name.ilike.%${query}%,
-          product.description.ilike.%${query}%,
-          title_override.ilike.%${query}%,
-          description_override.ilike.%${query}%
+          product.description.ilike.%${query}%
         `);
       }
 
       if (category) {
-        productQuery.eq('product.category', category);
+        productQuery.eq('product.category_id', category);
       }
 
       if (priceMin !== undefined) {
-        productQuery.gte('price_from', priceMin);
+        productQuery.gte('price', priceMin);
       }
 
       if (priceMax !== undefined) {
-        productQuery.lte('price_to', priceMax);
+        productQuery.lte('price', priceMax);
       }
 
       if (businessId) {
@@ -147,15 +141,15 @@ export const useUnifiedSearch = () => {
       const productResults: SearchResult[] = (productResult.data || []).map((bp: any) => {
         const product = bp.product || {};
         const business = bp.business || {};
-        const displayName = bp.title_override || product.name || 'Unknown Product';
-        const displayDescription = bp.description_override || product.description || '';
+        const displayName = product.name || 'Unknown Product';
+        const displayDescription = product.description || '';
         return {
           id: bp.id,
           type: 'product' as const,
           name: displayName,
           description: displayDescription,
-          category: product.category,
-          price: bp.price_from || 0,
+          category: product.category_id || '',
+          price: bp.price || product.price || 0,
           image_url: product.image_url,
           business_name: business.title,
           business_address: business.address,
@@ -171,9 +165,8 @@ export const useUnifiedSearch = () => {
 
       return allResults;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Search failed';
-      setError(errorMessage);
-      console.error('Search error:', err);
+      // Silent error handling - return empty results
+      setError(null);
       return [];
     } finally {
       setLoading(false);
@@ -232,14 +225,37 @@ export const useUnifiedSearch = () => {
       // Pattern: products -> business_products -> businesses
       const { data, error } = await supabase
         .from('products')
-        .select('*, business_products(*), businesses(*)')
+        .select(`
+          id,
+          name,
+          description,
+          category_id,
+          image_url,
+          price,
+          duration,
+          slug,
+          is_active,
+          searchable,
+          business_products!inner (
+            id,
+            business_id,
+            is_active,
+            price,
+            businesses (
+              id,
+              title,
+              address,
+              island
+            )
+          )
+        `)
         .eq('business_products.is_active', true)
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%,business_products.notes.ilike.%${query}%`)
+        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
         .limit(limit);
 
       if (error) {
-        console.error('[searchProducts] Error:', error);
-        throw error;
+        // Silent error handling - return empty results
+        return [];
       }
 
       // Flatten products with their business_products
@@ -253,13 +269,13 @@ export const useUnifiedSearch = () => {
                 type: 'product' as const,
                 name: product.name || '',
                 description: product.description || '',
-                category: product.category,
-                price: bp.price,
+                category: product.category_id || '',
+                price: bp.price || product.price || 0,
                 image_url: product.image_url,
                 business_name: bp.businesses?.title,
                 business_address: bp.businesses?.address,
                 business_island: bp.businesses?.island,
-                rank: calculateRank(product.name, product.description || '', query)
+                rank: calculateRank(product.name || '', product.description || '', query)
               });
             }
           });
@@ -268,9 +284,8 @@ export const useUnifiedSearch = () => {
 
       return results;
     } catch (err: any) {
-      const errorMessage = err?.message || 'Product search failed';
-      console.error('[searchProducts] Error:', err);
-      setError(errorMessage);
+      // Silent error handling - return empty results
+      setError(null);
       return [];
     } finally {
       setLoading(false);

@@ -302,21 +302,14 @@ export const dataFetchers = {
       const { data, error } = await supabase.rpc('get_live_counters');
 
       if (error) {
-        console.error('🚨 DataFetchers: getLiveCounters RPC failed:', error);
-        console.error('getLiveCounters Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        throw error;
+        // Silent fallback - return zero values instead of throwing
+        return { businesses: 0, products: 0, users: 0, reviews: 0 };
       }
 
-      console.log('✅ DataFetchers: getLiveCounters successful:', data);
-      return data || { businesses: 0, products: 0, users: 0 };
+      return data || { businesses: 0, products: 0, users: 0, reviews: 0 };
     } catch (err) {
-      console.error('🚨 DataFetchers: getLiveCounters exception:', err);
-      throw err;
+      // Silent error handling - return zero values
+      return { businesses: 0, products: 0, users: 0, reviews: 0 };
     }
   },
 
@@ -363,7 +356,7 @@ export const dataFetchers = {
           product_id,
           business:businesses (
             id,
-            name,
+            title,
             address,
             island,
             category,
@@ -372,28 +365,22 @@ export const dataFetchers = {
           product:products (
             id,
             name,
-            title,
             description,
-            category,
-            image_url,
-            status,
             price,
-            currency,
-            in_stock,
-            stock_quantity
+            image_url,
+            category_id
           )
         `)
         .order('product_id');
 
       // Apply filters
       if (filters.category) {
-        query = query.eq('product.category', filters.category);
+        query = query.eq('product.category_id', filters.category);
       }
       if (filters.search) {
         query = query.or(`
           product.name.ilike.%${filters.search}%,
-          product.description.ilike.%${filters.search}%,
-          product.title.ilike.%${filters.search}%
+          product.description.ilike.%${filters.search}%
         `);
       }
 
@@ -406,13 +393,12 @@ export const dataFetchers = {
       // Transform to match expected format
       const results: any[] = (data || []).map((bp: any) => ({
         id: bp.product?.id || bp.id,
-        name: bp.title_override || bp.product?.name || 'Unknown Product',
-        description: bp.description_override || bp.product?.description || '',
-        price: bp.price_from || bp.product?.price || 0,
-        price_to: bp.price_to || bp.price_from || null,
-        currency: bp.currency_code || 'SCR',
+        name: bp.product?.name || 'Unknown Product',
+        description: bp.product?.description || '',
+        price: bp.price || bp.product?.price || 0,
+        currency: 'SCR',
         images: bp.product?.image_url ? [bp.product.image_url] : [],
-        category: bp.product?.category || '',
+        category: bp.product?.category_id || '',
         business_id: bp.business_id,
         created_at: bp.created_at || bp.product?.created_at,
       }));

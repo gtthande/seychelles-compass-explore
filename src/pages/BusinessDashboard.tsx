@@ -341,25 +341,18 @@ const BusinessDashboard = () => {
         .from('business_products')
         .select(`
           id,
-          title_override,
-          description_override,
-          price_from,
-          price_to,
-          currency_code,
-          duration_minutes,
-          booking_url,
-          notes,
+          price,
+          duration,
           is_active,
           created_at,
           updated_at,
-          product:products!inner (
+          product:products (
             id,
             name,
-            title,
             description,
-            category,
+            price,
             image_url,
-            status
+            category_id
           )
         `)
         .eq('business_id', business.id)
@@ -367,22 +360,23 @@ const BusinessDashboard = () => {
 
       if (error) throw error;
       // Transform business_products data to match expected Product interface
-      const transformedProducts = (data || []).map((bp: any) => ({
-        id: bp.id,
-        name: bp.title_override || bp.product?.name || 'Unknown Product',
-        description: bp.description_override || bp.product?.description || '',
-        price: bp.price_from || 0,
-        price_to: bp.price_to || bp.price_from || null,
-        currency: bp.currency_code || 'SCR',
-        category: bp.product?.category || '',
-        images: bp.product?.image_url ? [bp.product.image_url] : [],
-        is_active: bp.is_active,
-        duration_minutes: bp.duration_minutes,
-        booking_url: bp.booking_url,
-        notes: bp.notes,
-        created_at: bp.created_at,
-        updated_at: bp.updated_at,
-      }));
+      // Defensive handling: ensure product data exists
+      const transformedProducts = (data || []).map((bp: any) => {
+        const product = bp.product || {};
+        return {
+          id: bp.id || '',
+          name: product.name || 'Unknown Product',
+          description: product.description || '',
+          price: bp.price || product.price || 0,
+          currency: 'SCR',
+          category_id: product.category_id || null,
+          images: product.image_url ? [product.image_url] : [],
+          is_active: bp.is_active ?? true,
+          duration: bp.duration || null,
+          created_at: bp.created_at || '',
+          updated_at: bp.updated_at || '',
+        };
+      });
       setProducts(transformedProducts);
     } catch (error: any) {
       console.error('Error fetching products:', error);
@@ -515,7 +509,7 @@ const BusinessDashboard = () => {
         name: product.name,
         description: product.description,
         price: product.price,
-        category: product.category,
+        category_id: product.category_id,
         image_url: product.image_url || ""
       });
     } else {
@@ -730,7 +724,7 @@ const BusinessDashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="w-5 h-5" />
-                  {business.name}
+                  {business.title}
                 </CardTitle>
                 <CardDescription>{business.description}</CardDescription>
               </CardHeader>
@@ -815,7 +809,7 @@ const BusinessDashboard = () => {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">${product.price}</span>
-                        <Badge variant="outline">{product.category}</Badge>
+                        {product.category_id && <Badge variant="outline">{product.category_id}</Badge>}
                       </div>
                       <div className="flex gap-2">
                         <Button

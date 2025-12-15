@@ -16,11 +16,11 @@ import { Upload, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const productSchema = z.object({
-  name: z.string().min(2, "Product name must be at least 2 characters"),
+  title: z.string().min(2, "Product title must be at least 2 characters"),
   description: z.string().optional(),
   price: z.string().optional(),
   currency: z.string().optional(),
-  category: z.string().optional(),
+  category_id: z.string().optional(),
   status: z.string().default("draft"),
   in_stock: z.boolean().default(true),
   stock_quantity: z.string().optional(),
@@ -33,9 +33,9 @@ type ProductFormData = z.infer<typeof productSchema>;
 
 export interface Product {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  category: string;
+  category_id: string | null;
   images: string[];
   price: number;
   currency: string;
@@ -50,7 +50,7 @@ export interface Product {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
 }
 
 interface ProductManagerProps {
@@ -74,11 +74,11 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: product?.name || "",
+      title: product?.title || "",
       description: product?.description || "",
       price: product?.price?.toString() || "",
       currency: product?.currency || "SCR",
-      category: product?.category || "",
+      category_id: product?.category_id || "",
       status: product?.status || "draft",
       in_stock: product?.in_stock ?? true,
       stock_quantity: product?.stock_quantity?.toString() || "",
@@ -96,21 +96,21 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
 
   const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
 
-  // Fetch categories from database
+      // Fetch categories from database
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const { data, error } = await supabase
           .from('categories')
-          .select('slug, name')
+          .select('id, title')
           .eq('is_active', true)
-          .order('name');
+          .order('title');
 
         if (error) throw error;
         
         const categoryOptions = data?.map(cat => ({
-          value: cat.slug,
-          label: cat.name
+          value: cat.id,
+          label: cat.title
         })) || [];
         
         setCategories(categoryOptions);
@@ -282,11 +282,11 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
       const { imageUrls, catalogueUrl } = await uploadFiles();
 
       const productData = {
-        name: data.name,
+        title: data.title,
         description: data.description || null,
         price: data.price ? parseFloat(data.price) : null,
         currency: data.currency || null,
-        category: data.category || null,
+        category_id: data.category_id || null,
         status: data.status as any,
         in_stock: data.in_stock,
         stock_quantity: data.stock_quantity ? parseInt(data.stock_quantity) : null,
@@ -422,12 +422,12 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
             )}
             <FormField
               control={form.control}
-              name="name"
+              name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Product/Service Name</FormLabel>
+                  <FormLabel>Product/Service Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter product name" {...field} />
+                    <Input placeholder="Enter product title" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -496,7 +496,7 @@ const ProductManager = ({ business, product, onClose, onSave }: ProductManagerPr
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="category"
+                name="category_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>

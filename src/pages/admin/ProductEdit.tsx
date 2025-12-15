@@ -12,8 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   updateBusinessProduct,
   deleteBusinessProduct,
-  fetchBusinessProducts,
-  type BusinessProduct
+  type BusinessProduct,
+  type Product
 } from '@/lib/products-api';
 import { 
   Save, 
@@ -31,20 +31,16 @@ const ProductEdit: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [businessProduct, setBusinessProduct] = useState<BusinessProduct | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [businessProductLink, setBusinessProductLink] = useState<{ id: string; business_id: string; price: number | null; duration: string | null; is_active: boolean } | null>(null);
+  const [businessTitle, setBusinessTitle] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Form state for business-product link
   const [formData, setFormData] = useState({
-    title_override: '',
-    description_override: '',
-    price_from: '',
-    price_to: '',
-    currency_code: 'SCR',
-    duration_minutes: '',
-    booking_url: '',
-    notes: '',
+    price: '',
+    duration: '',
     is_active: true
   });
 
@@ -52,36 +48,61 @@ const ProductEdit: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      fetchBusinessProduct();
+      fetchProductData();
     }
   }, [id]);
 
-  const fetchBusinessProduct = async () => {
+  const fetchProductData = async () => {
     if (!id) return;
     
     setLoading(true);
     try {
-      const result = await fetchBusinessProducts({ limit: 1 });
-      const bp = result.businessProducts.find(p => p.id === id);
-      
-      if (!bp) {
-        throw new Error('Business product not found');
+      // First, fetch the business_product link to get product_id and business_id
+      const { data: bpLink, error: bpError } = await supabase
+        .from('business_products')
+        .select('id, business_id, product_id, price, duration, is_active')
+        .eq('id', id)
+        .single();
+
+      if (bpError || !bpLink) {
+        throw new Error('Business product link not found');
       }
 
-      setBusinessProduct(bp);
+      // Fetch product data ONLY from products table with specified columns
+      // Note: products table uses 'name' column (NOT 'title')
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('id, name, description, price, duration, image_url, category_id, is_active, searchable')
+        .eq('id', bpLink.product_id)
+        .single();
+
+      if (productError || !productData) {
+        throw new Error('Product not found');
+      }
+
+      // Fetch business title for display (separate query)
+      const { data: businessData } = await supabase
+        .from('businesses')
+        .select('title')
+        .eq('id', bpLink.business_id)
+        .single();
+
+      setProduct(productData as Product);
+      setBusinessProductLink({
+        id: bpLink.id,
+        business_id: bpLink.business_id,
+        price: bpLink.price,
+        duration: bpLink.duration,
+        is_active: bpLink.is_active
+      });
+      setBusinessTitle(businessData?.title || '');
       setFormData({
-        title_override: bp.title_override || '',
-        description_override: bp.description_override || '',
-        price_from: bp.price_from?.toString() || '',
-        price_to: bp.price_to?.toString() || '',
-        currency_code: bp.currency_code || 'SCR',
-        duration_minutes: bp.duration_minutes?.toString() || '',
-        booking_url: bp.booking_url || '',
-        notes: bp.notes || '',
-        is_active: bp.is_active ?? true
+        price: bpLink.price?.toString() || '',
+        duration: bpLink.duration || '',
+        is_active: bpLink.is_active ?? true
       });
     } catch (error: any) {
-      console.error('Error fetching business product:', error);
+      console.error('Error fetching product data:', error);
       toast({
         title: "Error",
         description: error?.message || "Failed to load product data",
@@ -104,12 +125,8 @@ const ProductEdit: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.price_from || isNaN(Number(formData.price_from)) || Number(formData.price_from) <= 0) {
-      newErrors.price_from = 'Valid minimum price is required';
-    }
-
-    if (formData.price_to && (isNaN(Number(formData.price_to)) || Number(formData.price_to) < Number(formData.price_from))) {
-      newErrors.price_to = 'Maximum price must be greater than minimum price';
+    if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
+      newErrors.price = 'Valid price is required';
     }
 
     setErrors(newErrors);
@@ -131,14 +148,8 @@ const ProductEdit: React.FC = () => {
     setSaving(true);
     try {
       const updated = await updateBusinessProduct(id, {
-        title_override: formData.title_override || null,
-        description_override: formData.description_override || null,
-        price_from: Number(formData.price_from),
-        price_to: formData.price_to ? Number(formData.price_to) : null,
-        currency_code: formData.currency_code,
-        duration_minutes: formData.duration_minutes ? Number(formData.duration_minutes) : null,
-        booking_url: formData.booking_url || null,
-        notes: formData.notes || null,
+        price: Number(formData.price),
+        duration: formData.duration || null,
         is_active: formData.is_active
       });
 
@@ -146,7 +157,19 @@ const ProductEdit: React.FC = () => {
         throw new Error('Failed to update business product');
       }
 
-      setBusinessProduct(updated);
+      // Update the business product link state
+      setBusinessProductLink({
+        id: updated.id,
+        business_id: updated.business_id,
+        price: updated.price,
+        duration: updated.duration,
+        is_active: updated.is_active
+      });
+      setFormData({
+        price: updated.price?.toString() || '',
+        duration: updated.duration || '',
+        is_active: updated.is_active ?? true
+      });
       toast({
         title: "Success",
         description: "Product updated successfully",
@@ -207,7 +230,7 @@ const ProductEdit: React.FC = () => {
     );
   }
 
-  if (!businessProduct) {
+  if (!product || !businessProductLink) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
@@ -222,9 +245,9 @@ const ProductEdit: React.FC = () => {
     );
   }
 
-  const productName = businessProduct.product?.name || 'Unknown Product';
-  const displayTitle = businessProduct.title_override || businessProduct.product?.title || productName;
-  const displayDescription = businessProduct.description_override || businessProduct.product?.description || '';
+  const productName = product.name || 'Unknown Product';
+  const displayTitle = productName;
+  const displayDescription = product.description || '';
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
@@ -269,29 +292,23 @@ const ProductEdit: React.FC = () => {
                 <Label>Product Name</Label>
                 <p className="text-sm font-medium">{productName}</p>
               </div>
-              {businessProduct.product?.title && (
-                <div>
-                  <Label>Product Title</Label>
-                  <p className="text-sm">{businessProduct.product.title}</p>
-                </div>
-              )}
-              {businessProduct.product?.description && (
+              {product.description && (
                 <div>
                   <Label>Product Description</Label>
-                  <p className="text-sm text-muted-foreground">{businessProduct.product.description}</p>
+                  <p className="text-sm text-muted-foreground">{product.description}</p>
                 </div>
               )}
-              {businessProduct.product?.category && (
+              {product.category_id && (
                 <div>
-                  <Label>Category</Label>
-                  <p className="text-sm">{businessProduct.product.category}</p>
+                  <Label>Category ID</Label>
+                  <p className="text-sm">{product.category_id}</p>
                 </div>
               )}
-              {businessProduct.product?.image_url && (
+              {product.image_url && (
                 <div>
                   <Label>Product Image</Label>
                   <img
-                    src={businessProduct.product.image_url}
+                    src={product.image_url}
                     alt={productName}
                     className="w-full h-48 object-cover rounded-lg border mt-2"
                   />
@@ -314,128 +331,40 @@ const ProductEdit: React.FC = () => {
             <CardContent className="space-y-4">
               <div>
                 <Label>Business</Label>
-                <p className="text-sm font-medium">{businessProduct.business?.name}</p>
-                {businessProduct.business?.island && (
-                  <p className="text-sm text-muted-foreground">{businessProduct.business.island}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="title_override">Custom Title (Optional)</Label>
-                <Input
-                  id="title_override"
-                  value={formData.title_override}
-                  onChange={(e) => handleInputChange('title_override', e.target.value)}
-                  placeholder="Override product title for this business"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Leave empty to use master product title: {businessProduct.product?.title || productName}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description_override">Custom Description (Optional)</Label>
-                <Textarea
-                  id="description_override"
-                  value={formData.description_override}
-                  onChange={(e) => handleInputChange('description_override', e.target.value)}
-                  rows={4}
-                  placeholder="Override product description for this business"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Leave empty to use master product description
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price_from">Price From *</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="price_from"
-                      type="number"
-                      step="0.01"
-                      value={formData.price_from}
-                      onChange={(e) => handleInputChange('price_from', e.target.value)}
-                      className={`pl-10 ${errors.price_from ? 'border-red-500' : ''}`}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  {errors.price_from && <p className="text-sm text-red-500">{errors.price_from}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price_to">Price To (Optional)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="price_to"
-                      type="number"
-                      step="0.01"
-                      value={formData.price_to}
-                      onChange={(e) => handleInputChange('price_to', e.target.value)}
-                      className={`pl-10 ${errors.price_to ? 'border-red-500' : ''}`}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  {errors.price_to && <p className="text-sm text-red-500">{errors.price_to}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="currency_code">Currency</Label>
-                  <Select 
-                    value={formData.currency_code} 
-                    onValueChange={(value) => handleInputChange('currency_code', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SCR">SCR (Seychelles Rupee)</SelectItem>
-                      <SelectItem value="USD">USD (US Dollar)</SelectItem>
-                      <SelectItem value="EUR">EUR (Euro)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="duration_minutes">Duration (Minutes)</Label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="duration_minutes"
-                    type="number"
-                    value={formData.duration_minutes}
-                    onChange={(e) => handleInputChange('duration_minutes', e.target.value)}
-                    className="pl-10"
-                    placeholder="e.g., 120 for 2 hours"
-                  />
-                </div>
+                <p className="text-sm font-medium">{businessTitle}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="booking_url">Booking URL (Optional)</Label>
-                  <Input
-                    id="booking_url"
-                    type="url"
-                    value={formData.booking_url}
-                    onChange={(e) => handleInputChange('booking_url', e.target.value)}
-                    placeholder="https://..."
-                  />
+                  <Label htmlFor="price">Price *</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) => handleInputChange('price', e.target.value)}
+                      className={`pl-10 ${errors.price ? 'border-red-500' : ''}`}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes / Conditions (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => handleInputChange('notes', e.target.value)}
-                    rows={2}
-                    placeholder="Special conditions, offers, etc."
-                  />
+                  <Label htmlFor="duration">Duration</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="duration"
+                      type="text"
+                      value={formData.duration}
+                      onChange={(e) => handleInputChange('duration', e.target.value)}
+                      className="pl-10"
+                      placeholder="e.g., 2 hours"
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -504,27 +504,27 @@ const Directory = () => {
   // Memoize fetchProducts to prevent unnecessary re-renders
   const fetchProducts = useCallback(async () => {
     try {
+      // Note: Products table doesn't have business_id directly
+      // Products are linked via business_products join table
+      // This query may need to be refactored to use business_products
       const { data, error } = await supabase
         .from('products')
         .select(`
           id,
           name,
           description,
-          category,
-          images,
+          category_id,
+          image_url,
           price,
-          currency,
+          duration,
           stock,
           is_active,
-          status,
-          business_id,
+          searchable,
           created_at,
           updated_at,
-          slug,
-          business:businesses(id, name, category, status, island, address)
+          slug
         `)
         .eq('is_active', true)
-        .eq('business.status', 'active')
         .order('created_at', { ascending: false })
         .limit(50);
 

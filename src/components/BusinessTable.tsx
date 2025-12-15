@@ -164,7 +164,7 @@ const BusinessTable: React.FC<BusinessTableProps> = ({ businesses, searchTerm })
               <div className="col-span-3">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                    {business.name}
+                    {business.title}
                   </h3>
                   {business.featured && (
                     <Badge variant="secondary" className="text-xs">

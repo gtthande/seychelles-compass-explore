@@ -13,16 +13,12 @@ import { Progress } from "@/components/ui/progress";
 
 export interface Product {
   id: string;
-  name: string;
+  title: string; // Display title (from product.name)
   description: string;
-  category: string;
+  category_id: string | null;
   images?: string[];
   image_url?: string | null;
   price?: number | null;
-  price_from?: number | null;
-  price_to?: number | null;
-  currency?: string | null;
-  currency_code?: string;
   is_active: boolean;
   stock?: number | null;
   status: string;
@@ -32,18 +28,17 @@ export interface Product {
   slug?: string | null;
   business?: {
     id: string;
-    name: string;
+    title: string;
     island: string | null;
     address: string | null;
   };
   product?: {
     id: string;
     name: string;
-    title: string | null;
     description: string | null;
-    category: string | null;
+    category_id: string | null;
     image_url: string | null;
-    status: string | null;
+    is_active: boolean;
   };
 }
 
@@ -92,15 +87,13 @@ const Products = () => {
             id,
             business_id,
             product_id,
-            price_from,
-            price_to,
-            currency_code,
+            price,
             is_active,
             created_at,
             updated_at,
             business:businesses (
               id,
-              name,
+              title,
               island,
               address,
               status
@@ -108,11 +101,10 @@ const Products = () => {
             product:products (
               id,
               name,
-              title,
               description,
-              category,
+              price,
               image_url,
-              status
+              category_id
             )
           `, { count: 'exact' })
           .eq('is_active', true)
@@ -123,21 +115,20 @@ const Products = () => {
         if (searchTerm) {
           query = query.or(`
             product.name.ilike.%${searchTerm}%,
-            product.description.ilike.%${searchTerm}%,
-            product.title.ilike.%${searchTerm}%
+            product.description.ilike.%${searchTerm}%
           `);
         }
 
         if (selectedCategory && selectedCategory !== "__all__") {
-          query = query.eq('product.category', selectedCategory);
+          query = query.eq('product.category_id', selectedCategory);
         }
 
         if (priceRange.min) {
-          query = query.gte('price_from', parseFloat(priceRange.min));
+          query = query.gte('price', parseFloat(priceRange.min));
         }
 
         if (priceRange.max) {
-          query = query.lte('price_to', parseFloat(priceRange.max));
+          query = query.lte('price', parseFloat(priceRange.max));
         }
 
         if (selectedIsland && selectedIsland !== "__all__") {
@@ -165,17 +156,13 @@ const Products = () => {
         // Transform business_products data to match Product interface
         const transformedData = (data || []).map((bp: any) => ({
           id: bp.id,
-          name: bp.product?.title || bp.product?.name || '',
+          title: bp.product?.name || '',
           description: bp.product?.description || '',
-          category: bp.product?.category || '',
+          category_id: bp.product?.category_id || null,
           image_url: bp.product?.image_url || null,
-          price_from: bp.price_from,
-          price_to: bp.price_to,
-          price: bp.price_from, // Use price_from as primary price
-          currency: bp.currency_code || 'SCR',
-          currency_code: bp.currency_code || 'SCR',
+          price: bp.price || bp.product?.price || null,
           is_active: bp.is_active,
-          status: bp.product?.status || 'active',
+          status: bp.is_active ? 'active' : 'inactive',
           business_id: bp.business_id,
           created_at: bp.created_at,
           updated_at: bp.updated_at,
@@ -228,8 +215,8 @@ const Products = () => {
 
   const handleShare = (product: Product, platform?: 'facebook' | 'instagram' | 'link') => {
     const productUrl = `${window.location.origin}/products/${product.id}`;
-    const businessName = product.business?.name || 'a local business';
-    const shareText = `Check out ${product.name} from ${businessName} in Seychelles!`;
+    const businessTitle = product.business?.title || 'a local business';
+    const shareText = `Check out ${product.title} from ${businessTitle} in Seychelles!`;
     
     switch (platform) {
       case 'facebook':
@@ -246,7 +233,7 @@ const Products = () => {
       default:
         if (navigator.share) {
           navigator.share({
-            title: product.name,
+            title: product.title,
             text: shareText,
             url: productUrl,
           });
@@ -260,16 +247,8 @@ const Products = () => {
     }
   };
 
-  const formatPrice = (price: number | null | undefined, priceFrom: number | null | undefined, priceTo: number | null | undefined, currency: string | null | undefined) => {
-    const currencyCode = currency || 'SCR';
-    const symbol = currencyCode === "USD" ? "$" : currencyCode === "EUR" ? "€" : "₨";
-    
-    if (priceFrom && priceTo && priceFrom !== priceTo) {
-      return `${symbol}${priceFrom.toLocaleString()} - ${symbol}${priceTo.toLocaleString()}`;
-    }
-    if (priceFrom) {
-      return `From ${symbol}${priceFrom.toLocaleString()}`;
-    }
+  const formatPrice = (price: number | null | undefined) => {
+    const symbol = "₨";
     if (price) {
       return `${symbol}${price.toLocaleString()}`;
     }
@@ -282,7 +261,7 @@ const Products = () => {
         {product.image_url || (product.images && product.images.length > 0) ? (
           <img
             src={product.image_url || (product.images && product.images[0]) || ''}
-            alt={product.name}
+            alt={product.title}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
@@ -299,7 +278,7 @@ const Products = () => {
 
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg line-clamp-2 text-card-foreground">{product.name}</CardTitle>
+          <CardTitle className="text-lg line-clamp-2 text-card-foreground">{product.title}</CardTitle>
           <div className="flex gap-1">
             <Button
               variant="ghost"
@@ -344,7 +323,7 @@ const Products = () => {
           </div>
         </div>
         <div className="text-primary font-semibold">
-          {formatPrice(product.price, product.price_from, product.price_to, product.currency_code || product.currency)}
+          {formatPrice(product.price)}
         </div>
       </CardHeader>
 
@@ -354,7 +333,7 @@ const Products = () => {
         </CardDescription>
 
         <div className="space-y-2">
-          {product.business?.name && (
+          {product.business?.title && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="w-3 h-3" />
               <span>{product.business.title}</span>
@@ -362,9 +341,9 @@ const Products = () => {
             </div>
           )}
 
-          {product.category && (
+          {product.category_id && (
             <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {categories.find(c => c.value === product.category)?.label || product.category}
+              {categories.find(c => c.value === product.category_id)?.label || product.category_id}
             </Badge>
           )}
 
@@ -395,7 +374,7 @@ const Products = () => {
             {product.image_url || (product.images && product.images.length > 0) ? (
               <img
                 src={product.image_url || (product.images && product.images[0]) || ''}
-                alt={product.name}
+                alt={product.title}
                 className="w-24 h-24 object-cover rounded-lg"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
@@ -412,7 +391,7 @@ const Products = () => {
 
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
+              <h3 className="font-semibold text-lg line-clamp-1">{product.title}</h3>
               <div className="flex gap-1">
                 <Button
                   variant="ghost"
@@ -438,7 +417,7 @@ const Products = () => {
             </div>
 
             <div className="text-primary font-semibold mb-2">
-              {formatPrice(product.price, product.price_from, product.price_to, product.currency_code || product.currency)}
+              {formatPrice(product.price)}
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -446,7 +425,7 @@ const Products = () => {
             </p>
 
             <div className="flex items-center justify-between">
-              {product.business?.name && (
+              {product.business?.title && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="w-3 h-3" />
                   <span>{product.business.title}</span>
@@ -455,9 +434,9 @@ const Products = () => {
               )}
 
               <div className="flex gap-2">
-                {product.category && (
+                {product.category_id && (
                   <Badge variant="secondary">
-                    {categories.find(c => c.value === product.category)?.label || product.category}
+                    {categories.find(c => c.value === product.category_id)?.label || product.category_id}
                   </Badge>
                 )}
               </div>

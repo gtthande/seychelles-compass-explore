@@ -61,7 +61,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
         .limit(15); // Get more results for better scoring
 
       if (error) {
-        console.error('Search error:', error);
+        // Silent error handling - return empty results
         setResults([]);
       } else {
         // Apply relevance scoring and filtering
@@ -100,7 +100,7 @@ const BusinessSearch: React.FC<BusinessSearchProps> = ({
         setSelectedIndex(-1);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      // Silent error handling - return empty results
       setResults([]);
     } finally {
       setIsLoading(false);

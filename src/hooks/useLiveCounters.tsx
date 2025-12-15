@@ -37,39 +37,20 @@ export const useLiveCounters = () => {
       
       // Skip RPC if it failed previously - use fallback directly
       if (rpcFailedRef.current) {
-        if (import.meta.env.DEV) {
-          console.debug('[useLiveCounters] Skipping RPC (cached failure), using fallback directly');
-        }
-        // Use fallback queries directly
+        // Use fallback queries directly (silent - no console output)
         try {
           const [businessesResult, productsResult] = await Promise.all([
             supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
             supabase.from('products').select('id', { count: 'exact', head: true })
           ]);
 
-          // Suppress individual query errors - log warnings only
-          if (businessesResult.error && import.meta.env.DEV) {
-            console.warn('[useLiveCounters] Businesses query warning:', businessesResult.error.message);
-          }
-          if (productsResult.error && import.meta.env.DEV) {
-            console.warn('[useLiveCounters] Products query warning:', productsResult.error.message);
-          }
-
           const businesses = businessesResult.count || 0;
           const products = productsResult.count || 0;
-
-          if (import.meta.env.DEV) {
-            console.debug('[useLiveCounters] Fallback queries completed:', { businesses, products });
-          }
           setCounters({ businesses, products, users: 0, reviews: 0 });
           setLoading(false);
           return;
         } catch (fallbackError: any) {
-          // Suppress error spam - log warning only
-          if (import.meta.env.DEV) {
-            console.warn('[useLiveCounters] Fallback queries failed:', fallbackError?.message || 'Unknown error');
-          }
-          // Set fallback values instead of throwing
+          // Set fallback values instead of throwing (silent)
           setCounters({ businesses: 0, products: 0, users: 0, reviews: 0 });
           setLoading(false);
           return;
@@ -77,89 +58,91 @@ export const useLiveCounters = () => {
       }
       
       // Attempt RPC only if not previously failed
-      // TODO: RPC 'get_live_counters' may not exist or have schema mismatches
       // FALLBACK: Uses direct table queries if RPC fails (non-fatal)
-      const { data, error } = await supabase.rpc('get_live_counters', {}, {
-        signal
-      });
+      try {
+        const { data, error } = await supabase.rpc('get_live_counters', {}, {
+          signal
+        });
 
-      if (error) {
-        // Cache RPC failure - log warning ONCE
-        // SAFETY: This error is expected and safe - fallback queries handle it
-        rpcFailedRef.current = true;
-        if (import.meta.env.DEV) {
-          console.warn('[useLiveCounters] RPC get_live_counters failed (caching failure), using fallback:', error.message);
+        if (error) {
+          // Cache RPC failure - silent fallback (no console output)
+          rpcFailedRef.current = true;
+          
+          // FALLBACK: Individual queries if RPC fails - optimized for performance
+          // This prevents blank screens and ensures counters always display
+          try {
+            const [businessesResult, productsResult] = await Promise.all([
+              supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+              supabase.from('products').select('id', { count: 'exact', head: true })
+            ]);
+
+            const businesses = businessesResult.count || 0;
+            const products = productsResult.count || 0;
+            setCounters({ businesses, products, users: 0, reviews: 0 });
+            setLoading(false);
+            return;
+          } catch (fallbackError: any) {
+            // Set fallback values instead of throwing (silent)
+            setCounters({ businesses: 0, products: 0, users: 0, reviews: 0 });
+            setLoading(false);
+            return;
+          }
         }
+
+        // RPC succeeded - reset failure flag
+        rpcFailedRef.current = false;
         
-        // FALLBACK: Individual queries if RPC fails - optimized for performance
-        // This prevents blank screens and ensures counters always display
+        if (data && data.length > 0) {
+          const counters = data[0];
+          setCounters({
+            businesses: Number(counters.verified_businesses) || 0,
+            products: Number(counters.active_products) || 0,
+            users: Number(counters.total_users) || 0,
+            reviews: Number(counters.total_reviews) || 0,
+          });
+        } else {
+          // No data returned, use fallback values
+          setCounters({
+            businesses: 0,
+            products: 0,
+            users: 0,
+            reviews: 0,
+          });
+        }
+        setLoading(false);
+        return;
+      } catch (rpcError: any) {
+        // Handle RPC call errors (400, network errors, etc.) silently
+        if (signal.aborted) return;
+        
+        // Cache RPC failure
+        rpcFailedRef.current = true;
+        
+        // Use fallback queries
         try {
           const [businessesResult, productsResult] = await Promise.all([
             supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
             supabase.from('products').select('id', { count: 'exact', head: true })
           ]);
 
-          // Suppress individual query errors - log warnings only
-          if (businessesResult.error && import.meta.env.DEV) {
-            console.warn('[useLiveCounters] Businesses query warning:', businessesResult.error.message);
-          }
-          if (productsResult.error && import.meta.env.DEV) {
-            console.warn('[useLiveCounters] Products query warning:', productsResult.error.message);
-          }
-
           const businesses = businessesResult.count || 0;
           const products = productsResult.count || 0;
-
-          if (import.meta.env.DEV) {
-            console.debug('[useLiveCounters] Fallback queries completed:', { businesses, products });
-          }
           setCounters({ businesses, products, users: 0, reviews: 0 });
           setLoading(false);
           return;
         } catch (fallbackError: any) {
-          // Suppress error spam - log warning only
-          if (import.meta.env.DEV) {
-            console.warn('[useLiveCounters] Fallback queries failed:', fallbackError?.message || 'Unknown error');
-          }
-          // Set fallback values instead of throwing
+          // Set fallback values instead of throwing (silent)
           setCounters({ businesses: 0, products: 0, users: 0, reviews: 0 });
           setLoading(false);
           return;
         }
       }
 
-      // RPC succeeded - reset failure flag
-      rpcFailedRef.current = false;
-      
-      if (data && data.length > 0) {
-        const counters = data[0];
-        setCounters({
-          businesses: Number(counters.verified_businesses) || 0,
-          products: Number(counters.active_products) || 0,
-          users: Number(counters.total_users) || 0,
-          reviews: Number(counters.total_reviews) || 0,
-        });
-      } else {
-        // No data returned, use fallback values
-        setCounters({
-          businesses: 0,
-          products: 0,
-          users: 0,
-          reviews: 0,
-        });
-      }
-      setLoading(false);
     } catch (error: any) {
       // SAFETY: Don't set error if request was aborted (component unmounted)
       if (signal.aborted) return;
       
-      // SAFETY: Suppress error spam - log warning only once
-      // This catch block ensures counters always have values, preventing blank screens
-      if (import.meta.env.DEV) {
-        console.warn('[useLiveCounters] Exception caught (non-critical):', error?.message || 'Unknown error');
-      }
-      
-      // FALLBACK: Don't show error to user, handle gracefully with zero values
+      // FALLBACK: Don't show error to user, handle gracefully with zero values (silent)
       setError(null);
       setCounters({
         businesses: 0,

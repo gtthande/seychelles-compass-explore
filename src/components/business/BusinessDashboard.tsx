@@ -59,24 +59,18 @@ const BusinessDashboard = () => {
           .from('business_products')
           .select(`
             id,
-            title_override,
-            description_override,
-            price_from,
-            price_to,
-            currency_code,
-            duration_minutes,
+            price,
+            duration,
             is_active,
-            booking_url,
-            notes,
             created_at,
             updated_at,
-            product:products!inner (
+            product:products (
               id,
               name,
               description,
-              category,
-              status,
-              image_url
+              price,
+              image_url,
+              category_id
             )
           `)
           .eq('business_id', business.id)
@@ -87,16 +81,16 @@ const BusinessDashboard = () => {
         // Transform to match Product interface
         const transformedProducts = (data || []).map((bp: any) => ({
           id: bp.id,
-          name: bp.title_override || bp.product?.name || 'Unknown Product',
-          description: bp.description_override || bp.product?.description || null,
-          price: bp.price_from || null,
-          currency: bp.currency_code || 'SCR',
-          category: bp.product?.category || null,
-          status: bp.product?.status || 'active',
+          name: bp.product?.name || 'Unknown Product',
+          description: bp.product?.description || null,
+          price: bp.price || bp.product?.price || null,
+          currency: 'SCR',
+          category: bp.product?.category_id || null,
+          status: 'active',
           in_stock: bp.is_active,
           stock_quantity: null,
           images: bp.product?.image_url ? [bp.product.image_url] : null,
-          catalogue_url: bp.booking_url || null,
+          duration: bp.duration || null,
           sku: null,
           unit: null,
           tags: null,
@@ -158,7 +152,7 @@ const BusinessDashboard = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-foreground">{business.name}</h1>
+          <h1 className="text-3xl font-bold text-foreground">{business.title}</h1>
           <Badge className={`${getStatusColor(business.status)} text-white`}>
             {business.status.charAt(0).toUpperCase() + business.status.slice(1)}
           </Badge>

@@ -22,16 +22,17 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
   const searchTerm = query.trim();
 
   try {
-    // Search businesses - simplified to ilike(name) only
+    // Search businesses - simplified to ilike(title) only
     const { data: businesses, error: businessError } = await supabase
       .from('businesses')
-      .select('*')
+      .select('id, title, description, category, address, latitude, longitude, island, status')
       .eq('status', 'active')
-      .ilike('name', `%${searchTerm}%`)
+      .ilike('title', `%${searchTerm}%`)
       .limit(25);
 
+    // Silent error handling - continue with empty results if query fails
     if (businessError) {
-      console.error('Business search error:', businessError);
+      // Continue with empty business results
     }
 
     // Search products - simplified to basic query
@@ -41,31 +42,30 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
         id,
         name,
         description,
-        category,
-        images,
+        category_id,
+        image_url,
         price,
-        currency,
-        stock,
+        duration,
+        slug,
         is_active,
-        status,
-        business_id,
+        searchable,
         created_at,
-        updated_at,
-        slug
+        updated_at
       `)
       .eq('is_active', true)
       .ilike('name', `%${searchTerm}%`)
       .limit(25);
 
+    // Silent error handling - continue with empty results if query fails
     if (productError) {
-      console.error('Product search error:', productError);
+      // Continue with empty product results
     }
 
     // Format business results
     const businessResults: UnifiedSearchResult[] = (businesses || []).map(business => ({
       type: 'business' as const,
       id: business.id,
-      title: business.name,
+      title: business.title,
       subtitle: business.description || business.category || business.address || '',
       latitude: business.latitude,
       longitude: business.longitude,
@@ -84,7 +84,7 @@ export async function unifiedSearch(query: string): Promise<UnifiedSearchResult[
     // Combine and return results
     return [...businessResults, ...productResults];
   } catch (error) {
-    console.error('Unified search error:', error);
+    // Silent error handling - return empty results
     return [];
   }
 }

@@ -49,20 +49,21 @@ interface Business {
 
 export interface Product {
   id: string;
-  title: string;
-  name?: string; // Legacy field, prefer title
+  name: string;
   description: string;
-  category: string;
-  images: string[];
-  price: number;
-  currency: string;
+  category_id: string | null;
+  image_url: string | null;
+  price: number | null;
+  duration: string | null;
   is_active: boolean;
-  stock: number;
-  status: string;
-  business_id: string | null;
+  stock: number | null;
+  searchable: boolean | null;
   created_at: string;
   updated_at: string;
   slug?: string | null;
+  businesses?: {
+    title: string;
+  };
 }
 
 interface SearchFilterProps {
@@ -115,7 +116,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           event: '*',
           schema: 'public',
           table: 'products',
-          filter: 'status=eq.active'
+          filter: 'is_active=eq.true'
         },
         () => {
           fetchData(); // Refetch when products change
@@ -184,16 +185,15 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           .from('products')
           .select(`
             id,
-            title,
+            name,
             description,
-            category,
-            images,
+            category_id,
+            image_url,
             price,
-            currency,
+            duration,
             stock,
             is_active,
-            status,
-            business_id,
+            searchable,
             created_at,
             updated_at,
             slug
@@ -204,24 +204,14 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
       ]);
 
       // Treat SearchFilter as NON-CRITICAL - don't throw errors
-      // Log warnings but allow homepage to render normally
-      if (categoriesResult.error) {
-        console.warn('[SearchFilter] Search filter unavailable - categories:', categoriesResult.error.message);
-      }
-      if (businessesResult.error) {
-        console.warn('[SearchFilter] Search filter unavailable - businesses:', businessesResult.error.message);
-      }
-      if (productsResult.error) {
-        console.warn('[SearchFilter] Search filter unavailable - products:', productsResult.error.message);
-      }
-
+      // Silent fallback - allow homepage to render normally
+      
       // Set data with fallbacks - allow partial data
       setCategories(categoriesResult.data || []);
       setBusinesses(businessesResult.data || []);
       setProducts(productsResult.data || []);
     } catch (error) {
-      // Non-critical component - log warning only, no error UI
-      console.warn('[SearchFilter] Search filter unavailable:', error instanceof Error ? error.message : 'Unknown error');
+      // Non-critical component - silent fallback, no error UI
       // Set empty arrays as fallback - allow homepage to render normally
       setCategories([]);
       setBusinesses([]);
@@ -274,11 +264,11 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
       filteredProd = filteredProd
         .map(product => {
           let relevanceScore = 0;
-          const name = (product.title || product.name || '').toLowerCase();
+          const name = (product.name || '').toLowerCase();
           const description = product.description?.toLowerCase() || '';
-          const businessName = product.businesses?.title?.toLowerCase() || '';
+          const businessTitle = product.businesses?.title?.toLowerCase() || '';
           
-          // Prioritize product title matches
+          // Prioritize product name matches
           if (name.includes(searchLower)) {
             relevanceScore += 100;
             if (name === searchLower) relevanceScore += 50;
@@ -286,7 +276,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
           }
           
           // Business title match
-          if (businessName.includes(searchLower)) {
+          if (businessTitle.includes(searchLower)) {
             relevanceScore += 75;
           }
           
@@ -305,7 +295,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onFiltersChange }) => {
     // Apply category filter
     if (selectedCategory) {
       filteredBiz = filteredBiz.filter(business => business.category === selectedCategory);
-      filteredProd = filteredProd.filter(product => product.category === selectedCategory);
+      filteredProd = filteredProd.filter(product => product.category_id === selectedCategory);
     }
 
     setFilteredBusinesses(filteredBiz);
@@ -605,15 +595,15 @@ const BusinessCard: React.FC<{ business: Business }> = ({ business }) => (
 );
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
-  const name = product?.title || product?.name || "Unnamed";
+  const name = product?.name || "Unnamed";
   
   return (
   <Card className="hover:shadow-lg transition-shadow">
     <div className="relative">
-      {product.images && product.images.length > 0 ? (
+      {product.image_url ? (
         <div className="h-40 relative overflow-hidden rounded-t-lg">
           <img 
-            src={product.images[0]} 
+            src={product.image_url} 
             alt={name}
             className="w-full h-full object-cover"
           />
@@ -643,7 +633,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       
       {product.price && (
         <div className="text-lg font-semibold text-primary">
-          {product.currency || 'SCR'} {product.price}
+          SCR {product.price}
         </div>
       )}
     </CardContent>

@@ -89,20 +89,11 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
           id,
           name,
           description,
-          category,
-          images,
           price,
-          currency,
-          stock,
-          is_active,
-          status,
-          business_id,
-          created_at,
-          updated_at,
-          slug
+          is_active
         `)
         .eq("is_active", true)
-        .order("title");
+        .order("name");
 
       if (productsError) {
         console.error("[AdminPanel] Failed to load available products", {
@@ -355,11 +346,15 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
                   <SelectValue placeholder="Select a product" />
                 </SelectTrigger>
                 <SelectContent>
-                  {unassignedProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
+                  {unassignedProducts.length === 0 ? (
+                    <SelectItem value="" disabled>No products available</SelectItem>
+                  ) : (
+                    unassignedProducts.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name || 'Untitled Product'}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -422,9 +417,12 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
 
         {/* Existing Assignments */}
         <div className="space-y-4">
-          <h3 className="font-semibold">Current Assignments ({assignments.length})</h3>
-          {assignments.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No products assigned yet</p>
+          <h3 className="font-semibold">Current Assignments ({assignments?.length || 0})</h3>
+          {!assignments || assignments.length === 0 ? (
+            <div className="border rounded-lg p-6 text-center">
+              <p className="text-muted-foreground text-sm">No products assigned yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Use the form above to assign products to this business</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {assignments.map((assignment) => (
@@ -515,9 +513,9 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Base Price: </span>
+                          <span className="text-muted-foreground">Product Price: </span>
                           <span className="font-medium">
-                            {assignment.products?.base_price ? `SCR ${assignment.products.base_price}` : 'N/A'}
+                            {assignment.products?.price ? `SCR ${assignment.products.price}` : 'N/A'}
                           </span>
                         </div>
                         <div>
@@ -527,13 +525,7 @@ const BusinessProductAssignments: React.FC<BusinessProductAssignmentsProps> = ({
                           </span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Base Duration: </span>
-                          <span className="font-medium">
-                            {assignment.products?.base_duration || 'N/A'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Business Duration: </span>
+                          <span className="text-muted-foreground">Duration: </span>
                           <span className="font-medium">
                             {assignment.duration || 'N/A'}
                           </span>

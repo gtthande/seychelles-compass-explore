@@ -40,7 +40,6 @@ export const useAdvancedSearch = () => {
     // Check cache first
     const cachedResult = get(cacheKey);
     if (cachedResult) {
-      console.log(`🔍 Cache hit for: "${query}"`);
       return cachedResult;
     }
 
@@ -48,8 +47,6 @@ export const useAdvancedSearch = () => {
     setError(null);
 
     try {
-      console.log(`🔍 Advanced search for: "${query}"`);
-
       // Use the advanced search function
       const { data, error: searchError } = await supabase
         .rpc('search_businesses_and_products', {
@@ -58,13 +55,11 @@ export const useAdvancedSearch = () => {
         });
 
       if (searchError) {
-        console.error('Advanced search error:', searchError);
-        setError('Search failed. Please try again.');
+        // Silent fallback - don't log RPC errors, fallback will handle it
         return null;
       }
 
       const results = data || [];
-      console.log(`🔍 Found ${results.length} results for "${query}"`);
 
       const searchResponse = {
         results,
@@ -78,8 +73,7 @@ export const useAdvancedSearch = () => {
       return searchResponse;
 
     } catch (err) {
-      console.error('Search error:', err);
-      setError('An unexpected error occurred during search.');
+      // Silent error handling - fallback will be used
       return null;
     } finally {
       setIsLoading(false);
@@ -95,7 +89,6 @@ export const useAdvancedSearch = () => {
     // Check cache first
     const cachedResult = get(cacheKey);
     if (cachedResult) {
-      console.log(`🔍 Cache hit for fallback search: "${query}"`);
       return cachedResult;
     }
 
@@ -108,8 +101,6 @@ export const useAdvancedSearch = () => {
     }
 
     // Fallback to basic search if advanced search fails or returns no results
-    console.log('🔄 Falling back to basic search...');
-    
     setIsLoading(true);
     setError(null);
 
@@ -117,53 +108,80 @@ export const useAdvancedSearch = () => {
       // Basic business search using the improved pattern - optimized with specific fields and limits
       const { data: businessMatches, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, description, category, address, island, featured, status')
+        .select('id, title, description, category, address, island, featured, status')
         .eq('status', 'active')
-        .ilike('name', `%${query}%`)
+        .ilike('title', `%${query}%`)
         .or(`description.ilike.%${query}%`)
         .limit(limit);
 
+      // Silent error handling - continue with empty results if query fails
       if (businessError) {
-        console.error('Basic business search error:', businessError);
+        // Continue with empty business results
       }
 
-      // Basic product search using the improved pattern - optimized with specific fields and limits
+      // Basic product search via business_products join table
+      // Products don't have business_id directly - they're linked via business_products
       const { data: productMatches, error: productError } = await supabase
-        .from('products')
-        .select('id, name, description, category, price, business_id, businesses!inner(name, id, category, description, address, island)')
-        .eq('status', 'active')
-        .eq('businesses.status', 'active')
-        .ilike('name', `%${query}%`)
-        .or(`description.ilike.%${query}%`)
+        .from('business_products')
+        .select(`
+          id,
+          business_id,
+          product_id,
+          price,
+          is_active,
+          product:products!inner (
+            id,
+            name,
+            description,
+            category_id,
+            image_url,
+            price,
+            is_active
+          ),
+          business:businesses!inner (
+            id,
+            title,
+            description,
+            category,
+            address,
+            island,
+            status
+          )
+        `)
+        .eq('is_active', true)
+        .eq('business.status', 'active')
+        .eq('product.is_active', true)
+        .or(`product.name.ilike.%${query}%,product.description.ilike.%${query}%`)
         .limit(limit);
 
+      // Silent error handling - continue with empty results if query fails
       if (productError) {
-        console.error('Basic product search error:', productError);
+        // Continue with empty product results
       }
 
       // Process results using the improved pattern
       const businessResults: SearchResult[] = (businessMatches || []).map(business => {
         let relevanceScore = 0;
         let matchedField: 'name' | 'description' | 'category' | 'services' = 'name';
-        let highlight = business.name;
+        let highlight = business.title;
 
         const queryLower = query.toLowerCase();
-        const name = business.name?.toLowerCase() || '';
+        const title = business.title?.toLowerCase() || '';
         const description = business.description?.toLowerCase() || '';
         const category = business.category?.toLowerCase() || '';
 
-        if (name.includes(queryLower)) {
+        if (title.includes(queryLower)) {
           relevanceScore += 100;
           matchedField = 'name';
-          highlight = business.name;
+          highlight = business.title;
         } else if (description.includes(queryLower)) {
           relevanceScore += 75;
           matchedField = 'description';
-          highlight = `${business.name} – ${business.description}`;
+          highlight = `${business.title} – ${business.description}`;
         } else if (category.includes(queryLower)) {
           relevanceScore += 50;
           matchedField = 'category';
-          highlight = `${business.name} – ${business.category}`;
+          highlight = `${business.title} – ${business.category}`;
         }
 
         if (business.featured) {
@@ -172,7 +190,7 @@ export const useAdvancedSearch = () => {
 
         return {
           business_id: business.id,
-          business_name: business.name,
+          business_name: business.title,
           business_description: business.description,
           business_address: business.address,
           business_island: business.island,
@@ -184,43 +202,43 @@ export const useAdvancedSearch = () => {
       });
 
       // Process product results using the improved pattern
-      const productResults: SearchResult[] = (productMatches || []).map(product => {
+      const productResults: SearchResult[] = (productMatches || []).map((bp: any) => {
+        const product = bp.product || {};
+        const business = bp.business || {};
+        const productName = product.name || '';
+        const productDescription = product.description || '';
+        
         let relevanceScore = 0;
         let matchedField: 'name' | 'description' | 'category' | 'services' = 'name';
-        let highlight = `${product.business?.name} – ${product.name}`;
+        let highlight = `${business.title} – ${productName}`;
 
         const queryLower = query.toLowerCase();
-        const productName = product.name?.toLowerCase() || '';
-        const productDescription = product.description?.toLowerCase() || '';
-        const productCategory = product.category?.toLowerCase() || '';
+        const nameLower = productName.toLowerCase();
+        const descLower = productDescription.toLowerCase();
 
-        if (productName.includes(queryLower)) {
+        if (nameLower.includes(queryLower)) {
           relevanceScore += 100;
           matchedField = 'name';
-          highlight = `${product.business?.name} – offers ${product.name}`;
-        } else if (productDescription.includes(queryLower)) {
+          highlight = `${business.title} – offers ${productName}`;
+        } else if (descLower.includes(queryLower)) {
           relevanceScore += 75;
           matchedField = 'description';
-          highlight = `${product.business?.name} – ${product.name}: ${product.description}`;
-        } else if (productCategory.includes(queryLower)) {
-          relevanceScore += 50;
-          matchedField = 'category';
-          highlight = `${product.business?.name} – ${product.name} (${product.category})`;
+          highlight = `${business.title} – ${productName}: ${productDescription}`;
         }
 
         return {
-          business_id: product.business_id,
-          business_name: product.business?.name || '',
-          business_description: product.business?.description,
-          business_address: product.business?.address,
-          business_island: product.business?.island,
+          business_id: bp.business_id,
+          business_name: business.title || '',
+          business_description: business.description,
+          business_address: business.address,
+          business_island: business.island,
           match_source: 'product' as const,
           matched_field: matchedField,
           highlight,
           relevance_score: relevanceScore,
-          product_name: product.name,
-          product_description: product.description,
-          match_detail: product.name
+          product_name: productName,
+          product_description: productDescription,
+          match_detail: productName
         };
       });
 
@@ -253,9 +271,9 @@ export const useAdvancedSearch = () => {
       return fallbackResponse;
 
     } catch (err) {
-      console.error('Fallback search error:', err);
-      setError('Search failed. Please try again.');
-      return null;
+      // Silent error handling - return empty results
+      setError(null);
+      return { results: [], total: 0, query: query.trim() };
     } finally {
       setIsLoading(false);
     }

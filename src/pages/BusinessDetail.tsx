@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 interface Business {
   id: string;
   owner_id?: string;
-  name: string;
+  title: string;
   description?: string;
   category: string;
   address?: string;
@@ -37,12 +37,23 @@ interface Business {
   services?: string[];
 }
 
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number | null;
+  image_url: string | null;
+  duration: string | null;
+  is_active: boolean;
+}
+
 const BusinessDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [business, setBusiness] = useState<Business | null>(null);
+  const [products, setProducts] = useState<Array<{ product: Product }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -64,7 +75,7 @@ const BusinessDetail: React.FC = () => {
         const { data, error: fetchError } = await supabase
           .from('businesses')
           .select(`
-            id, owner_id, name, description, category, address, latitude, longitude, island,
+            id, owner_id, title, description, category, address, latitude, longitude, island,
             phone, website, email, facebook_url, instagram_url, opening_hours,
             average_rating, total_reviews, featured, verified, logo_url, cover_image_url,
             gallery_images, services, status
@@ -87,6 +98,20 @@ const BusinessDetail: React.FC = () => {
         }
 
         setBusiness(data);
+        
+        // Fetch products using business_products joined to products
+        // Note: products table uses 'name' column (NOT 'title')
+        const { data: productsData, error: productsError } = await supabase
+          .from('business_products')
+          .select('product:products(id,name,description,price,image_url,duration,is_active)')
+          .eq('business_id', id)
+          .eq('is_active', true);
+
+        if (productsError) {
+          console.error('Error fetching products:', productsError);
+        } else {
+          setProducts((productsData || []) as Array<{ product: Product }>);
+        }
         
         // Check if current user is the owner (only if user exists and business has owner_id)
         if (userId && data.owner_id) {
@@ -216,7 +241,7 @@ const BusinessDetail: React.FC = () => {
             Back
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-foreground">{business.name}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{business.title}</h1>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="secondary">{formattedCategory}</Badge>
               {business.featured && (
@@ -316,6 +341,49 @@ const BusinessDetail: React.FC = () => {
                 </CardContent>
               </Card>
             ) : null}
+
+            {/* Products */}
+            {products.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Products & Services</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {products.map((item, index) => {
+                      const product = item.product;
+                      if (!product) return null;
+                      return (
+                        <div key={product.id || index} className="border rounded-lg p-4 space-y-2">
+                          {product.image_url && (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-32 object-cover rounded-lg mb-2"
+                            />
+                          )}
+                          <h3 className="font-semibold">{product.name}</h3>
+                          {product.description && (
+                            <p className="text-sm text-muted-foreground">{product.description}</p>
+                          )}
+                          <div className="flex items-center justify-between">
+                            {product.price && (
+                              <span className="font-medium">SCR {product.price.toFixed(2)}</span>
+                            )}
+                            {product.duration && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                {product.duration}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Right Column - Location & Contact */}

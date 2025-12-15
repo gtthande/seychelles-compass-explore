@@ -38,7 +38,7 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   address: string;
   island: string;
 }
@@ -92,13 +92,23 @@ const ProductManager: React.FC = () => {
         if (businessesResult.data) {
           setBusinesses(businessesResult.data);
         }
-      } catch (error) {
-        console.error('Error loading products data:', error);
+      } catch (error: any) {
+        console.error('[ProductManager] Error loading products data:', error);
+        console.error('[ProductManager] Error details:', {
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code
+        });
         toast({
           title: "Error",
-          description: "Failed to fetch products",
+          description: error?.message || "Failed to fetch products",
           variant: "destructive",
         });
+        // Ensure loading state is cleared even on error
+        setBusinessProducts([]);
+        setMasterProducts([]);
+        setBusinesses([]);
       } finally {
         setLoading(false);
       }
@@ -118,20 +128,18 @@ const ProductManager: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(bp => {
         const productName = bp.product?.name || '';
-        const title = bp.title_override || bp.product?.title || productName;
-        const description = bp.description_override || bp.product?.description || '';
-        const businessName = bp.business?.name || '';
+        const description = bp.product?.description || '';
+        const businessTitle = bp.business?.title || '';
         return (
           productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          businessName.toLowerCase().includes(searchTerm.toLowerCase())
+          businessTitle.toLowerCase().includes(searchTerm.toLowerCase())
         );
       });
     }
 
     if (categoryFilter !== 'all') {
-      filtered = filtered.filter(bp => bp.product?.category === categoryFilter);
+      filtered = filtered.filter(bp => bp.product?.category_id === categoryFilter);
     }
 
     if (businessFilter !== 'all') {
@@ -143,12 +151,12 @@ const ProductManager: React.FC = () => {
     }
 
     if (priceRange.min) {
-      filtered = filtered.filter(bp => (bp.price_from || 0) >= Number(priceRange.min));
+      filtered = filtered.filter(bp => (bp.price || bp.product?.price || 0) >= Number(priceRange.min));
     }
 
     if (priceRange.max) {
       filtered = filtered.filter(bp => {
-        const maxPrice = bp.price_to || bp.price_from || 0;
+        const maxPrice = bp.price || bp.product?.price || 0;
         return maxPrice <= Number(priceRange.max);
       });
     }
@@ -203,13 +211,10 @@ const ProductManager: React.FC = () => {
     }
   };
 
-  const formatPrice = (priceFrom: number | null, priceTo: number | null, currency: string = 'SCR') => {
-    if (!priceFrom) return "Price on request";
-    const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₨";
-    if (priceTo && priceTo !== priceFrom) {
-      return `${symbol}${priceFrom.toLocaleString()} - ${symbol}${priceTo.toLocaleString()}`;
-    }
-    return `${symbol}${priceFrom.toLocaleString()}`;
+  const formatPrice = (price: number | null) => {
+    if (!price) return "Price on request";
+    const symbol = "₨";
+    return `${symbol}${price.toLocaleString()}`;
   };
 
   const formatDuration = (minutes: number | null) => {
@@ -337,7 +342,7 @@ const ProductManager: React.FC = () => {
                 <SelectItem value="all">All Businesses</SelectItem>
                 {businesses.map(business => (
                   <SelectItem key={business.id} value={business.id}>
-                    {business.name}
+                    {business.title}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -418,8 +423,8 @@ const ProductManager: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedProducts.map((bp) => {
                 const productName = bp.product?.name || 'Unknown Product';
-                const displayTitle = bp.title_override || bp.product?.title || productName;
-                const displayDescription = bp.description_override || bp.product?.description || '';
+                const displayTitle = productName;
+                const displayDescription = bp.product?.description || '';
                 return (
                   <Card key={bp.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
                     <div className="relative">
@@ -447,23 +452,23 @@ const ProductManager: React.FC = () => {
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-primary">
-                          {formatPrice(bp.price_from, bp.price_to, bp.currency_code)}
+                          {formatPrice(bp.price || bp.product?.price)}
                         </span>
-                        {bp.duration_minutes && (
+                        {bp.duration && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {formatDuration(bp.duration_minutes)}
+                            {bp.duration}
                           </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Building className="w-4 h-4" />
-                        <span className="truncate">{bp.business?.name}</span>
+                        <span className="truncate">{bp.business?.title}</span>
                       </div>
-                      {bp.product?.category && (
+                      {bp.product?.category_id && (
                         <Badge variant="secondary" className="flex items-center gap-1 w-fit">
                           <Tag className="w-3 h-3" />
-                          {bp.product.category}
+                          {bp.product.category_id}
                         </Badge>
                       )}
                       <div className="flex gap-2 pt-2">
@@ -493,8 +498,8 @@ const ProductManager: React.FC = () => {
             <div className="space-y-4">
               {paginatedProducts.map((bp) => {
                 const productName = bp.product?.name || 'Unknown Product';
-                const displayTitle = bp.title_override || bp.product?.title || productName;
-                const displayDescription = bp.description_override || bp.product?.description || '';
+                const displayTitle = productName;
+                const displayDescription = bp.product?.description || '';
                 return (
                   <Card key={bp.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-6">
@@ -528,23 +533,23 @@ const ProductManager: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <DollarSign className="w-4 h-4 text-muted-foreground" />
                               <span className="font-semibold text-lg">
-                                {formatPrice(bp.price_from, bp.price_to, bp.currency_code)}
+                                {formatPrice(bp.price || bp.product?.price)}
                               </span>
                             </div>
-                            {bp.duration_minutes && (
+                            {bp.duration && (
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-muted-foreground" />
-                                <span>{formatDuration(bp.duration_minutes)}</span>
+                                <span>{bp.duration}</span>
                               </div>
                             )}
                             <div className="flex items-center gap-2">
                               <Building className="w-4 h-4 text-muted-foreground" />
-                              <span>{bp.business?.name}</span>
+                              <span>{bp.business?.title}</span>
                             </div>
-                            {bp.product?.category && (
+                            {bp.product?.category_id && (
                               <Badge variant="secondary" className="flex items-center gap-1">
                                 <Tag className="w-3 h-3" />
-                                {bp.product.category}
+                                {bp.product.category_id}
                               </Badge>
                             )}
                           </div>

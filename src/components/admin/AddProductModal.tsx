@@ -31,7 +31,7 @@ import {
 
 interface Business {
   id: string;
-  name: string;
+  title: string;
   address: string;
   island: string;
 }
@@ -314,11 +314,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
       const imageUrl = formData.images.length > 0 ? formData.images[0] : imagePreview || null;
       const newProduct = await createProductMaster({
         name: formData.name,
-        title: formData.name,
         description: formData.description || null,
-        category: formData.category || null,
+        category_id: formData.category || null,
         image_url: imageUrl,
-        status: formData.status === 'draft' ? 'active' : formData.status,
         searchable: true
       });
 
@@ -331,14 +329,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
         const businessProduct = await createBusinessProduct({
           business_id: formData.business_id,
           product_id: newProduct.id,
-          title_override: null,
-          description_override: null,
-          price_from: Number(formData.price),
-          price_to: null,
-          currency_code: formData.currency || 'SCR',
-          duration_minutes: null,
-          booking_url: null,
-          notes: null,
+          price: Number(formData.price) || null,
+          duration: null,
           is_active: formData.is_active
         });
 
@@ -419,7 +411,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onProductAdded, trigg
                   <SelectItem value="">None</SelectItem>
                   {businesses.map(business => (
                     <SelectItem key={business.id} value={business.id}>
-                      {business.name} - {business.island}
+                      {business.title} - {business.island}
                     </SelectItem>
                   ))}
                 </SelectContent>

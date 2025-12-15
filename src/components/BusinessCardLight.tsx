@@ -40,7 +40,7 @@ const BusinessCardLight: React.FC<BusinessCardLightProps> = React.memo(({
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-lg truncate">{business.name}</h3>
+              <h3 className="font-semibold text-lg truncate">{business.title}</h3>
               {business.verified && (
                 <Verified className="w-4 h-4 text-blue-600 flex-shrink-0" />
               )}

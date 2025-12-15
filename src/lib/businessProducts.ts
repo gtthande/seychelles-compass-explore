@@ -27,10 +27,8 @@ export interface BusinessProductWithJoin {
     products: {
         id: string;
         name: string;
-        slug: string | null;
         description: string | null;
-        base_price: number | null; // Base price from products table
-        base_duration: string | null; // Base duration from products table
+        price: number | null;
     } | null;
 }
 
@@ -60,10 +58,10 @@ export async function getBusinessProductAssignments(
       products:product_id (
         id,
         name,
-        slug,
         description,
         price,
-        duration
+        image_url,
+        category_id
       )
     `)
         .eq("business_id", businessId)
@@ -81,15 +79,11 @@ export async function getBusinessProductAssignments(
         throw error;
     }
 
-    // Transform data to match interface (map is_active to active, price/duration to base_price/base_duration)
+    // Transform data to match interface (map is_active to active)
     const transformed = (data ?? []).map((item: any) => ({
         ...item,
         active: item.is_active,
-        products: item.products ? {
-            ...item.products,
-            base_price: item.products.price,
-            base_duration: item.products.duration
-        } : null
+        products: item.products || null
     }));
 
     // Sort by product name (fallback if foreignTable ordering doesn't work)
@@ -164,10 +158,10 @@ export async function attachProductToBusiness(
       products:product_id (
         id,
         name,
-        slug,
         description,
         price,
-        duration
+        image_url,
+        category_id
       )
     `)
         .single();
@@ -192,11 +186,7 @@ export async function attachProductToBusiness(
     return {
         ...data,
         active: data.is_active,
-        products: data.products ? {
-            ...data.products,
-            base_price: data.products.price,
-            base_duration: data.products.duration
-        } : null
+        products: data.products || null
     } as BusinessProductWithJoin;
 }
 
@@ -277,10 +267,10 @@ export async function updateBusinessProductAssignment(
       products:product_id (
         id,
         name,
-        slug,
         description,
         price,
-        duration
+        image_url,
+        category_id
       )
     `)
         .single();
@@ -305,11 +295,7 @@ export async function updateBusinessProductAssignment(
     return {
         ...data,
         active: data.is_active,
-        products: data.products ? {
-            ...data.products,
-            base_price: data.products.price,
-            base_duration: data.products.duration
-        } : null
+        products: data.products || null
     } as BusinessProductWithJoin;
 }
 

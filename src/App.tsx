@@ -72,17 +72,18 @@ const App = () => {
                 <Route path="/directory" element={<Directory />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/business/:id" element={<BusinessDetail />} />
-                <Route path="/business" element={<RouteGuard><BusinessDashboard /></RouteGuard>} />
+                <Route path="/business" element={<RouteGuard requiredRole="business"><BusinessDashboard /></RouteGuard>} />
                 <Route path="/business/register" element={<BusinessRegister />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/docs" element={<Documentation />} />
-                <Route path="/admin" element={<RouteGuard><AdminPanel /></RouteGuard>} />
-                <Route path="/admin/settings" element={<RouteGuard><AdminPanel /></RouteGuard>} />
-                <Route path="/admin/businesses/create" element={<RouteGuard><BusinessCreate /></RouteGuard>} />
-                <Route path="/admin/businesses/edit/:id" element={<RouteGuard><BusinessEdit /></RouteGuard>} />
-                <Route path="/admin/businesses/pending" element={<RouteGuard><PendingBusinesses /></RouteGuard>} />
-                <Route path="/admin/products/create" element={<RouteGuard><ProductCreate /></RouteGuard>} />
-                <Route path="/admin/products/edit/:id" element={<RouteGuard><ProductEdit /></RouteGuard>} />
+                <Route path="/admin" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+                <Route path="/admin/" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+                <Route path="/admin/settings" element={<RouteGuard requiredRole="admin"><AdminPanel /></RouteGuard>} />
+                <Route path="/admin/businesses/create" element={<RouteGuard requiredRole="admin"><BusinessCreate /></RouteGuard>} />
+                <Route path="/admin/businesses/edit/:id" element={<RouteGuard requiredRole="admin"><BusinessEdit /></RouteGuard>} />
+                <Route path="/admin/businesses/pending" element={<RouteGuard requiredRole="admin"><PendingBusinesses /></RouteGuard>} />
+                <Route path="/admin/products/create" element={<RouteGuard requiredRole="admin"><ProductCreate /></RouteGuard>} />
+                <Route path="/admin/products/edit/:id" element={<RouteGuard requiredRole="admin"><ProductEdit /></RouteGuard>} />
                 <Route path="/payments/test" element={<PaymentTest />} />
                 <Route path="/dev/email-preview" element={<EmailPreview />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

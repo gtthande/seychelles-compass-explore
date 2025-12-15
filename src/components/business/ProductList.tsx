@@ -76,20 +76,17 @@ const ProductList = () => {
           id,
           business_id,
           product_id,
-          price_from,
-          price_to,
-          currency_code,
+          price,
           is_active,
           created_at,
           updated_at,
           product:products (
             id,
             name,
-            title,
             description,
-            category,
+            price,
             image_url,
-            status
+            category_id
           )
         `, { count: 'exact' })
         .eq('business_id', business.id);
@@ -98,8 +95,7 @@ const ProductList = () => {
       if (searchTerm) {
         query = query.or(`
           product.name.ilike.%${searchTerm}%,
-          product.description.ilike.%${searchTerm}%,
-          product.title.ilike.%${searchTerm}%
+          product.description.ilike.%${searchTerm}%
         `);
       }
       
@@ -118,35 +114,46 @@ const ProductList = () => {
       if (error) throw error;
       
       // Transform business_products data to match Product interface
-      const transformedData = (data || []).map((bp: any) => ({
-        id: bp.id,
-        name: bp.product?.title || bp.product?.name || '',
-        description: bp.product?.description || '',
-        category: bp.product?.category || '',
-        images: bp.product?.image_url ? [bp.product.image_url] : [],
-        image_url: bp.product?.image_url || null,
-        price: bp.price_from || null,
-        price_from: bp.price_from,
-        price_to: bp.price_to,
-        currency: bp.currency_code || 'SCR',
-        currency_code: bp.currency_code || 'SCR',
-        is_active: bp.is_active,
-        stock: null,
-        status: bp.product?.status || 'active',
-        business_id: bp.business_id,
-        created_at: bp.created_at,
-        updated_at: bp.updated_at,
-      })) as Product[];
+      // Defensive handling: ensure product data exists
+      const transformedData = (data || []).map((bp: any) => {
+        const product = bp.product || {};
+        return {
+          id: bp.id || '',
+          name: product.name || 'Untitled Product',
+          description: product.description || '',
+          category_id: product.category_id || null,
+          images: product.image_url ? [product.image_url] : [],
+          image_url: product.image_url || null,
+          price: bp.price || product.price || null,
+          currency: 'SCR',
+          currency_code: 'SCR',
+          is_active: bp.is_active ?? true,
+          stock: null,
+          status: product.status || 'active',
+          business_id: bp.business_id || '',
+          created_at: bp.created_at || '',
+          updated_at: bp.updated_at || '',
+        };
+      }) as Product[];
       
       setProducts(transformedData);
       setTotalProducts(count || 0);
     } catch (error: any) {
-      console.error('Error fetching products:', error);
+      console.error('[ProductList] Error fetching products:', error);
+      console.error('[ProductList] Error details:', {
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code
+      });
       toast({
         title: "Error",
-        description: "Failed to load products",
+        description: error?.message || "Failed to load products",
         variant: "destructive",
       });
+      // Ensure loading state is cleared and show empty state
+      setProducts([]);
+      setTotalProducts(0);
     } finally {
       setProductsLoading(false);
     }
@@ -328,14 +335,9 @@ const ProductList = () => {
                     </CardDescription>
                   )}
                   <div className="flex items-center justify-between">
-                    {(product.price_from || product.price) && (
+                    {product.price && (
                       <div className="text-lg font-semibold text-foreground">
-                        {product.currency_code || product.currency || 'SCR'} {
-                          product.price_from || product.price
-                        }
-                        {product.price_to && product.price_to !== product.price_from && (
-                          <span> - {product.price_to}</span>
-                        )}
+                        ₨ {product.price}
                       </div>
                     )}
                   </div>

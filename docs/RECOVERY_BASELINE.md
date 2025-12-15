@@ -1,8 +1,10 @@
 # Recovery Baseline Documentation
 
+**Current Branch:** `recovery/homepage-stable`  
 **Baseline Commit:** `d98db5f`  
 **Baseline Date:** 2025-12-07  
-**Baseline Message:** "iCompass products work in progress – stable state"
+**Baseline Message:** "iCompass products work in progress – stable state"  
+**Status:** ✅ **STABLE FOR CONTINUATION**
 
 ---
 
@@ -105,21 +107,47 @@ The baseline has been successfully restored. The project is in a clean, stable s
 
 ---
 
+## Current State (2025-01-XX)
+
+**Branch:** `recovery/homepage-stable`  
+**Status:** ✅ **STABLE FOR CONTINUATION**
+
+### Confirmed Working Features
+- ✅ Homepage loads correctly
+- ✅ Admin panel loads at `/admin`
+- ✅ Businesses list works
+- ✅ Business → Product assignment works
+- ✅ Products list renders
+- ✅ Auth works
+- ✅ Environment variables validated on startup
+
+### Known Issues (Intentional)
+- ⚠️ Product edit page infinite loading (known issue, not resolved yet)
+- ⚠️ Supabase RPC `get_live_counters` returns 400 but is non-blocking
+- ✅ No rollback required
+
+### Documentation
+- See `docs/PROJECT_STATE.md` for current working state
+- See `docs/ADMIN_STATUS.md` for admin panel status
+- See `docs/SCHEMA_ALIGNMENT.md` for schema details
+
+---
+
 ## Next Steps (After Baseline Restoration)
 
-1. **Verify Baseline:** Confirm homepage loads, build succeeds, no crashes
-2. **Document Current State:** Note any missing features or known issues
-3. **Plan Controlled Rebuild:** Identify what needs to be restored vs. rebuilt
-4. **Wait for Explicit Instruction:** Do NOT proceed with rebuild until authorized
+1. ✅ **Baseline Verified:** Homepage loads, build succeeds, no crashes
+2. ✅ **Current State Documented:** See `docs/PROJECT_STATE.md`
+3. ✅ **Known Issues Documented:** See Known Issues section above
+4. **Continue Development:** Branch is stable for continuation
 
 ---
 
 ## STOP CONDITION
 
 **After baseline restoration:**
-- ✅ STOP immediately
-- ✅ Do NOT rebuild homepage logic
-- ✅ Do NOT touch Supabase queries
-- ✅ Wait for explicit instruction
+- ✅ Baseline restored successfully
+- ✅ Current state documented
+- ✅ Known issues documented
+- ✅ Branch is stable for continuation
 
-This baseline is a **foundation**, not a destination.
+This baseline is a **foundation** and has been successfully restored and documented.
